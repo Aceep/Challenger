@@ -7,6 +7,7 @@ const NAV = [
   { href: "/admin/teams", label: "Équipes" },
   { href: "/admin/players", label: "Joueurs & invitations" },
   { href: "/admin/bingo", label: "Bingo" },
+  { href: "/admin/quests", label: "Quêtes" },
 ] as const;
 
 export default async function AdminLayout({ children }: LayoutProps<"/admin">) {

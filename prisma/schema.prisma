@@ -31,6 +31,7 @@ model User {
   membership TeamMember?
   captainOf  Team[]      @relation("TeamCaptain")
   books      Book[]
+  questCompletions QuestCompletion[]
 }
 
 model Account {
@@ -95,6 +96,7 @@ model Challenge {
   teams      Team[]
   invites    Invite[]
   bingoGrids BingoGrid[]
+  quests     Quest[]
 }
 
 model Team {
@@ -110,9 +112,11 @@ model Team {
   captain     User?        @relation("TeamCaptain", fields: [captainId], references: [id])
   members     TeamMember[]
   invites     Invite[]
-  pointEvents PointEvent[]
-  modifiers   Modifier[]
-  bingoFills  BingoFill[]
+  pointEvents      PointEvent[]
+  modifiers        Modifier[]
+  bingoFills       BingoFill[]
+  targetedQuests   Quest[]           @relation("QuestTarget")
+  questCompletions QuestCompletion[]
 
   @@unique([challengeId, name])
 }
@@ -212,6 +216,58 @@ model BingoFill {
   @@unique([cellId, userId])
   @@unique([cellId, teamId])
   @@index([bookId])
+}
+
+// ---------------------------------------------------------------------------
+// Quests — honor-system missions, team-wide or per player
+// ---------------------------------------------------------------------------
+
+enum QuestType {
+  TEAM
+  INDIVIDUAL
+}
+
+enum QuestOrigin {
+  ADMIN
+  STORY
+}
+
+model Quest {
+  id           String      @id @default(cuid())
+  challengeId  String
+  title        String
+  description  String      @default("")
+  type         QuestType
+  points       Int
+  openAt       DateTime?
+  closeAt      DateTime?
+  /// When set, only this team sees/completes the quest (story-triggered rival quests).
+  targetTeamId String?
+  origin       QuestOrigin @default(ADMIN)
+  createdAt    DateTime    @default(now())
+
+  challenge   Challenge         @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  targetTeam  Team?             @relation("QuestTarget", fields: [targetTeamId], references: [id], onDelete: Cascade)
+  completions QuestCompletion[]
+
+  @@index([challengeId])
+}
+
+/// Exactly one of userId (individual) / teamId (team) is set.
+model QuestCompletion {
+  id            String   @id @default(cuid())
+  questId       String
+  userId        String?
+  teamId        String?
+  completedById String
+  createdAt     DateTime @default(now())
+
+  quest Quest @relation(fields: [questId], references: [id], onDelete: Cascade)
+  user  User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team  Team? @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([questId, userId])
+  @@unique([questId, teamId])
 }
 
 // ---------------------------------------------------------------------------
