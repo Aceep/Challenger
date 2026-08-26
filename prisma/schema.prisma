@@ -92,8 +92,9 @@ model Challenge {
   discordGeneralChannelId String?
   createdAt               DateTime        @default(now())
 
-  teams   Team[]
-  invites Invite[]
+  teams      Team[]
+  invites    Invite[]
+  bingoGrids BingoGrid[]
 }
 
 model Team {
@@ -111,6 +112,7 @@ model Team {
   invites     Invite[]
   pointEvents PointEvent[]
   modifiers   Modifier[]
+  bingoFills  BingoFill[]
 
   @@unique([challengeId, name])
 }
@@ -153,8 +155,63 @@ model Book {
 
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   pointEvents PointEvent[]
+  bingoFills  BingoFill[]
 
   @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Bingo — one grid definition per scope; fills are per player or per team
+// ---------------------------------------------------------------------------
+
+enum BingoScope {
+  PLAYER
+  TEAM
+}
+
+model BingoGrid {
+  id          String     @id @default(cuid())
+  challengeId String
+  scope       BingoScope
+  title       String
+  size        Int        @default(5)
+  createdAt   DateTime   @default(now())
+
+  challenge Challenge   @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  cells     BingoCell[]
+
+  @@unique([challengeId, scope])
+}
+
+model BingoCell {
+  id     String @id @default(cuid())
+  gridId String
+  row    Int
+  col    Int
+  prompt String
+
+  grid  BingoGrid   @relation(fields: [gridId], references: [id], onDelete: Cascade)
+  fills BingoFill[]
+
+  @@unique([gridId, row, col])
+}
+
+/// A book placed on a cell. Exactly one of userId (player grid) / teamId (team grid) is set.
+model BingoFill {
+  id        String   @id @default(cuid())
+  cellId    String
+  bookId    String
+  userId    String?
+  teamId    String?
+  createdAt DateTime @default(now())
+
+  cell BingoCell @relation(fields: [cellId], references: [id], onDelete: Cascade)
+  book Book      @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  team Team?     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([cellId, userId])
+  @@unique([cellId, teamId])
+  @@index([bookId])
 }
 
 // ---------------------------------------------------------------------------
