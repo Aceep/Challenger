@@ -1,22 +1,25 @@
 import { InteractionResponseType, InteractionType, verifyKey } from "discord-interactions";
 import { after, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { announceResolution, syncVoteMessage } from "@/lib/discord/events";
-import { bookSchema, logBook } from "@/lib/services/books";
-import { getLeaderboard } from "@/lib/services/leaderboard";
+import { announceRankChange, announceResolution, syncVoteMessage } from "@/lib/discord/events";
+import { cellChoices, editableBookChoices, lectureQuestChoices } from "@/lib/services/autocomplete";
+import { bookPatchSchema, bookSchema, deleteBook, logBook, updateBook, type BookResult } from "@/lib/services/books";
+import { getLeaderboard, withLeaderWatch } from "@/lib/services/leaderboard";
 import { completeQuest, listQuestsForPlayer } from "@/lib/services/quests";
 import { castBallot, getTeamStoryView } from "@/lib/services/story";
 
 /**
- * Discord HTTP interactions: slash commands and vote buttons.
+ * Discord HTTP interactions: slash commands, autocomplete and vote buttons.
  * Discord signs every request with the app's public key; anything unsigned is rejected.
  */
 
 const ephemeral = (content: string) =>
   NextResponse.json({ type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE, data: { content, flags: 64 } });
 const publicReply = (content: string) => NextResponse.json({ type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE, data: { content } });
+const choices = (list: { name: string; value: string }[]) =>
+  NextResponse.json({ type: InteractionResponseType.APPLICATION_COMMAND_AUTOCOMPLETE_RESULT, data: { choices: list } });
 
-type Option = { name: string; value: string | number | boolean };
+type Option = { name: string; value: string | number | boolean; focused?: boolean };
 type Interaction = {
   type: number;
   channel_id?: string;
@@ -31,6 +34,13 @@ async function playerFromDiscord(discordId: string) {
   const user = await prisma.user.findUnique({ where: { discordId }, include: { membership: { include: { team: { include: { challenge: true } } } } } });
   if (!user) return null;
   return { user, team: user.membership?.team ?? null };
+}
+
+function describe(username: string, r: BookResult, verb: string) {
+  const parts = [`📚 **${username}** ${verb} *${r.book.title}* (${r.book.pages} p.${r.book.isGraphic ? ", graphique" : ""})${r.points ? ` → ${r.points > 0 ? "+" : ""}${r.points} pts` : ""}`];
+  if (r.quest) parts.push(`🗺️ quête « ${r.quest.title} » ${r.quest.complete ? `validée ✅${r.quest.points ? ` (+${r.quest.points} pts)` : ""}` : "à moitié (½)"}`);
+  if (r.cell) parts.push(`🎯 case ${r.cell.label} ${r.cell.complete ? "complétée ✅" : "à moitié (½)"}${r.cell.gained.length ? ` — ligne de bingo ! 🎉` : ""}`);
+  return parts.join("\n");
 }
 
 export async function POST(request: Request) {
@@ -48,10 +58,29 @@ export async function POST(request: Request) {
   const discordUser = interaction.member?.user ?? interaction.user;
   if (!discordUser) return ephemeral("Utilisateur inconnu.");
   const player = await playerFromDiscord(discordUser.id);
-  if (!player) return ephemeral(`Tu n'es pas encore inscrit·e : connecte-toi d'abord sur ${appUrl()}`);
+  if (!player) {
+    if (interaction.type === InteractionType.APPLICATION_COMMAND_AUTOCOMPLETE) return choices([]);
+    return ephemeral(`Tu n'es pas encore inscrit·e : connecte-toi d'abord sur ${appUrl()}`);
+  }
   const { user, team } = player;
+  const actor = { id: user.id, role: user.role, teamId: team?.id ?? null, isCaptain: team?.captainId === user.id };
+  const opts = Object.fromEntries((interaction.data?.options ?? []).map((o) => [o.name, o.value]));
+  const inTeamChannel = !!team?.discordChannelId && interaction.channel_id === team.discordChannelId;
+  const teamChannelOnly = () =>
+    ephemeral(team?.discordChannelId ? `Utilise cette commande dans le salon de ton équipe (<#${team.discordChannelId}>).` : "Ton équipe n'a pas encore de salon Discord configuré.");
 
   try {
+    // --- Autocomplete --------------------------------------------------------
+    if (interaction.type === InteractionType.APPLICATION_COMMAND_AUTOCOMPLETE) {
+      const focused = interaction.data?.options?.find((o) => o.focused);
+      const q = String(focused?.value ?? "");
+      if (!team) return choices([]);
+      if (focused?.name === "quete") return choices(await lectureQuestChoices(team.challengeId, user.id, team.id, q));
+      if (focused?.name === "case") return choices(await cellChoices(team.challengeId, team.id, q));
+      if (focused?.name === "livre") return choices(await editableBookChoices(actor, q));
+      return choices([]);
+    }
+
     // --- Vote buttons -------------------------------------------------------
     if (interaction.type === InteractionType.MESSAGE_COMPONENT) {
       const [kind, voteId, choiceId] = (interaction.data?.custom_id ?? "").split(":");
@@ -66,32 +95,61 @@ export async function POST(request: Request) {
 
     // --- Slash commands -----------------------------------------------------
     if (interaction.type !== InteractionType.APPLICATION_COMMAND) return ephemeral("Interaction non gérée.");
-    const opts = Object.fromEntries((interaction.data?.options ?? []).map((o) => [o.name, o.value]));
 
     switch (interaction.data?.name) {
       case "ajouter-un-livre": {
-        if (!team?.discordChannelId || interaction.channel_id !== team.discordChannelId) {
-          return ephemeral(team?.discordChannelId ? `Utilise cette commande dans le salon de ton équipe (<#${team.discordChannelId}>).` : "Ton équipe n'a pas encore de salon Discord configuré.");
-        }
-        const parsed = bookSchema.safeParse({ title: opts.titre, author: opts.auteur, pages: opts.pages, isGraphic: opts.graphique === true });
+        if (!inTeamChannel) return teamChannelOnly();
+        const parsed = bookSchema.safeParse({
+          title: opts.titre,
+          author: opts.auteur,
+          pages: opts.pages,
+          isGraphic: opts.graphique === true,
+          questId: opts.quete ?? "",
+          cellId: opts.case ?? "",
+        });
         if (!parsed.success) return ephemeral(`Paramètres invalides : ${parsed.error.issues[0]?.message}`);
-        const { points, isGraphic } = await logBook(user.id, parsed.data);
-        return publicReply(`📚 **${discordUser.username}** a terminé *${parsed.data.title}* (${parsed.data.pages} p.${isGraphic ? ", graphique" : ""}) → +${points} pts pour ${team?.name ?? "personne (pas d'équipe)"}`);
+        const { result, before, after: top } = await withLeaderWatch(team?.challengeId, () => logBook(user.id, parsed.data));
+        if (team) after(() => announceRankChange(team.challengeId, before, top));
+        return publicReply(describe(discordUser.username, result, "a terminé"));
+      }
+      case "modifier-un-livre": {
+        if (!inTeamChannel) return teamChannelOnly();
+        const bookId = String(opts.livre ?? "");
+        if (!bookId) return ephemeral("Choisis un livre dans la liste.");
+        if (opts.supprimer === true) {
+          const { before, after: top } = await withLeaderWatch(team?.challengeId, () => deleteBook(actor, bookId));
+          if (team) after(() => announceRankChange(team.challengeId, before, top));
+          return publicReply(`🗑️ **${discordUser.username}** a supprimé un livre.`);
+        }
+        const patch = bookPatchSchema.safeParse({
+          ...(opts.titre !== undefined && { title: opts.titre }),
+          ...(opts.auteur !== undefined && { author: opts.auteur }),
+          ...(opts.pages !== undefined && { pages: opts.pages }),
+          ...(opts.graphique !== undefined && { isGraphic: opts.graphique === true }),
+          ...(opts.quete !== undefined && { questId: opts.quete }),
+          ...(opts.case !== undefined && { cellId: opts.case }),
+        });
+        if (!patch.success) return ephemeral(`Paramètres invalides : ${patch.error.issues[0]?.message}`);
+        if (Object.keys(patch.data).length === 0) return ephemeral("Indique au moins un champ à modifier.");
+        const { result, before, after: top } = await withLeaderWatch(team?.challengeId, () => updateBook(actor, bookId, patch.data));
+        if (team) after(() => announceRankChange(team.challengeId, before, top));
+        return publicReply(describe(discordUser.username, result, "a modifié"));
       }
       case "score": {
         const challenge = team?.challenge ?? (await prisma.challenge.findFirst({ where: { status: "ACTIVE" } }));
         if (!challenge) return ephemeral("Aucun défi actif.");
         const rows = await getLeaderboard(challenge.id);
         const medals = ["🥇", "🥈", "🥉"];
-        return publicReply(`🏆 **Classement — ${challenge.name}**\n${rows.map((r) => `${medals[r.rank - 1] ?? `${r.rank}.`} **${r.name}** — ${r.points} pts (${r.books} livres)`).join("\n")}`);
+        return publicReply(`🏆 **Classement — ${challenge.name}**\n${rows.map((r) => `${medals[r.rank - 1] ?? `${r.rank}.`} **${r.name}** — ${r.points} pts (${r.books} livres, ${r.graphics} graphiques)`).join("\n")}`);
       }
       case "quete": {
-        const challenge = team?.challenge;
-        if (!challenge) return ephemeral("Rejoins une équipe d'abord.");
-        const quests = (await listQuestsForPlayer(challenge.id, user.id, team.id)).filter((q) => q.open);
+        if (!team) return ephemeral("Rejoins une équipe d'abord.");
+        const quests = (await listQuestsForPlayer(team.challengeId, user.id, team.id)).filter((q) => q.open);
         if (!quests.length) return ephemeral("Aucune quête ouverte.");
         return ephemeral(
-          `🗺️ **Quêtes ouvertes**\n${quests.map((q) => `${q.done ? "✅" : "▫️"} \`${q.id.slice(-6)}\` **${q.title}** — ${q.points} pts (${q.type === "TEAM" ? "équipe" : "individuelle"})`).join("\n")}\n\nValider : \`/quete-fait id:<6 derniers caractères>\``,
+          `🗺️ **Quêtes ouvertes**\n${quests
+            .map((q) => `${q.done ? "✅" : q.progress > 0 ? "◐" : "▫️"} ${q.kind === "LECTURE" ? "📖" : "🎯"} **${q.title}** — ${q.points} pts (${q.type === "TEAM" ? "équipe" : "individuelle"})${q.kind === "ACTION" ? ` · \`/quete-fait id:${q.id.slice(-6)}\`` : ""}`)
+            .join("\n")}\n\n📖 = se valide avec un livre (option *quete* de \`/ajouter-un-livre\`) · 🎯 = à valider avec \`/quete-fait\``,
         );
       }
       case "quete-fait": {
@@ -99,7 +157,8 @@ export async function POST(request: Request) {
         const suffix = String(opts.id ?? "").trim();
         const quest = await prisma.quest.findFirst({ where: { challengeId: team.challengeId, id: { endsWith: suffix } } });
         if (!quest || suffix.length < 4) return ephemeral("Quête introuvable. Utilise `/quete` pour voir les identifiants.");
-        const r = await completeQuest(quest.id, { id: user.id, role: user.role, teamId: team.id, isCaptain: team.captainId === user.id });
+        const { result: r, before, after: top } = await withLeaderWatch(team.challengeId, () => completeQuest(quest.id, actor));
+        after(() => announceRankChange(team.challengeId, before, top));
         return r.already ? ephemeral("Déjà validée.") : publicReply(`🗺️ **${discordUser.username}** a validé la quête *${quest.title}* → +${r.points} pts pour ${team.name}`);
       }
       case "histoire": {

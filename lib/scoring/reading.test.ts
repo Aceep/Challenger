@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
-  isGraphicBook,
   applyMultiplier,
+  bookWeight,
   effectiveMultiplier,
+  isComplete,
   isWithinChallenge,
   readingPoints,
 } from "./reading";
@@ -10,8 +11,14 @@ import {
 describe("readingPoints", () => {
   it("gives 1 point per 10 pages by default rate, rounded down", () => {
     expect(readingPoints(412, 0.1)).toBe(41);
-    expect(readingPoints(9, 0.1)).toBe(0);
-    expect(readingPoints(10, 0.1)).toBe(1);
+    expect(readingPoints(150, 0.1)).toBe(15);
+    expect(readingPoints(159, 0.1)).toBe(15);
+  });
+  it("halves pages under 150", () => {
+    expect(readingPoints(149, 0.1)).toBe(7);
+    expect(readingPoints(120, 0.1)).toBe(6);
+    expect(readingPoints(10, 0.1)).toBe(0);
+    expect(readingPoints(20, 0.1)).toBe(1);
   });
   it("returns 0 for invalid inputs", () => {
     expect(readingPoints(0, 0.1)).toBe(0);
@@ -21,16 +28,17 @@ describe("readingPoints", () => {
   });
 });
 
-describe("graphic books", () => {
-  it("halves the pages of a graphique", () => {
-    expect(readingPoints(200, 0.1, true)).toBe(10);
-    expect(readingPoints(200, 0.1, false)).toBe(20);
-    expect(readingPoints(130, 0.1, true)).toBe(6);
+describe("bookWeight / isComplete", () => {
+  it("a graphique counts half", () => {
+    expect(bookWeight(false)).toBe(1);
+    expect(bookWeight(true)).toBe(0.5);
   });
-  it("forces graphique under 150 pages, respects the flag above", () => {
-    expect(isGraphicBook(120, false)).toBe(true);
-    expect(isGraphicBook(150, false)).toBe(false);
-    expect(isGraphicBook(300, true)).toBe(true);
+  it("needs one full book equivalent", () => {
+    expect(isComplete([])).toBe(false);
+    expect(isComplete([0.5])).toBe(false);
+    expect(isComplete([0.5, 0.5])).toBe(true);
+    expect(isComplete([1])).toBe(true);
+    expect(isComplete([1, 0.5])).toBe(true);
   });
 });
 

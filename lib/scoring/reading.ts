@@ -2,24 +2,32 @@
  * Pure scoring functions for reading. No I/O here — keep this testable.
  */
 
-/** Books under this many pages are always treated as "graphique" (BD, manga…). */
-export const GRAPHIC_PAGE_THRESHOLD = 150;
-
-/** A book is graphic when flagged by the player or short enough to be forced. */
-export function isGraphicBook(pages: number, flagged: boolean): boolean {
-  return flagged || pages < GRAPHIC_PAGE_THRESHOLD;
-}
+/** Books with fewer pages than this earn half points (pages ÷ 2 before the rate). */
+export const SHORT_BOOK_PAGES = 150;
 
 /**
  * Base points for a book: pages × pointsPerPage, rounded down, never negative.
- * Graphic books count half their pages (200 p. graphique at 0.1 → 10 pts).
+ * Books under SHORT_BOOK_PAGES count half their pages (120 p. at 0.1 → 6 pts).
  */
-export function readingPoints(pages: number, pointsPerPage: number, isGraphic = false): number {
+export function readingPoints(pages: number, pointsPerPage: number): number {
   if (!Number.isFinite(pages) || pages <= 0) return 0;
   if (!Number.isFinite(pointsPerPage) || pointsPerPage <= 0) return 0;
-  const effectivePages = isGraphic ? pages / 2 : pages;
+  const effectivePages = pages < SHORT_BOOK_PAGES ? pages / 2 : pages;
   return Math.floor(effectivePages * pointsPerPage);
 }
+
+/** Weight of a book towards a quest or a bingo cell: a graphique counts half. */
+export function bookWeight(isGraphic: boolean): number {
+  return isGraphic ? 0.5 : 1;
+}
+
+/** A quest / bingo cell is complete once the attached books weigh at least one full book. */
+export function isComplete(weights: number[]): boolean {
+  return weights.reduce((n, w) => n + w, 0) >= 1;
+}
+
+/** Max books attachable to one quest owner / one bingo cell. */
+export const MAX_BOOKS_PER_SLOT = 2;
 
 export type ActiveModifier = { multiplier: number; startAt: Date; endAt: Date };
 

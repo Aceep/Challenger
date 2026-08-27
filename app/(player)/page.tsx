@@ -10,9 +10,9 @@ export default async function HomePage() {
   const { user, team } = await getCurrentPlayer();
   const [score, books] = await Promise.all([
     team ? getTeamScore(team.id) : Promise.resolve(0),
-    listBooks(user.id),
+    listBooks(user.id, { id: user.id, role: user.role, teamId: team?.id ?? null, isCaptain: team?.captainId === user.id }),
   ]);
-  const myPoints = books.reduce((n, b) => n + b.pointEvents.reduce((m, e) => m + e.amount, 0), 0);
+  const myPoints = books.reduce((n, b) => n + b.points, 0);
   const graphics = books.filter((b) => b.isGraphic).length;
 
   return (

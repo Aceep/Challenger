@@ -1,27 +1,22 @@
 import "server-only";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import type { BingoScope } from "@/lib/generated/prisma/enums";
-import { bingoDelta, type CellPos } from "@/lib/scoring/bingo";
+import { bingoDelta, completedLines, type CellPos } from "@/lib/scoring/bingo";
+import { bookWeight, isComplete, MAX_BOOKS_PER_SLOT } from "@/lib/scoring/reading";
 import { awardPoints } from "@/lib/services/points";
 
-/** Owner of a set of fills: a player (own grid) or a team (team grid). */
-export type BingoOwner = { scope: "PLAYER"; userId: string; teamId: string | null } | { scope: "TEAM"; teamId: string };
+/**
+ * Team bingo: one grid per challenge, one board per team. A cell holds up to
+ * two books and is complete once their weights (book 1, graphique ½) reach 1.
+ */
 
-function ownerWhere(owner: BingoOwner) {
-  return owner.scope === "PLAYER" ? { userId: owner.userId } : { teamId: owner.teamId };
-}
-
-function ownerKey(owner: BingoOwner) {
-  return owner.scope === "PLAYER" ? `user:${owner.userId}` : `team:${owner.teamId}`;
-}
+type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
 
 // ---------------------------------------------------------------------------
 // Admin
 // ---------------------------------------------------------------------------
 
 export const gridSchema = z.object({
-  scope: z.enum(["PLAYER", "TEAM"]),
   title: z.string().trim().min(1, "Titre requis").max(80),
   size: z.coerce.number().int().min(3).max(6),
   /** One prompt per line, row-major, size×size lines. */
@@ -34,13 +29,11 @@ export async function upsertGrid(challengeId: string, input: z.infer<typeof grid
   if (prompts.length !== expected) {
     throw new Error(`Il faut exactement ${expected} consignes (une par ligne), ${prompts.length} reçues.`);
   }
-
   return prisma.$transaction(async (tx) => {
     const grid = await tx.bingoGrid.upsert({
-      where: { challengeId_scope: { challengeId, scope: input.scope } },
-      create: { challengeId, scope: input.scope, title: input.title, size: input.size },
+      where: { challengeId_scope: { challengeId, scope: "TEAM" } },
+      create: { challengeId, scope: "TEAM", title: input.title, size: input.size },
       update: { title: input.title, size: input.size },
-      include: { cells: true },
     });
     // Keep cell ids stable when only the prompt changes (fills reference cells).
     for (let i = 0; i < expected; i++) {
@@ -52,130 +45,147 @@ export async function upsertGrid(challengeId: string, input: z.infer<typeof grid
         update: { prompt: prompts[i] },
       });
     }
-    // Drop cells outside the (possibly shrunk) grid.
-    await tx.bingoCell.deleteMany({
-      where: { gridId: grid.id, OR: [{ row: { gte: input.size } }, { col: { gte: input.size } }] },
-    });
+    await tx.bingoCell.deleteMany({ where: { gridId: grid.id, OR: [{ row: { gte: input.size } }, { col: { gte: input.size } }] } });
     return grid;
   });
 }
 
-export function deleteGrid(challengeId: string, scope: BingoScope) {
-  return prisma.bingoGrid.delete({ where: { challengeId_scope: { challengeId, scope } } });
+export function deleteGrid(challengeId: string) {
+  return prisma.bingoGrid.delete({ where: { challengeId_scope: { challengeId, scope: "TEAM" } } });
+}
+
+export function getGridAdmin(challengeId: string) {
+  return prisma.bingoGrid.findUnique({
+    where: { challengeId_scope: { challengeId, scope: "TEAM" } },
+    include: { cells: { orderBy: [{ row: "asc" }, { col: "asc" }] } },
+  });
 }
 
 // ---------------------------------------------------------------------------
 // Read
 // ---------------------------------------------------------------------------
 
-export async function getGridWithFills(challengeId: string, owner: BingoOwner) {
+/** "B3" style label: column letter + row number, row-major. */
+export function cellLabel(row: number, col: number) {
+  return `${String.fromCharCode(65 + col)}${row + 1}`;
+}
+
+export async function getTeamBoard(challengeId: string, teamId: string) {
   const grid = await prisma.bingoGrid.findUnique({
-    where: { challengeId_scope: { challengeId, scope: owner.scope } },
+    where: { challengeId_scope: { challengeId, scope: "TEAM" } },
     include: {
       cells: {
         orderBy: [{ row: "asc" }, { col: "asc" }],
         include: {
           fills: {
-            where: ownerWhere(owner),
-            include: { book: { select: { id: true, title: true, author: true, userId: true } } },
+            where: { teamId },
+            orderBy: { createdAt: "asc" },
+            include: { book: { select: { id: true, title: true, isGraphic: true, user: { select: { name: true } } } } },
           },
         },
       },
     },
   });
   if (!grid) return null;
-  return {
-    ...grid,
-    cells: grid.cells.map((c) => ({ ...c, fill: c.fills[0] ?? null })),
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Fill / unfill with bonus accounting
-// ---------------------------------------------------------------------------
-
-async function currentPositions(tx: Tx, gridId: string, owner: BingoOwner): Promise<CellPos[]> {
-  const fills = await tx.bingoFill.findMany({
-    where: { ...ownerWhere(owner), cell: { gridId } },
-    include: { cell: { select: { row: true, col: true } } },
+  const cells = grid.cells.map((c) => {
+    const weights = c.fills.map((f) => bookWeight(f.book.isGraphic));
+    return {
+      id: c.id,
+      row: c.row,
+      col: c.col,
+      label: cellLabel(c.row, c.col),
+      prompt: c.prompt,
+      books: c.fills.map((f) => ({ id: f.book.id, title: f.book.title, isGraphic: f.book.isGraphic, owner: f.book.user.name ?? "?" })),
+      weight: weights.reduce((n, w) => n + w, 0),
+      complete: isComplete(weights),
+    };
   });
-  return fills.map((f) => ({ row: f.cell.row, col: f.cell.col }));
+  const lines = completedLines(cells.filter((c) => c.complete).map((c) => ({ row: c.row, col: c.col })), grid.size);
+  return { id: grid.id, title: grid.title, size: grid.size, cells, completedLines: lines };
 }
 
-type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+// ---------------------------------------------------------------------------
+// Attach / detach with bonus accounting (called inside the book transaction)
+// ---------------------------------------------------------------------------
 
-/** Awards / reverses bonuses for the line delta. `teamId` receives the points. */
-async function settleBonuses(
-  tx: Tx,
-  opts: { grid: { id: string; size: number; title: string }; owner: BingoOwner; teamId: string; userId?: string; before: CellPos[]; after: CellPos[] },
-) {
-  const challenge = await tx.challenge.findFirstOrThrow({ where: { bingoGrids: { some: { id: opts.grid.id } } } });
-  const { gained, lost } = bingoDelta(opts.before, opts.after, opts.grid.size);
-  const prefix = `bingo:${opts.grid.id}:${ownerKey(opts.owner)}`;
+async function completePositions(tx: Tx, gridId: string, teamId: string): Promise<CellPos[]> {
+  const cells = await tx.bingoCell.findMany({
+    where: { gridId },
+    include: { fills: { where: { teamId }, include: { book: { select: { isGraphic: true } } } } },
+  });
+  return cells.filter((c) => isComplete(c.fills.map((f) => bookWeight(f.book.isGraphic)))).map((c) => ({ row: c.row, col: c.col }));
+}
 
+async function settleBonuses(tx: Tx, grid: { id: string; size: number; title: string; challengeId: string }, teamId: string, actorId: string, before: CellPos[], after: CellPos[]) {
+  const challenge = await tx.challenge.findUniqueOrThrow({ where: { id: grid.challengeId } });
+  const { gained, lost } = bingoDelta(before, after, grid.size);
+  const prefix = `bingo:${grid.id}:team:${teamId}`;
   for (const key of gained) {
-    const base = key === "full" ? challenge.bingoFullBonus : challenge.bingoLineBonus;
     await awardPoints(tx, {
-      teamId: opts.teamId,
-      userId: opts.userId,
+      teamId,
+      userId: actorId,
       source: "BINGO",
-      baseAmount: base,
-      label: key === "full" ? `Bingo complet : ${opts.grid.title}` : `Ligne de bingo : ${opts.grid.title}`,
+      baseAmount: key === "full" ? challenge.bingoFullBonus : challenge.bingoLineBonus,
+      label: key === "full" ? `Bingo complet : ${grid.title}` : `Ligne de bingo : ${grid.title}`,
       refId: `${prefix}:${key}`,
     });
   }
   for (const key of lost) {
-    const original = await tx.pointEvent.findFirst({
-      where: { refId: `${prefix}:${key}`, amount: { gt: 0 } },
-      orderBy: { createdAt: "desc" },
-    });
+    const original = await tx.pointEvent.findFirst({ where: { refId: `${prefix}:${key}`, amount: { gt: 0 } }, orderBy: { createdAt: "desc" } });
     if (!original) continue;
     await awardPoints(tx, {
       teamId: original.teamId,
-      userId: opts.userId,
+      userId: actorId,
       source: "BINGO",
       baseAmount: -original.baseAmount,
       rawAmount: -original.amount,
-      label: `Annulation ligne de bingo : ${opts.grid.title}`,
+      label: `Annulation ligne de bingo : ${grid.title}`,
       refId: `${prefix}:${key}:undo`,
     });
   }
   return { gained, lost };
 }
 
-export async function fillCell(owner: BingoOwner, teamId: string | null, cellId: string, bookId: string, actorId: string) {
-  return prisma.$transaction(async (tx) => {
-    const cell = await tx.bingoCell.findUniqueOrThrow({ where: { id: cellId }, include: { grid: { include: { challenge: true } } } });
-    if (cell.grid.scope !== owner.scope) throw new Error("Grille invalide");
-    if (cell.grid.challenge.endAt < new Date()) throw new Error("Le défi est terminé");
+type BookRef = { id: string; isGraphic: boolean; userId: string };
 
-    const book = await tx.book.findUniqueOrThrow({ where: { id: bookId }, include: { user: { include: { membership: true } } } });
-    if (owner.scope === "PLAYER" && book.userId !== owner.userId) throw new Error("Ce livre n'est pas à toi");
-    if (owner.scope === "TEAM" && book.user.membership?.teamId !== owner.teamId) throw new Error("Ce livre n'appartient pas à l'équipe");
-
-    // A book fills at most one cell per grid/owner.
-    await tx.bingoFill.deleteMany({ where: { ...ownerWhere(owner), bookId, cell: { gridId: cell.gridId } } });
-
-    const before = await currentPositions(tx, cell.gridId, owner);
-    await tx.bingoFill.upsert({
-      where: owner.scope === "PLAYER" ? { cellId_userId: { cellId, userId: owner.userId } } : { cellId_teamId: { cellId, teamId: owner.teamId } },
-      create: { cellId, bookId, ...ownerWhere(owner) },
-      update: { bookId },
-    });
-    const after = await currentPositions(tx, cell.gridId, owner);
-
-    if (!teamId) return { gained: [], lost: [] };
-    return settleBonuses(tx, { grid: cell.grid, owner, teamId, userId: actorId, before, after });
+/** Places a book on a cell of its team's board. Moves it if already placed elsewhere. */
+export async function attachBookToCell(tx: Tx, book: BookRef, teamId: string, cellId: string, actorId: string) {
+  const cell = await tx.bingoCell.findUniqueOrThrow({
+    where: { id: cellId },
+    include: { grid: true, fills: { where: { teamId }, include: { book: { select: { id: true, isGraphic: true } } } } },
   });
+  if (cell.grid.challengeId !== (await tx.team.findUniqueOrThrow({ where: { id: teamId } })).challengeId) throw new Error("Grille invalide");
+  const others = cell.fills.filter((f) => f.book.id !== book.id);
+  if (isComplete(others.map((f) => bookWeight(f.book.isGraphic)))) throw new Error(`La case ${cellLabel(cell.row, cell.col)} est déjà complète`);
+  if (others.length >= MAX_BOOKS_PER_SLOT) throw new Error(`La case ${cellLabel(cell.row, cell.col)} est pleine`);
+
+  const before = await completePositions(tx, cell.gridId, teamId);
+  await tx.bingoFill.upsert({ where: { bookId: book.id }, create: { bookId: book.id, cellId, teamId }, update: { cellId, teamId } });
+  const after = await completePositions(tx, cell.gridId, teamId);
+  const delta = await settleBonuses(tx, cell.grid, teamId, actorId, before, after);
+  return { label: cellLabel(cell.row, cell.col), complete: after.some((p) => p.row === cell.row && p.col === cell.col), ...delta };
 }
 
-export async function unfillCell(owner: BingoOwner, teamId: string | null, cellId: string, actorId: string) {
-  return prisma.$transaction(async (tx) => {
-    const cell = await tx.bingoCell.findUniqueOrThrow({ where: { id: cellId }, include: { grid: true } });
-    const before = await currentPositions(tx, cell.gridId, owner);
-    await tx.bingoFill.deleteMany({ where: { cellId, ...ownerWhere(owner) } });
-    const after = await currentPositions(tx, cell.gridId, owner);
-    if (!teamId) return { gained: [], lost: [] };
-    return settleBonuses(tx, { grid: cell.grid, owner, teamId, userId: actorId, before, after });
-  });
+/** Removes a book from its cell (no-op when not placed). */
+export async function detachBookFromCell(tx: Tx, bookId: string, actorId: string) {
+  const fill = await tx.bingoFill.findUnique({ where: { bookId }, include: { cell: { include: { grid: true } } } });
+  if (!fill) return null;
+  const before = await completePositions(tx, fill.cell.gridId, fill.teamId);
+  await tx.bingoFill.delete({ where: { bookId } });
+  const after = await completePositions(tx, fill.cell.gridId, fill.teamId);
+  await settleBonuses(tx, fill.cell.grid, fill.teamId, actorId, before, after);
+  return fill.cellId;
+}
+
+/** Re-evaluates bonuses after a book's weight changed (graphique toggled) while placed. */
+export async function resettleCell(tx: Tx, bookId: string, actorId: string, before: CellPos[] | null) {
+  const fill = await tx.bingoFill.findUnique({ where: { bookId }, include: { cell: { include: { grid: true } } } });
+  if (!fill || !before) return;
+  const after = await completePositions(tx, fill.cell.gridId, fill.teamId);
+  await settleBonuses(tx, fill.cell.grid, fill.teamId, actorId, before, after);
+}
+
+export async function snapshotCellPositions(tx: Tx, bookId: string): Promise<CellPos[] | null> {
+  const fill = await tx.bingoFill.findUnique({ where: { bookId }, include: { cell: true } });
+  return fill ? completePositions(tx, fill.cell.gridId, fill.teamId) : null;
 }

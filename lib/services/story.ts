@@ -2,6 +2,7 @@ import "server-only";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { completedLines } from "@/lib/scoring/bingo";
+import { bookWeight, isComplete } from "@/lib/scoring/reading";
 import { awardPoints } from "@/lib/services/points";
 import { getTeamScore } from "@/lib/services/leaderboard";
 import { describeEffect, needsTargetTeam, parseEffects, effectsSchema, type Effect } from "@/lib/story/effects";
@@ -116,11 +117,16 @@ async function teamProgress(tx: Tx, teamId: string, challengeId: string) {
     tx.questCompletion.findMany({ where: { teamId }, select: { questId: true } }),
     tx.bingoGrid.findUnique({
       where: { challengeId_scope: { challengeId, scope: "TEAM" } },
-      include: { cells: { include: { fills: { where: { teamId }, select: { id: true } } } } },
+      include: { cells: { include: { fills: { where: { teamId }, include: { book: { select: { isGraphic: true } } } } } } },
     }),
     getTeamScore(teamId),
   ]);
-  const bingoLines = grid ? completedLines(grid.cells.filter((c) => c.fills.length).map((c) => ({ row: c.row, col: c.col })), grid.size).length : 0;
+  const bingoLines = grid
+    ? completedLines(
+        grid.cells.filter((c) => isComplete(c.fills.map((f) => bookWeight(f.book.isGraphic)))).map((c) => ({ row: c.row, col: c.col })),
+        grid.size,
+      ).length
+    : 0;
   return { completedQuestIds: completions.map((c) => c.questId), bingoLines, points };
 }
 

@@ -38,6 +38,7 @@ export default async function AdminQuestsPage() {
                   title: q.title,
                   description: q.description,
                   type: q.type,
+                  kind: q.kind,
                   points: q.points,
                   openAt: toLocalInput(q.openAt),
                   closeAt: toLocalInput(q.closeAt),
