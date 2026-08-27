@@ -64,3 +64,12 @@ export async function getTeamScore(teamId: string): Promise<number> {
   });
   return r._sum.amount ?? 0;
 }
+
+/** Runs `fn`, then reports the leader before/after so callers can announce a change. */
+export async function withLeaderWatch<T>(challengeId: string | null | undefined, fn: () => Promise<T>) {
+  const top = async () => (challengeId ? (await getLeaderboard(challengeId)).map((r) => ({ teamId: r.teamId, name: r.name })) : []);
+  const before = await top();
+  const result = await fn();
+  const after = await top();
+  return { result, before, after };
+}

@@ -71,7 +71,8 @@ type Actor = { id: string; role: "ADMIN" | "PLAYER"; teamId: string | null; isCa
 /** Marks a quest done for the actor (individual) or their team (team quest). */
 export async function completeQuest(questId: string, actor: Actor) {
   return prisma.$transaction(async (tx) => {
-    const quest = await tx.quest.findUniqueOrThrow({ where: { id: questId } });
+    const quest = await tx.quest.findUniqueOrThrow({ where: { id: questId }, include: { challenge: true } });
+    if (quest.challenge.endAt < new Date()) throw new Error("Le défi est terminé");
     if (!isQuestOpen(quest)) throw new Error("Cette quête n'est pas ouverte");
     if (!actor.teamId) throw new Error("Tu n'as pas d'équipe");
     if (quest.targetTeamId && quest.targetTeamId !== actor.teamId) throw new Error("Cette quête ne concerne pas ton équipe");

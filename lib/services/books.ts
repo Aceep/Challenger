@@ -19,6 +19,8 @@ export async function logBook(userId: string, input: BookInput) {
     include: { team: { include: { challenge: true } } },
   });
 
+  if (membership && membership.team.challenge.endAt < new Date()) throw new Error("Le défi est terminé");
+
   return prisma.$transaction(async (tx) => {
     const book = await tx.book.create({
       data: {

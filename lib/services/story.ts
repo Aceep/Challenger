@@ -239,6 +239,20 @@ export async function getTeamStoryView(teamId: string, userId: string) {
   };
 }
 
+/** Current chapter of a team with its gating status — used for Discord posts. */
+export async function getTeamChapterStatus(teamId: string) {
+  const state = await prisma.teamStoryState.findUnique({ where: { teamId }, include: { currentNode: { include: { choices: { select: { id: true } } } }, team: true } });
+  if (!state) return null;
+  const progress = await teamProgress(prisma, teamId, state.team.challengeId);
+  const q = state.currentNode.requiredQuestId ? await prisma.quest.findUnique({ where: { id: state.currentNode.requiredQuestId }, select: { title: true } }) : null;
+  return {
+    title: state.currentNode.title,
+    body: state.currentNode.body,
+    isEnding: state.currentNode.choices.length === 0,
+    unmet: unmetConditions(state.currentNode, progress, q?.title),
+  };
+}
+
 export async function castBallot(voteId: string, userId: string, choiceId: string) {
   return prisma.$transaction(async (tx) => {
     const vote = await tx.vote.findUniqueOrThrow({ where: { id: voteId }, include: { node: { include: { choices: true } }, team: true } });
