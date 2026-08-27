@@ -145,8 +145,9 @@ async function settleBonuses(
 
 export async function fillCell(owner: BingoOwner, teamId: string | null, cellId: string, bookId: string, actorId: string) {
   return prisma.$transaction(async (tx) => {
-    const cell = await tx.bingoCell.findUniqueOrThrow({ where: { id: cellId }, include: { grid: true } });
+    const cell = await tx.bingoCell.findUniqueOrThrow({ where: { id: cellId }, include: { grid: { include: { challenge: true } } } });
     if (cell.grid.scope !== owner.scope) throw new Error("Grille invalide");
+    if (cell.grid.challenge.endAt < new Date()) throw new Error("Le défi est terminé");
 
     const book = await tx.book.findUniqueOrThrow({ where: { id: bookId }, include: { user: { include: { membership: true } } } });
     if (owner.scope === "PLAYER" && book.userId !== owner.userId) throw new Error("Ce livre n'est pas à toi");

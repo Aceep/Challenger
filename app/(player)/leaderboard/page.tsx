@@ -18,14 +18,22 @@ export default async function LeaderboardPage() {
   }
 
   const rows = await getLeaderboard(challenge.id);
+  const finished = challenge.endAt < new Date();
 
   return (
     <main className="flex flex-1 flex-col gap-4 p-5">
       <LiveRefresh seconds={10} />
       <header>
-        <h1 className="text-2xl font-bold">Classement</h1>
+        <h1 className="text-2xl font-bold">{finished ? "Classement final" : "Classement"}</h1>
         <p className="text-sm text-slate-500">{challenge.name}</p>
       </header>
+      {finished && rows[0] && (
+        <section className="rounded-2xl bg-gradient-to-br from-amber-200 to-amber-400 p-5 text-center text-amber-950 shadow">
+          <p className="text-sm uppercase tracking-wide">Vainqueur</p>
+          <p className="text-3xl font-black">🏆 {rows[0].name}</p>
+          <p className="text-sm">{rows[0].points} pts · {rows[0].books} livres</p>
+        </section>
+      )}
       <ol className="flex flex-col gap-2">
         {rows.map((r) => (
           <li

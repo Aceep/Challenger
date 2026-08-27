@@ -24,6 +24,8 @@ type Props = {
 export function BingoBoard({ scope, title, size, cells, books, completedLines, canEdit }: Props) {
   const [selected, setSelected] = useState<BoardCell | null>(null);
   const filled = cells.filter((c) => c.fill).length;
+  const placed = new Set(cells.map((c) => c.fill?.book.id).filter(Boolean));
+  const textSize = size >= 6 ? "text-[9px]" : size === 5 ? "text-[10px]" : "text-[11px]";
 
   return (
     <section className="flex flex-col gap-3">
@@ -40,7 +42,7 @@ export function BingoBoard({ scope, title, size, cells, books, completedLines, c
             key={c.id}
             type="button"
             onClick={() => canEdit && setSelected(c)}
-            className={`aspect-square overflow-hidden rounded-md p-1 text-[11px] leading-tight transition ${
+            className={`aspect-square overflow-hidden rounded-md p-1 ${textSize} leading-tight transition ${
               c.fill
                 ? "bg-indigo-600 text-white"
                 : "bg-white text-slate-700 shadow-sm dark:bg-slate-900 dark:text-slate-300"
@@ -75,6 +77,7 @@ export function BingoBoard({ scope, title, size, cells, books, completedLines, c
               </option>
               {books.map((b) => (
                 <option key={b.id} value={b.id}>
+                  {placed.has(b.id) && b.id !== selected.fill?.book.id ? "✓ " : ""}
                   {b.title} — {b.author}
                   {b.owner ? ` (${b.owner})` : ""}
                 </option>
@@ -103,6 +106,7 @@ export function BingoBoard({ scope, title, size, cells, books, completedLines, c
             </form>
           )}
           {books.length === 0 && <p className="mt-2 text-sm text-slate-500">Aucun livre disponible : enregistre d&apos;abord une lecture.</p>}
+          {placed.size > 0 && <p className="mt-2 text-xs text-slate-500">✓ = déjà placé sur une autre case (il sera déplacé).</p>}
         </div>
       )}
     </section>

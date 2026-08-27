@@ -28,12 +28,20 @@ export default async function HomePage() {
         </form>
       </header>
 
+      {team && team.challenge.endAt < new Date() && (
+        <p className="rounded-md bg-amber-100 p-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+          🏁 Le défi est terminé : les scores sont figés. Merci d&apos;avoir joué !
+        </p>
+      )}
       {team ? (
         <section
           className="rounded-2xl border-2 p-4 text-slate-900 dark:text-slate-100"
           style={{ borderColor: team.color }}
         >
-          <p className="text-sm text-slate-500">Équipe {team.name}</p>
+          <Link href="/team" className="flex items-center justify-between text-sm text-slate-500">
+            <span>Équipe {team.name}</span>
+            <span className="underline">Détails →</span>
+          </Link>
           <p className="text-4xl font-black">{score} pts</p>
           <p className="mt-1 text-sm text-slate-500">
             {team.challenge.name} · du {dateFmt.format(team.challenge.startAt)} au{" "}

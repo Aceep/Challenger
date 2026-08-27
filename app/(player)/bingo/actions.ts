@@ -1,6 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import { announceRankChange } from "@/lib/discord/events";
+import { withLeaderWatch } from "@/lib/services/leaderboard";
 import { getCurrentPlayer } from "@/lib/dal";
 import { fillCell, unfillCell, type BingoOwner } from "@/lib/services/bingo";
 
@@ -10,6 +13,11 @@ function ownerFor(scope: string, userId: string, teamId: string | null): BingoOw
     return { scope: "TEAM", teamId };
   }
   return { scope: "PLAYER", userId, teamId };
+}
+
+async function watched(challengeId: string | null | undefined, fn: () => Promise<unknown>) {
+  const { before, after: top } = await withLeaderWatch(challengeId, fn);
+  if (challengeId) after(() => announceRankChange(challengeId, before, top));
 }
 
 function refresh() {
@@ -24,7 +32,7 @@ export async function fillCellAction(formData: FormData) {
   const bookId = String(formData.get("bookId") ?? "");
   const scope = String(formData.get("scope") ?? "PLAYER");
   if (!cellId || !bookId) return;
-  await fillCell(ownerFor(scope, user.id, team?.id ?? null), team?.id ?? null, cellId, bookId, user.id);
+  await watched(team?.challengeId, () => fillCell(ownerFor(scope, user.id, team?.id ?? null), team?.id ?? null, cellId, bookId, user.id));
   refresh();
 }
 
@@ -33,6 +41,6 @@ export async function unfillCellAction(formData: FormData) {
   const cellId = String(formData.get("cellId") ?? "");
   const scope = String(formData.get("scope") ?? "PLAYER");
   if (!cellId) return;
-  await unfillCell(ownerFor(scope, user.id, team?.id ?? null), team?.id ?? null, cellId, user.id);
+  await watched(team?.challengeId, () => unfillCell(ownerFor(scope, user.id, team?.id ?? null), team?.id ?? null, cellId, user.id));
   refresh();
 }

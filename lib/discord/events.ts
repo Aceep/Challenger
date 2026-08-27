@@ -1,7 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { editMessage, postMessage, type MessageButton } from "@/lib/discord/rest";
-import type { ResolutionSummary } from "@/lib/services/story";
+import { getTeamChapterStatus, type ResolutionSummary } from "@/lib/services/story";
 
 const appUrl = () => process.env.AUTH_URL ?? "https://challenge-six-rose.vercel.app";
 const COLOR = { story: 0x6366f1, quest: 0xd97706, rank: 0x16a34a, effect: 0xdc2626 };
@@ -82,9 +82,26 @@ export async function announceResolution(r: ResolutionSummary | null) {
   if (r.effects.length && ch.general) {
     await postMessage(ch.general, { embeds: [{ title: `⚔️ ${r.teamName} a agi dans l'histoire`, description: r.effects.map((e) => `• ${e}`).join("\n"), color: COLOR.effect }] });
   }
-  // A new vote may have opened on the next chapter.
+  // A new vote may have opened on the next chapter; otherwise post the chapter itself (ending or gated).
   const next = await prisma.vote.findFirst({ where: { teamId: r.teamId, status: "OPEN" } });
-  if (next && !next.discordMessageId) await syncVoteMessage(next.id);
+  if (next) {
+    if (!next.discordMessageId) await syncVoteMessage(next.id);
+    return;
+  }
+  const chapter = await getTeamChapterStatus(r.teamId);
+  if (!chapter || !r.nextTitle) return;
+  await postMessage(ch.team, {
+    embeds: [
+      {
+        title: `📖 ${chapter.title}`,
+        description: `${chapter.body.slice(0, 1500)}${chapter.body.length > 1500 ? "…" : ""}\n\n${
+          chapter.isEnding ? "✨ Fin de votre histoire." : `🔒 Pour continuer : ${chapter.unmet.join(" ; ")}`
+        }`,
+        color: COLOR.story,
+        url: `${appUrl()}/story`,
+      },
+    ],
+  });
 }
 
 export async function announceQuest(questId: string) {
