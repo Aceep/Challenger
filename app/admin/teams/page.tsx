@@ -25,7 +25,8 @@ export default async function AdminTeamsPage() {
                   <input type="hidden" name="teamId" value={t.id} />
                   <input name="name" defaultValue={t.name} required className={`${field} font-semibold`} />
                   <input name="color" type="color" defaultValue={t.color} className="h-8 w-12 cursor-pointer rounded" />
-                  <input name="discordChannelId" defaultValue={t.discordChannelId ?? ""} placeholder="Salon Discord (id)" className={field} />
+                  <input name="discordChannelId" defaultValue={t.discordChannelId ?? ""} placeholder="Salon histoire/votes (id)" className={field} />
+                  <input name="discordLibraryChannelId" defaultValue={t.discordLibraryChannelId ?? ""} placeholder="Salon librairie (id)" className={field} />
                   <button className="text-sm underline">Enregistrer</button>
                 </form>
 

@@ -65,9 +65,10 @@ export async function POST(request: Request) {
   const { user, team } = player;
   const actor = { id: user.id, role: user.role, teamId: team?.id ?? null, isCaptain: team?.captainId === user.id };
   const opts = Object.fromEntries((interaction.data?.options ?? []).map((o) => [o.name, o.value]));
-  const inTeamChannel = !!team?.discordChannelId && interaction.channel_id === team.discordChannelId;
+  const libraryChannel = team?.discordLibraryChannelId ?? team?.discordChannelId ?? null;
+  const inTeamChannel = !!libraryChannel && interaction.channel_id === libraryChannel;
   const teamChannelOnly = () =>
-    ephemeral(team?.discordChannelId ? `Utilise cette commande dans le salon de ton équipe (<#${team.discordChannelId}>).` : "Ton équipe n'a pas encore de salon Discord configuré.");
+    ephemeral(libraryChannel ? `Utilise cette commande dans la librairie de ton équipe (<#${libraryChannel}>).` : "Ton équipe n'a pas encore de salon librairie configuré.");
 
   try {
     // --- Autocomplete --------------------------------------------------------
