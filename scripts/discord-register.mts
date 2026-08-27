@@ -9,6 +9,7 @@ if (!appId || !token || !guildId) throw new Error("AUTH_DISCORD_ID, DISCORD_BOT_
 
 const STRING = 3;
 const INTEGER = 4;
+const BOOLEAN = 5;
 const commands = [
   {
     name: "ajouter-un-livre",
@@ -17,6 +18,7 @@ const commands = [
       { type: STRING, name: "titre", description: "Titre du livre", required: true },
       { type: STRING, name: "auteur", description: "Auteur·ice", required: true },
       { type: INTEGER, name: "pages", description: "Nombre de pages", required: true, min_value: 1, max_value: 5000 },
+      { type: BOOLEAN, name: "graphique", description: "BD / manga / roman graphique (pages comptées moitié)", required: false },
     ],
   },
   { name: "score", description: "Afficher le classement des équipes" },

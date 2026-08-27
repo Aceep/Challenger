@@ -2,11 +2,23 @@
  * Pure scoring functions for reading. No I/O here — keep this testable.
  */
 
-/** Base points for a book: pages × pointsPerPage, rounded down, never negative. */
-export function readingPoints(pages: number, pointsPerPage: number): number {
+/** Books under this many pages are always treated as "graphique" (BD, manga…). */
+export const GRAPHIC_PAGE_THRESHOLD = 150;
+
+/** A book is graphic when flagged by the player or short enough to be forced. */
+export function isGraphicBook(pages: number, flagged: boolean): boolean {
+  return flagged || pages < GRAPHIC_PAGE_THRESHOLD;
+}
+
+/**
+ * Base points for a book: pages × pointsPerPage, rounded down, never negative.
+ * Graphic books count half their pages (200 p. graphique at 0.1 → 10 pts).
+ */
+export function readingPoints(pages: number, pointsPerPage: number, isGraphic = false): number {
   if (!Number.isFinite(pages) || pages <= 0) return 0;
   if (!Number.isFinite(pointsPerPage) || pointsPerPage <= 0) return 0;
-  return Math.floor(pages * pointsPerPage);
+  const effectivePages = isGraphic ? pages / 2 : pages;
+  return Math.floor(effectivePages * pointsPerPage);
 }
 
 export type ActiveModifier = { multiplier: number; startAt: Date; endAt: Date };

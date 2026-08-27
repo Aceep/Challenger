@@ -34,7 +34,10 @@ export default async function BooksPage({ searchParams }: PageProps<"/books">) {
             return (
               <li key={b.id} className="flex items-center gap-3 rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold">{b.title}</p>
+                  <p className="truncate font-semibold">
+                    {b.isGraphic && <span className="mr-1 rounded bg-pink-100 px-1 text-[10px] font-medium uppercase text-pink-800 dark:bg-pink-950 dark:text-pink-200">graphique</span>}
+                    {b.title}
+                  </p>
                   <p className="truncate text-sm text-slate-500">
                     {b.author} · {b.pages} p. · {dateFmt.format(b.finishedAt)}
                   </p>

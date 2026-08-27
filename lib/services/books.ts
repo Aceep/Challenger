@@ -1,13 +1,15 @@
 import "server-only";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { readingPoints } from "@/lib/scoring/reading";
+import { isGraphicBook, readingPoints } from "@/lib/scoring/reading";
 import { awardPoints } from "@/lib/services/points";
 
 export const bookSchema = z.object({
   title: z.string().trim().min(1, "Titre requis").max(200),
   author: z.string().trim().min(1, "Auteur·ice requis·e").max(120),
   pages: z.coerce.number().int("Nombre entier").min(1, "Au moins 1 page").max(5000),
+  /** Checkbox ("on") or boolean from Discord. */
+  isGraphic: z.preprocess((v) => v === true || v === "on" || v === "true", z.boolean()).default(false),
   finishedAt: z.coerce.date().optional(),
 });
 export type BookInput = z.infer<typeof bookSchema>;
@@ -21,6 +23,8 @@ export async function logBook(userId: string, input: BookInput) {
 
   if (membership && membership.team.challenge.endAt < new Date()) throw new Error("Le défi est terminé");
 
+  const isGraphic = isGraphicBook(input.pages, input.isGraphic);
+
   return prisma.$transaction(async (tx) => {
     const book = await tx.book.create({
       data: {
@@ -28,12 +32,13 @@ export async function logBook(userId: string, input: BookInput) {
         title: input.title,
         author: input.author,
         pages: input.pages,
+        isGraphic,
         finishedAt: input.finishedAt ?? new Date(),
       },
     });
     let event = null;
     if (membership) {
-      const base = readingPoints(input.pages, membership.team.challenge.pointsPerPage);
+      const base = readingPoints(input.pages, membership.team.challenge.pointsPerPage, isGraphic);
       event = await awardPoints(tx, {
         teamId: membership.teamId,
         userId,
@@ -43,7 +48,7 @@ export async function logBook(userId: string, input: BookInput) {
         bookId: book.id,
       });
     }
-    return { book, points: event?.amount ?? 0 };
+    return { book, points: event?.amount ?? 0, isGraphic };
   });
 }
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  isGraphicBook,
   applyMultiplier,
   effectiveMultiplier,
   isWithinChallenge,
@@ -17,6 +18,19 @@ describe("readingPoints", () => {
     expect(readingPoints(-5, 0.1)).toBe(0);
     expect(readingPoints(100, 0)).toBe(0);
     expect(readingPoints(NaN, 0.1)).toBe(0);
+  });
+});
+
+describe("graphic books", () => {
+  it("halves the pages of a graphique", () => {
+    expect(readingPoints(200, 0.1, true)).toBe(10);
+    expect(readingPoints(200, 0.1, false)).toBe(20);
+    expect(readingPoints(130, 0.1, true)).toBe(6);
+  });
+  it("forces graphique under 150 pages, respects the flag above", () => {
+    expect(isGraphicBook(120, false)).toBe(true);
+    expect(isGraphicBook(150, false)).toBe(false);
+    expect(isGraphicBook(300, true)).toBe(true);
   });
 });
 

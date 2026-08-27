@@ -61,7 +61,7 @@ export default async function TeamPage() {
                   {m.name}
                 </p>
                 <p className="text-xs text-slate-500">
-                  {m.books} livre{m.books > 1 ? "s" : ""} · {m.pages} pages
+                  {m.books} livre{m.books > 1 ? "s" : ""} · {m.graphics} graphique{m.graphics > 1 ? "s" : ""} · {m.pages} pages
                 </p>
               </div>
               <span className="font-bold">{m.points} pts</span>

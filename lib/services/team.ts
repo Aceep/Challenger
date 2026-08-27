@@ -7,7 +7,7 @@ export async function getTeamStats(teamId: string) {
     include: {
       challenge: true,
       captain: { select: { id: true, name: true } },
-      members: { include: { user: { select: { id: true, name: true, image: true, books: { select: { pages: true } } } } } },
+      members: { include: { user: { select: { id: true, name: true, image: true, books: { select: { pages: true, isGraphic: true } } } } } },
       modifiers: { where: { endAt: { gt: new Date() } }, orderBy: { endAt: "asc" } },
     },
   });
@@ -27,7 +27,8 @@ export async function getTeamStats(teamId: string) {
         id: m.user.id,
         name: m.user.name ?? "?",
         image: m.user.image,
-        books: m.user.books.length,
+        books: m.user.books.filter((b) => !b.isGraphic).length,
+        graphics: m.user.books.filter((b) => b.isGraphic).length,
         pages: m.user.books.reduce((n, b) => n + b.pages, 0),
         points: pointsByUser.get(m.user.id) ?? 0,
         isCaptain: team.captainId === m.user.id,

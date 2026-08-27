@@ -27,6 +27,14 @@ export default function NewBookPage() {
           Nombre de pages
           <input name="pages" type="number" inputMode="numeric" min={1} max={5000} required className={field} />
         </label>
+        <label className="flex items-start gap-3 rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700">
+          <input name="isGraphic" type="checkbox" className="mt-0.5 h-5 w-5" />
+          <span>
+            <span className="font-medium">Graphique (BD, manga, roman graphique)</span>
+            <br />
+            <span className="text-xs text-slate-500">Les pages comptent moitié. Tout livre de moins de 150 pages est compté comme graphique automatiquement.</span>
+          </span>
+        </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
           Terminé le
           <input name="finishedAt" type="date" defaultValue={today} max={today} className={field} />
