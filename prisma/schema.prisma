@@ -161,14 +161,15 @@ model Book {
   title      String
   author     String
   pages      Int
-  /// BD / manga / roman graphique: pages count half. Forced true under GRAPHIC_PAGE_THRESHOLD pages.
+  /// BD / manga / roman graphique: counts as half a book for quests and bingo cells.
   isGraphic  Boolean  @default(false)
   finishedAt DateTime @default(now())
   createdAt  DateTime @default(now())
 
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   pointEvents PointEvent[]
-  bingoFills  BingoFill[]
+  bingoFill   BingoFill?
+  questBook   QuestBook?
 
   @@index([userId])
 }
@@ -209,22 +210,19 @@ model BingoCell {
   @@unique([gridId, row, col])
 }
 
-/// A book placed on a cell. Exactly one of userId (player grid) / teamId (team grid) is set.
+/// A book placed on a team-grid cell. A cell holds up to 2 books (weights: book 1, graphique ½).
 model BingoFill {
   id        String   @id @default(cuid())
   cellId    String
-  bookId    String
-  userId    String?
-  teamId    String?
+  bookId    String   @unique
+  teamId    String
   createdAt DateTime @default(now())
 
   cell BingoCell @relation(fields: [cellId], references: [id], onDelete: Cascade)
   book Book      @relation(fields: [bookId], references: [id], onDelete: Cascade)
-  team Team?     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  team Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
-  @@unique([cellId, userId])
-  @@unique([cellId, teamId])
-  @@index([bookId])
+  @@index([cellId, teamId])
 }
 
 // ---------------------------------------------------------------------------
@@ -241,12 +239,19 @@ enum QuestOrigin {
   STORY
 }
 
+/// ACTION = validated with a button (honor system); LECTURE = completed by attaching book(s).
+enum QuestKind {
+  ACTION
+  LECTURE
+}
+
 model Quest {
   id           String      @id @default(cuid())
   challengeId  String
   title        String
   description  String      @default("")
   type         QuestType
+  kind         QuestKind   @default(ACTION)
   points       Int
   openAt       DateTime?
   closeAt      DateTime?
@@ -258,8 +263,25 @@ model Quest {
   challenge   Challenge         @relation(fields: [challengeId], references: [id], onDelete: Cascade)
   targetTeam  Team?             @relation("QuestTarget", fields: [targetTeamId], references: [id], onDelete: Cascade)
   completions QuestCompletion[]
+  books       QuestBook[]
 
   @@index([challengeId])
+}
+
+/// A book attached to a LECTURE quest. One quest per book.
+model QuestBook {
+  id        String   @id @default(cuid())
+  questId   String
+  bookId    String   @unique
+  userId    String
+  teamId    String
+  createdAt DateTime @default(now())
+
+  quest Quest @relation(fields: [questId], references: [id], onDelete: Cascade)
+  book  Book  @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@index([questId, teamId])
+  @@index([questId, userId])
 }
 
 /// Exactly one of userId (individual) / teamId (team) is set.

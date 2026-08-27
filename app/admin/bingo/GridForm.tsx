@@ -3,15 +3,12 @@
 import { useActionState, useState } from "react";
 import { deleteGridAction, saveGridAction } from "./actions";
 
-type Props = {
-  scope: "PLAYER" | "TEAM";
-  grid: { title: string; size: number; prompts: string[] } | null;
-};
+type Props = { grid: { title: string; size: number; prompts: string[] } | null };
 
 const field =
   "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900";
 
-export function GridForm({ scope, grid }: Props) {
+export function GridForm({ grid }: Props) {
   const [state, action, pending] = useActionState(saveGridAction, null);
   const [size, setSize] = useState(grid?.size ?? 5);
   const [text, setText] = useState(grid?.prompts.join("\n") ?? "");
@@ -20,13 +17,12 @@ export function GridForm({ scope, grid }: Props) {
 
   return (
     <div className="flex flex-col gap-3 rounded-xl bg-white p-4 shadow-sm dark:bg-slate-900">
-      <h2 className="text-lg font-bold">{scope === "PLAYER" ? "Grille individuelle" : "Grille d'équipe"}</h2>
+      <h2 className="text-lg font-bold">Grille d&apos;équipe</h2>
       <form action={action} className="flex flex-col gap-3">
-        <input type="hidden" name="scope" value={scope} />
         <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
           <label className="flex flex-col gap-1 text-sm font-medium">
             Titre
-            <input name="title" required defaultValue={grid?.title ?? (scope === "PLAYER" ? "Mon bingo" : "Bingo d'équipe")} className={field} />
+            <input name="title" required defaultValue={grid?.title ?? "Bingo d'équipe"} className={field} />
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium">
             Taille
@@ -56,15 +52,12 @@ export function GridForm({ scope, grid }: Props) {
           <button type="submit" disabled={pending || count !== expected} className="rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white disabled:opacity-50">
             {pending ? "…" : grid ? "Mettre à jour" : "Créer la grille"}
           </button>
-          {grid && (
-            <p className="text-xs text-slate-500">Modifier une consigne conserve les cases déjà remplies ; réduire la taille supprime les cases hors grille.</p>
-          )}
+          {grid && <p className="text-xs text-slate-500">Modifier une consigne conserve les livres placés ; réduire la taille supprime les cases hors grille.</p>}
         </div>
       </form>
       {grid && (
         <form action={deleteGridAction}>
-          <input type="hidden" name="scope" value={scope} />
-          <button className="text-sm text-red-600 underline">Supprimer cette grille (et ses remplissages)</button>
+          <button className="text-sm text-red-600 underline">Supprimer la grille (et les livres placés)</button>
         </form>
       )}
     </div>

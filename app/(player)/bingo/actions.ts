@@ -3,44 +3,32 @@
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { announceRankChange } from "@/lib/discord/events";
-import { withLeaderWatch } from "@/lib/services/leaderboard";
 import { getCurrentPlayer } from "@/lib/dal";
-import { fillCell, unfillCell, type BingoOwner } from "@/lib/services/bingo";
-
-function ownerFor(scope: string, userId: string, teamId: string | null): BingoOwner {
-  if (scope === "TEAM") {
-    if (!teamId) throw new Error("Tu n'as pas d'équipe");
-    return { scope: "TEAM", teamId };
-  }
-  return { scope: "PLAYER", userId, teamId };
-}
-
-async function watched(challengeId: string | null | undefined, fn: () => Promise<unknown>) {
-  const { before, after: top } = await withLeaderWatch(challengeId, fn);
-  if (challengeId) after(() => announceRankChange(challengeId, before, top));
-}
+import { updateBook, type BookActor } from "@/lib/services/books";
+import { withLeaderWatch } from "@/lib/services/leaderboard";
 
 function refresh() {
-  revalidatePath("/bingo");
-  revalidatePath("/");
-  revalidatePath("/leaderboard");
+  for (const p of ["/bingo", "/", "/leaderboard", "/books", "/team"]) revalidatePath(p);
 }
 
-export async function fillCellAction(formData: FormData) {
+async function run(fn: (actor: BookActor) => Promise<unknown>) {
   const { user, team } = await getCurrentPlayer();
+  const actor: BookActor = { id: user.id, role: user.role, teamId: team?.id ?? null, isCaptain: team?.captainId === user.id };
+  const { before, after: top } = await withLeaderWatch(team?.challengeId, () => fn(actor));
+  if (team) after(() => announceRankChange(team.challengeId, before, top));
+  refresh();
+}
+
+/** Places a book on a cell (moves it if already placed). */
+export async function placeBookAction(formData: FormData) {
   const cellId = String(formData.get("cellId") ?? "");
   const bookId = String(formData.get("bookId") ?? "");
-  const scope = String(formData.get("scope") ?? "PLAYER");
   if (!cellId || !bookId) return;
-  await watched(team?.challengeId, () => fillCell(ownerFor(scope, user.id, team?.id ?? null), team?.id ?? null, cellId, bookId, user.id));
-  refresh();
+  await run((actor) => updateBook(actor, bookId, { cellId }));
 }
 
-export async function unfillCellAction(formData: FormData) {
-  const { user, team } = await getCurrentPlayer();
-  const cellId = String(formData.get("cellId") ?? "");
-  const scope = String(formData.get("scope") ?? "PLAYER");
-  if (!cellId) return;
-  await watched(team?.challengeId, () => unfillCell(ownerFor(scope, user.id, team?.id ?? null), team?.id ?? null, cellId, user.id));
-  refresh();
+export async function removeBookAction(formData: FormData) {
+  const bookId = String(formData.get("bookId") ?? "");
+  if (!bookId) return;
+  await run((actor) => updateBook(actor, bookId, { cellId: null }));
 }

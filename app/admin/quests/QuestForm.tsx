@@ -8,6 +8,7 @@ export type QuestFormValues = {
   title: string;
   description: string;
   type: "TEAM" | "INDIVIDUAL";
+  kind: "ACTION" | "LECTURE";
   points: number;
   openAt: string;
   closeAt: string;
@@ -36,6 +37,13 @@ export function QuestForm({ quest, teams, onDone }: { quest?: QuestFormValues; t
         <select name="type" defaultValue={quest?.type ?? "INDIVIDUAL"} className={field}>
           <option value="INDIVIDUAL">Individuelle (chaque joueur·euse)</option>
           <option value="TEAM">Équipe (une fois, validée par le·la capitaine)</option>
+        </select>
+      </label>
+      <label className="flex flex-col gap-1 text-sm font-medium">
+        Validation
+        <select name="kind" defaultValue={quest?.kind ?? "ACTION"} className={field}>
+          <option value="ACTION">Action (bouton « Fait ! », sur l&apos;honneur)</option>
+          <option value="LECTURE">Lecture (en rattachant un livre, ou deux graphiques)</option>
         </select>
       </label>
       <label className="flex flex-col gap-1 text-sm font-medium">

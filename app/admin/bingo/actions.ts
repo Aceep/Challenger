@@ -25,10 +25,9 @@ export async function saveGridAction(_prev: ActionState, formData: FormData): Pr
   return { success: "Grille enregistrée." };
 }
 
-export async function deleteGridAction(formData: FormData) {
+export async function deleteGridAction() {
   await requireAdmin();
   const challenge = await getActiveChallenge();
-  const scope = formData.get("scope") === "TEAM" ? "TEAM" : "PLAYER";
-  if (challenge) await deleteGrid(challenge.id, scope);
+  if (challenge) await deleteGrid(challenge.id);
   refresh();
 }
