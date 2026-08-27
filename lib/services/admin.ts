@@ -41,18 +41,19 @@ export const teamSchema = z.object({
   name: z.string().trim().min(1, "Nom requis").max(60),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Couleur hex attendue"),
   discordChannelId: z.string().trim().optional(),
+  discordLibraryChannelId: z.string().trim().optional(),
 });
 
 export function createTeam(challengeId: string, input: z.infer<typeof teamSchema>) {
   return prisma.team.create({
-    data: { challengeId, name: input.name, color: input.color, discordChannelId: input.discordChannelId || null },
+    data: { challengeId, name: input.name, color: input.color, discordChannelId: input.discordChannelId || null, discordLibraryChannelId: input.discordLibraryChannelId || null },
   });
 }
 
 export function updateTeam(id: string, input: z.infer<typeof teamSchema>) {
   return prisma.team.update({
     where: { id },
-    data: { name: input.name, color: input.color, discordChannelId: input.discordChannelId || null },
+    data: { name: input.name, color: input.color, discordChannelId: input.discordChannelId || null, discordLibraryChannelId: input.discordLibraryChannelId || null },
   });
 }
 

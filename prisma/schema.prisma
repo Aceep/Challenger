@@ -107,7 +107,10 @@ model Team {
   name             String
   color            String   @default("#6366f1")
   captainId        String?
+  /// Team channel for story votes and announcements
   discordChannelId String?
+  /// Team "librairie" channel where /ajouter-un-livre and /modifier-un-livre are allowed
+  discordLibraryChannelId String?
   createdAt        DateTime @default(now())
 
   challenge   Challenge    @relation(fields: [challengeId], references: [id], onDelete: Cascade)
