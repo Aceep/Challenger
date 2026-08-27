@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import { announceQuest } from "@/lib/discord/events";
 import { getActiveChallenge, requireAdmin } from "@/lib/dal";
 import { parseForm, type ActionState } from "@/lib/forms";
 import { createQuest, deleteQuest, questSchema, updateQuest } from "@/lib/services/quests";
@@ -19,7 +21,10 @@ export async function saveQuestAction(_prev: ActionState, formData: FormData): P
   const parsed = parseForm(questSchema, formData);
   if ("error" in parsed) return { error: parsed.error };
   if (id) await updateQuest(id, parsed.data);
-  else await createQuest(challenge.id, parsed.data);
+  else {
+    const quest = await createQuest(challenge.id, parsed.data);
+    after(() => announceQuest(quest.id));
+  }
   refresh();
   return { success: id ? "Quête mise à jour." : "Quête créée." };
 }

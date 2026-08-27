@@ -15,6 +15,7 @@
     "db:studio": "prisma studio",
     "db:seed": "tsx --env-file=.env.local prisma/seed.ts",
     "db:unlock": "tsx --env-file=.env.local scripts/db-unlock.mts",
+    "discord:register": "tsx --env-file=.env.local scripts/discord-register.mts",
     "db:check": "tsx --env-file=.env.local scripts/db-check.mts",
     "postinstall": "prisma generate"
   },
