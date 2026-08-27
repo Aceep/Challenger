@@ -19,6 +19,7 @@ const publicReply = (content: string) => NextResponse.json({ type: InteractionRe
 type Option = { name: string; value: string | number };
 type Interaction = {
   type: number;
+  channel_id?: string;
   data?: { name?: string; custom_id?: string; options?: Option[] };
   member?: { user: { id: string; username: string } };
   user?: { id: string; username: string };
@@ -68,7 +69,10 @@ export async function POST(request: Request) {
     const opts = Object.fromEntries((interaction.data?.options ?? []).map((o) => [o.name, o.value]));
 
     switch (interaction.data?.name) {
-      case "livre": {
+      case "ajouter-un-livre": {
+        if (!team?.discordChannelId || interaction.channel_id !== team.discordChannelId) {
+          return ephemeral(team?.discordChannelId ? `Utilise cette commande dans le salon de ton équipe (<#${team.discordChannelId}>).` : "Ton équipe n'a pas encore de salon Discord configuré.");
+        }
         const parsed = bookSchema.safeParse({ title: opts.titre, author: opts.auteur, pages: opts.pages });
         if (!parsed.success) return ephemeral(`Paramètres invalides : ${parsed.error.issues[0]?.message}`);
         const { points } = await logBook(user.id, parsed.data);
