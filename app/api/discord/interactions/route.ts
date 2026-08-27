@@ -16,7 +16,7 @@ const ephemeral = (content: string) =>
   NextResponse.json({ type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE, data: { content, flags: 64 } });
 const publicReply = (content: string) => NextResponse.json({ type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE, data: { content } });
 
-type Option = { name: string; value: string | number };
+type Option = { name: string; value: string | number | boolean };
 type Interaction = {
   type: number;
   channel_id?: string;
@@ -73,10 +73,10 @@ export async function POST(request: Request) {
         if (!team?.discordChannelId || interaction.channel_id !== team.discordChannelId) {
           return ephemeral(team?.discordChannelId ? `Utilise cette commande dans le salon de ton équipe (<#${team.discordChannelId}>).` : "Ton équipe n'a pas encore de salon Discord configuré.");
         }
-        const parsed = bookSchema.safeParse({ title: opts.titre, author: opts.auteur, pages: opts.pages });
+        const parsed = bookSchema.safeParse({ title: opts.titre, author: opts.auteur, pages: opts.pages, isGraphic: opts.graphique === true });
         if (!parsed.success) return ephemeral(`Paramètres invalides : ${parsed.error.issues[0]?.message}`);
-        const { points } = await logBook(user.id, parsed.data);
-        return publicReply(`📚 **${discordUser.username}** a terminé *${parsed.data.title}* (${parsed.data.pages} p.) → +${points} pts pour ${team?.name ?? "personne (pas d'équipe)"}`);
+        const { points, isGraphic } = await logBook(user.id, parsed.data);
+        return publicReply(`📚 **${discordUser.username}** a terminé *${parsed.data.title}* (${parsed.data.pages} p.${isGraphic ? ", graphique" : ""}) → +${points} pts pour ${team?.name ?? "personne (pas d'équipe)"}`);
       }
       case "score": {
         const challenge = team?.challenge ?? (await prisma.challenge.findFirst({ where: { status: "ACTIVE" } }));

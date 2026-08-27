@@ -13,6 +13,7 @@ export default async function HomePage() {
     listBooks(user.id),
   ]);
   const myPoints = books.reduce((n, b) => n + b.pointEvents.reduce((m, e) => m + e.amount, 0), 0);
+  const graphics = books.filter((b) => b.isGraphic).length;
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-5">
@@ -56,8 +57,11 @@ export default async function HomePage() {
 
       <section className="grid grid-cols-2 gap-3">
         <div className="rounded-xl bg-white p-4 shadow-sm dark:bg-slate-900">
-          <p className="text-sm text-slate-500">Mes livres</p>
-          <p className="text-2xl font-bold">{books.length}</p>
+          <p className="text-sm text-slate-500">Mes lectures</p>
+          <p className="text-2xl font-bold">{books.length - graphics}</p>
+          <p className="text-xs text-slate-500">
+            livre{books.length - graphics > 1 ? "s" : ""} · {graphics} graphique{graphics > 1 ? "s" : ""}
+          </p>
         </div>
         <div className="rounded-xl bg-white p-4 shadow-sm dark:bg-slate-900">
           <p className="text-sm text-slate-500">Mes points</p>

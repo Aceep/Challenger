@@ -47,7 +47,7 @@ export default async function LeaderboardPage() {
             <div className="min-w-0 flex-1">
               <p className="truncate font-semibold">{r.name}</p>
               <p className="text-xs text-slate-500">
-                {r.members} membre{r.members > 1 ? "s" : ""} · {r.books} livre{r.books > 1 ? "s" : ""}
+                {r.members} membre{r.members > 1 ? "s" : ""} · {r.books} livre{r.books > 1 ? "s" : ""} · {r.graphics} graphique{r.graphics > 1 ? "s" : ""}
               </p>
             </div>
             <span className="text-lg font-bold">{r.points} pts</span>

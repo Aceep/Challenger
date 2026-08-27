@@ -8,6 +8,7 @@ export type LeaderboardRow = {
   points: number;
   members: number;
   books: number;
+  graphics: number;
   rank: number;
 };
 
@@ -18,7 +19,7 @@ export async function getLeaderboard(challengeId: string): Promise<LeaderboardRo
     where: { challengeId },
     include: {
       _count: { select: { members: true } },
-      members: { select: { user: { select: { _count: { select: { books: true } } } } } },
+      members: { select: { user: { select: { books: { select: { isGraphic: true } } } } } },
     },
   });
   const sums = await prisma.pointEvent.groupBy({
@@ -38,7 +39,8 @@ export async function getLeaderboard(challengeId: string): Promise<LeaderboardRo
       color: t.color,
       points: byTeam.get(t.id) ?? 0,
       members: t._count.members,
-      books: t.members.reduce((n, m) => n + m.user._count.books, 0),
+      books: t.members.reduce((n, m) => n + m.user.books.filter((b) => !b.isGraphic).length, 0),
+      graphics: t.members.reduce((n, m) => n + m.user.books.filter((b) => b.isGraphic).length, 0),
       rank: 0,
     }))
     .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));
