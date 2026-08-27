@@ -32,6 +32,7 @@ model User {
   captainOf  Team[]      @relation("TeamCaptain")
   books      Book[]
   questCompletions QuestCompletion[]
+  ballots    VoteBallot[]
 }
 
 model Account {
@@ -97,6 +98,7 @@ model Challenge {
   invites    Invite[]
   bingoGrids BingoGrid[]
   quests     Quest[]
+  story      Story?
 }
 
 model Team {
@@ -117,6 +119,11 @@ model Team {
   bingoFills       BingoFill[]
   targetedQuests   Quest[]           @relation("QuestTarget")
   questCompletions QuestCompletion[]
+  storyState       TeamStoryState?
+  storyVisits      StoryVisit[]
+  votes            Vote[]
+  alliancesA       Alliance[]        @relation("AllianceA")
+  alliancesB       Alliance[]        @relation("AllianceB")
 
   @@unique([challengeId, name])
 }
@@ -268,6 +275,139 @@ model QuestCompletion {
 
   @@unique([questId, userId])
   @@unique([questId, teamId])
+}
+
+// ---------------------------------------------------------------------------
+// Story — one branching "you're the hero" story per challenge, each team walks its own path
+// ---------------------------------------------------------------------------
+
+model Story {
+  id             String   @id @default(cuid())
+  challengeId    String   @unique
+  title          String
+  /// Hours a vote stays open before auto-resolution
+  voteHours      Int      @default(48)
+  startNodeId    String?
+  createdAt      DateTime @default(now())
+
+  challenge Challenge   @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  nodes     StoryNode[]
+}
+
+model StoryNode {
+  id                 String  @id @default(cuid())
+  storyId            String
+  title              String
+  /// Chapter text (plain text / light markdown)
+  body               String
+  sortOrder          Int     @default(0)
+  /// Gating: the chapter's vote only opens once the team meets every set condition
+  requiredQuestId    String?
+  requiredBingoLines Int?
+  requiredPoints     Int?
+
+  story       Story         @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  choices     StoryChoice[] @relation("NodeChoices")
+  incoming    StoryChoice[] @relation("ChoiceTarget")
+  teamStates  TeamStoryState[]
+  votes       Vote[]
+  visits      StoryVisit[]
+
+  @@index([storyId, sortOrder])
+}
+
+model StoryChoice {
+  id              String  @id @default(cuid())
+  nodeId          String
+  label           String
+  targetNodeId    String?
+  /// Votable only once the team completed this quest
+  lockedByQuestId String?
+  /// JSON array of effects, validated by lib/story/effects.ts
+  effects         Json    @default("[]")
+  sortOrder       Int     @default(0)
+
+  node    StoryNode  @relation("NodeChoices", fields: [nodeId], references: [id], onDelete: Cascade)
+  target  StoryNode? @relation("ChoiceTarget", fields: [targetNodeId], references: [id], onDelete: SetNull)
+  ballots VoteBallot[]
+  votes   Vote[]
+
+  @@index([nodeId, sortOrder])
+}
+
+model TeamStoryState {
+  teamId        String   @id
+  currentNodeId String
+  updatedAt     DateTime @updatedAt
+
+  team        Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  currentNode StoryNode @relation(fields: [currentNodeId], references: [id], onDelete: Cascade)
+}
+
+model StoryVisit {
+  id        String   @id @default(cuid())
+  teamId    String
+  nodeId    String
+  choiceLabel String?
+  arrivedAt DateTime @default(now())
+
+  team Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  node StoryNode @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+
+  @@index([teamId, arrivedAt])
+}
+
+enum VoteStatus {
+  OPEN
+  AWAITING_TARGET
+  RESOLVED
+}
+
+model Vote {
+  id               String     @id @default(cuid())
+  teamId           String
+  nodeId           String
+  status           VoteStatus @default(OPEN)
+  deadline         DateTime
+  resultChoiceId   String?
+  /// Rival team chosen by the captain for hostile/alliance effects
+  targetTeamId     String?
+  discordMessageId String?
+  createdAt        DateTime   @default(now())
+  resolvedAt       DateTime?
+
+  team         Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  node         StoryNode    @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  resultChoice StoryChoice? @relation(fields: [resultChoiceId], references: [id], onDelete: SetNull)
+  ballots      VoteBallot[]
+
+  @@index([teamId, status])
+}
+
+model VoteBallot {
+  voteId    String
+  userId    String
+  choiceId  String
+  createdAt DateTime @default(now())
+
+  vote   Vote        @relation(fields: [voteId], references: [id], onDelete: Cascade)
+  user   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  choice StoryChoice @relation(fields: [choiceId], references: [id], onDelete: Cascade)
+
+  @@id([voteId, userId])
+}
+
+/// Two allied teams: members may vote in each other's story votes.
+model Alliance {
+  id        String   @id @default(cuid())
+  teamAId   String
+  teamBId   String
+  createdAt DateTime @default(now())
+
+  teamA Team @relation("AllianceA", fields: [teamAId], references: [id], onDelete: Cascade)
+  teamB Team @relation("AllianceB", fields: [teamBId], references: [id], onDelete: Cascade)
+
+  @@unique([teamAId, teamBId])
 }
 
 // ---------------------------------------------------------------------------
