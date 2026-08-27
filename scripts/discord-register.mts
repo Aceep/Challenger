@@ -11,8 +11,8 @@ const STRING = 3;
 const INTEGER = 4;
 const commands = [
   {
-    name: "livre",
-    description: "Enregistrer un livre terminé",
+    name: "ajouter-un-livre",
+    description: "Enregistrer un livre terminé (dans le salon de ton équipe)",
     options: [
       { type: STRING, name: "titre", description: "Titre du livre", required: true },
       { type: STRING, name: "auteur", description: "Auteur·ice", required: true },
