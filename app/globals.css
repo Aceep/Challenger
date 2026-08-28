@@ -1369,3 +1369,10 @@ main > header, main > div:first-child { padding: 4px 0 6px; }
 .progress-cell.half { background: var(--hi); color: var(--ink); border-color: var(--kyle-deep); }
 .progress-cell.focused { outline: 2px solid var(--kyle-deep); outline-offset: 2px; }
 .progress-cell:hover { border-color: var(--kyle-deep); }
+
+/* --- lists: cards of a row share the tallest height, capped with inner scroll ---- */
+.list { align-items: stretch; }
+.list > li, .list > div { display: flex; min-width: 0; }
+.list > li > .card, .list > div > .card, .list > .card { flex: 1 1 auto; height: 100%; min-width: 0; }
+.list .card { max-height: 420px; overflow: auto; overscroll-behavior: contain; }
+.list .card.book { max-height: 240px; }
