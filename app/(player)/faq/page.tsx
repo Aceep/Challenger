@@ -1,5 +1,5 @@
 import { after } from "next/server";
-import { getActiveChallenge, getCurrentPlayer } from "@/lib/dal";
+import { getCurrentPlayer } from "@/lib/dal";
 import { listQuestions, syncQuestions } from "@/lib/services/questions";
 import { FaqListView } from "./FaqListView";
 import { askQuestionAction } from "./actions";
@@ -8,8 +8,7 @@ const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) 
 
 export default async function FaqPage({ searchParams }: PageProps<"/faq">) {
   const params = await searchParams;
-  const { team } = await getCurrentPlayer();
-  const challenge = team?.challenge ?? (await getActiveChallenge());
+  const { challenge } = await getCurrentPlayer();
   if (!challenge) {
     return (
       <FaqListView questions={[]} hasChallenge={false} forumConfigured={false} creating={false} params={params} askQuestionAction={askQuestionAction} />

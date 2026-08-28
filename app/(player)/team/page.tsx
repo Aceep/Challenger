@@ -5,7 +5,7 @@ import { setDeputyAction } from "./actions";
 
 export default async function TeamPage({ searchParams }: PageProps<"/team">) {
   const params = await searchParams;
-  const { user, team } = await getCurrentPlayer();
+  const { user, role, team } = await getCurrentPlayer();
   if (!team) {
     return (
       <TeamView
@@ -45,7 +45,7 @@ export default async function TeamPage({ searchParams }: PageProps<"/team">) {
       }))}
       modifiers={stats.modifiers.map((m) => ({ id: m.id, label: m.label, multiplier: m.multiplier, endAt: m.endAt }))}
       recent={stats.recent.map((e) => ({ id: e.id, label: e.label, who: e.who, amount: e.amount }))}
-      canNameDeputy={team.captainId === user.id || user.role === "ADMIN"}
+      canNameDeputy={team.captainId === user.id || role === "ORGANIZER"}
       currentDeputyId={team.deputyId ?? ""}
       params={params}
       setDeputyAction={setDeputyAction}

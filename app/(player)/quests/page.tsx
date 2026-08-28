@@ -1,10 +1,9 @@
-import { getActiveChallenge, getCurrentPlayer } from "@/lib/dal";
+import { getCurrentPlayer } from "@/lib/dal";
 import { listQuestsForTeam } from "@/lib/services/quests";
 import { QuestsView } from "./QuestsView";
 
 export default async function QuestsPage() {
-  const { team } = await getCurrentPlayer();
-  const challenge = team?.challenge ?? (await getActiveChallenge());
+  const { team, challenge } = await getCurrentPlayer();
   if (!challenge) {
     return <QuestsView quests={[]} hasChallenge={false} hasTeam={false} teamColor="#2E4A7D" />;
   }
