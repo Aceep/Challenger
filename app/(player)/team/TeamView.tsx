@@ -51,7 +51,7 @@ export function TeamView({
   return (
     <main className="flex flex-1 flex-col gap-5 p-5">
       <header>
-        <Link href={demo ? "/demo/home" : "/home"} className="text-[13px] text-[color:var(--muted)]">
+        <Link href={demo ? "/demo" : "/home"} className="text-[13px] text-[color:var(--muted)]">
           ← Accueil
         </Link>
         <h1 style={{ color: team.color }}>{team.name}</h1>
@@ -71,7 +71,7 @@ export function TeamView({
 
       {modifiers.map((m) => (
         <p key={m.id} className="flash warn">
-          ⚡ {m.label} : points ×{m.multiplier} jusqu&apos;au {dateFmt.format(m.endAt)}
+          ⚡ {m.label} : points ×{fmtPoints(m.multiplier)} jusqu&apos;au {dateFmt.format(m.endAt)}
         </p>
       ))}
 

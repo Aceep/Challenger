@@ -17,7 +17,8 @@ export function BottomNav({ base = "" }: { base?: string }) {
   return (
     <nav className="bottomnav sticky bottom-0 z-10" aria-label="Navigation">
       {ITEMS.map((item) => {
-        const href = `${base}${item.href}`;
+        // The demo's home screen is /demo itself, not /demo/home.
+        const href = item.href === "/home" ? base || "/home" : `${base}${item.href}`;
         const active = item.href === "/home" ? pathname === href : pathname.startsWith(href);
         return (
           <Link key={item.href} href={href} aria-current={active ? "page" : undefined}>

@@ -23,7 +23,7 @@ export function HelpView({ sections, demo }: HelpViewProps) {
       <header className="flex items-center gap-3">
         <Kyle width={64} alt="Kyle, la mascotte" />
         <div>
-          <Link href={demo ? "/demo/home" : "/home"} className="text-[13px] text-[color:var(--muted)]">
+          <Link href={demo ? "/demo" : "/home"} className="text-[13px] text-[color:var(--muted)]">
             ← Accueil
           </Link>
           <h1>Aide &amp; règles</h1>

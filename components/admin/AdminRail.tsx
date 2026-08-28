@@ -50,7 +50,7 @@ export function AdminRail({ who, base = "" }: { who: string; base?: string }) {
       <p className="foot">
         {who}
         <br />
-        <Link href={`${base}/home`} className="!inline !p-0 underline">
+        <Link href={base || "/home"} className="!inline !p-0 underline">
           ← vue joueur
         </Link>
       </p>
