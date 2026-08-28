@@ -55,7 +55,7 @@ export function TeamView({
         action={
           <p className="meta row">
             <span>
-              <strong>{fmtPoints(total)} pts</strong>
+              <strong>{fmtPoints(total)} pts</strong>
             </span>
             <span className="inline-flex items-center gap-1.5">
               <StarIcon className="ico-sm" />

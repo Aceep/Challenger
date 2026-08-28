@@ -24,13 +24,13 @@ export type HomeViewProps = {
 
 const ORDINAL = (n: number) => (n === 1 ? "1ᵉʳ" : `${n}ᵉ`);
 
-/** « Les Hérissons » → « des Hérissons », « Kyle » → « de Kyle ». */
+/** « Les Hérissons » → « des Hérissons », « Kyle » → « de Kyle ». */
 const ofTeam = (name: string) => (/^les\s/i.test(name) ? `des ${name.slice(4)}` : `de ${name}`);
 
 function remaining(deadline: Date, now: Date) {
   const h = Math.max(0, Math.round((deadline.getTime() - now.getTime()) / 3_600_000));
   if (h < 1) return "clos dans moins d’une heure";
-  if (h < 48) return `clos dans ${h} h`;
+  if (h < 48) return `clos dans ${h} h`;
   return `clos dans ${Math.round(h / 24)} jours`;
 }
 
@@ -61,7 +61,7 @@ export function HomeView({ userName, team, challengeName, challengeOver, score, 
       {challengeOver && (
         <p className="flash warn">
           <FlagIcon />
-          Le défi est terminé : les scores sont figés. Merci d’avoir joué !
+          Le défi est terminé : les scores sont figés. Merci d’avoir joué !
         </p>
       )}
 
@@ -76,7 +76,7 @@ export function HomeView({ userName, team, challengeName, challengeOver, score, 
             rank ? (
               rank.gapPoints > 0 ? (
                 <>
-                  {ORDINAL(rank.position)} sur {rank.total} · à <strong>{fmtPoints(rank.gapPoints)} pts</strong> {ofTeam(rank.ahead)}
+                  {ORDINAL(rank.position)} sur {rank.total} · à <strong>{fmtPoints(rank.gapPoints)} pts</strong> {ofTeam(rank.ahead)}
                 </>
               ) : (
                 <>
@@ -103,7 +103,7 @@ export function HomeView({ userName, team, challengeName, challengeOver, score, 
         <Stat
           label="Mes points"
           value={fmtPoints(stats.myPoints)}
-          hint={stats.teamShare !== null ? `${stats.teamShare} % de l’équipe` : undefined}
+          hint={stats.teamShare !== null ? `${stats.teamShare} % de l’équipe` : undefined}
         />
       </div>
 
@@ -135,7 +135,7 @@ export function HomeView({ userName, team, challengeName, challengeOver, score, 
           <li>
             <SearchIcon className="ico" />
             <p>
-              <strong>Vérification dimanche 19 h – 21 h</strong> — classement à 20 h
+              <strong>Vérification dimanche 19 h – 21 h</strong> — classement à 20 h
             </p>
           </li>
         </ul>

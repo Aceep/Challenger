@@ -33,7 +33,7 @@ type Props = {
   locked?: string | null;
   /** `/demo` when rendered by the read-only demo. */
   prefix?: string;
-  /** Rendered inside a modal: no page shell, « Annuler » calls onCancel. */
+  /** Rendered inside a modal: no page shell, « Annuler » calls onCancel. */
   embedded?: boolean;
   onCancel?: () => void;
 };
@@ -86,7 +86,7 @@ export function BookForm({ action, values, quests, cells, currentQuest, currentC
               <>
                 {" → "}
                 <Pill stamp xs tone="ok">
-                  {fmtPoints(preview)} pt{preview >= 2 ? "s" : ""}
+                  {fmtPoints(preview)} pt{preview >= 2 ? "s" : ""}
                 </Pill>
               </>
             ) : null}
@@ -118,7 +118,7 @@ export function BookForm({ action, values, quests, cells, currentQuest, currentC
           </select>
         </label>
         <label className="field">
-          Valide une case du bingo d&apos;équipe (optionnel)
+          Valide une case du bingo d’équipe (optionnel)
           <select name="cellId" defaultValue={values.cellId}>
             <option value="">— aucune —</option>
             {cellOptions.map((c) => (
@@ -128,7 +128,7 @@ export function BookForm({ action, values, quests, cells, currentQuest, currentC
             ))}
           </select>
           <span className="hint">
-            En cochant une quête ou une case, tu attestes avoir commencé la lecture après la parution de la grille (ou lu moins de la moitié d&apos;un roman).
+            En cochant une quête ou une case, tu attestes avoir commencé la lecture après la parution de la grille (ou lu moins de la moitié d’un roman).
           </span>
         </label>
         <label className="field">

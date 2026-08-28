@@ -38,7 +38,7 @@ export function LeaderboardView({ challengeName, rows, myTeamId, finished, demo 
       <PageTitle
         kicker={
           <p className="meta">
-            <span className="accent">{challengeName}</span> · publié chaque dimanche 20 h
+            <span className="accent">{challengeName}</span> · publié chaque dimanche 20 h
           </p>
         }
       >
@@ -52,7 +52,7 @@ export function LeaderboardView({ challengeName, rows, myTeamId, finished, demo 
           </Pill>
           <p className="font-display text-3xl font-bold">{rows[0].name}</p>
           <Meta>
-            {fmtPoints(rows[0].points)} pts · {rows[0].books} romans
+            {fmtPoints(rows[0].points)} pts · {rows[0].books} romans
           </Meta>
         </section>
       )}
@@ -73,7 +73,7 @@ export function LeaderboardView({ challengeName, rows, myTeamId, finished, demo 
       </ol>
 
       <p className="meta-xs">
-        Une case ou une quête « en attente » ne rapporte rien tant qu’elle n’est pas complétée : une lecture du samedi peut compter au classement suivant.
+        Une case ou une quête « en attente » ne rapporte rien tant qu’elle n’est pas complétée : une lecture du samedi peut compter au classement suivant.
       </p>
     </main>
   );
