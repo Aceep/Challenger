@@ -1740,18 +1740,43 @@
     gap: var(--sp-3);
     align-items: stretch;
   }
+  /* Explicit areas, so the home grid does not depend on child order. */
   .player-shell main.home {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      "title title"
+      "flash flash"
+      "score stats"
+      "score cta"
+      "week week";
     align-content: start;
+    gap: var(--sp-5);
   }
-  .player-shell main.home > :first-child,
+  .player-shell main.home > .page-head {
+    grid-area: title;
+  }
   .player-shell main.home > .flash,
-  .player-shell main.home > .card {
-    grid-column: 1 / -1;
+  .player-shell main.home > .kyle-empty {
+    grid-area: flash;
   }
   .player-shell main.home > .score {
-    grid-row: span 2;
+    grid-area: score;
+    justify-content: space-between;
+  }
+  .player-shell main.home > .stat2 {
+    grid-area: stats;
+    align-content: start;
+  }
+  .player-shell main.home > .cta {
+    grid-area: cta;
+    align-self: start;
+  }
+  .player-shell main.home > .week {
+    grid-area: week;
+  }
+  .player-shell main.home h1 {
+    font-size: var(--fs-d4);
   }
   .player-shell main.story .chapter {
     max-width: 68ch;
