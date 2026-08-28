@@ -1057,11 +1057,15 @@
     max-width: none;
     display: grid;
     grid-template-columns: 232px minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
     align-items: stretch;
   }
-  .player-shell > .flex-1 { order: 2; min-width: 0; }
+  /* Anything that is neither the rail nor the content (demo banner) spans the top. */
+  .player-shell > :not(.bottomnav):not(.flex-1) { grid-column: 1 / -1; grid-row: 1; }
+  .player-shell > .flex-1 { grid-column: 2; grid-row: 2; min-width: 0; }
   .player-shell .bottomnav {
-    order: 1;
+    grid-column: 1;
+    grid-row: 2;
     position: sticky;
     top: 0;
     bottom: auto;
@@ -1087,7 +1091,8 @@
   .player-shell .bottomnav .more-inline { display: flex; }
   .player-shell .bottomnav .more-inline:first-of-type { margin-top: auto; }
   .player-shell .bottomnav .more-btn { display: none; }
-  .player-shell main { padding: 36px 44px; gap: 22px; }
+  .player-shell main { padding: 36px 44px; gap: 22px; max-width: 1180px; }
+  .player-shell main.home, .player-shell main.story, .player-shell main.help { max-width: 980px; }
   .player-shell .list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
   .player-shell main.home { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; }
   .player-shell main.home > header, .player-shell main.home > .flash { grid-column: 1 / -1; }
@@ -1098,4 +1103,9 @@
   .player-shell .bingo-layout > .sheet { grid-column: 2; grid-row: 1 / span 4; position: sticky; top: 24px; }
   .player-shell .bingo-grid { gap: 8px; }
   .player-shell .cell { font-size: 12.5px; min-height: 110px; }
+}
+@media (min-width: 1600px) {
+  .player-shell main { max-width: 1480px; padding: 44px 56px; }
+  .player-shell .list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .player-shell .bingo-layout { grid-template-columns: minmax(0, 1fr) 400px; }
 }
