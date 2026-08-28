@@ -14,6 +14,8 @@ export type ChallengeViewProps = {
   params: Record<string, string | string[] | undefined>;
   saveChallengeAction: (prev: ActionState, formData: FormData) => Promise<ActionState>;
   setupDiscordAction: (formData: FormData) => Promise<void>;
+  /** Opens another edition: writes the cookie, then lands back on the admin desk. */
+  switchAction: (formData: FormData) => Promise<void>;
   demo?: boolean;
 };
 
@@ -24,7 +26,7 @@ const STATUS: Record<string, { tone: "ok" | "wait" | "type"; label: string }> = 
 };
 
 /** Admin › Défi — pure view, reused by /demo/admin. */
-export function ChallengeView({ challenge, editions, discord, params, saveChallengeAction, setupDiscordAction }: ChallengeViewProps) {
+export function ChallengeView({ challenge, editions, discord, params, saveChallengeAction, setupDiscordAction, switchAction }: ChallengeViewProps) {
   const step = discord.guildId ? (discord.complete ? 3 : 2) : 1;
 
   return (
@@ -96,19 +98,37 @@ export function ChallengeView({ challenge, editions, discord, params, saveChalle
       <div className="two">
         <Card>
           <Eyebrow>Éditions</Eyebrow>
-          <DataTable head={["Édition", "Période", "Statut"]}>
-            {editions.map((e) => (
-              <tr key={e.id}>
-                <td>
-                  <span className="dot" style={{ background: e.color }} />
-                  {e.name}
-                </td>
-                <td>{e.period}</td>
-                <td>
-                  <Pill tone={STATUS[e.status].tone}>{STATUS[e.status].label}</Pill>
-                </td>
-              </tr>
-            ))}
+          <DataTable head={["Édition", "Période", "Statut", ""]}>
+            {editions.map((e) => {
+              const current = e.id === challenge?.id;
+              return (
+                <tr key={e.id} className={current ? "current" : undefined}>
+                  <td>
+                    <span className="dot" style={{ background: e.color }} />
+                    {e.name}
+                  </td>
+                  <td>{e.period}</td>
+                  <td>
+                    <Pill tone={STATUS[e.status].tone}>{STATUS[e.status].label}</Pill>
+                  </td>
+                  <td>
+                    {current ? (
+                      <Pill tone="ok" xs>
+                        en cours
+                      </Pill>
+                    ) : (
+                      <form action={switchAction}>
+                        <input type="hidden" name="challengeId" value={e.id} />
+                        <input type="hidden" name="returnTo" value="/admin" />
+                        <SubmitButton className="btn sm ghost" pendingLabel="Ouverture…">
+                          Ouvrir
+                        </SubmitButton>
+                      </form>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </DataTable>
           <p className="mt-2.5 text-[13px] text-[color:var(--muted)]">
             Pour ouvrir une nouvelle édition, videz le formulaire ci-dessus (aucun identifiant) et enregistrez : passer une édition en « actif » termine la

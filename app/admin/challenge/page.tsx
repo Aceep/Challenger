@@ -2,6 +2,7 @@ import { requireOrganizer } from "@/lib/dal";
 import { prisma } from "@/lib/db";
 import { listOrganizedChallenges } from "@/lib/services/membership";
 import { botInviteUrl, discordSetupState } from "@/lib/discord/permissions";
+import { switchChallengeAction } from "@/app/(player)/help/actions";
 import { ChallengeView } from "./ChallengeView";
 import { saveChallengeAction, setupDiscordAction } from "./actions";
 
@@ -47,6 +48,7 @@ export default async function AdminChallengePage({ searchParams }: PageProps<"/a
       params={params}
       saveChallengeAction={saveChallengeAction}
       setupDiscordAction={setupDiscordAction}
+      switchAction={switchChallengeAction}
     />
   );
 }
