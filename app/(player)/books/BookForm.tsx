@@ -31,9 +31,12 @@ type Props = {
   locked?: string | null;
   /** `/demo` when rendered by the read-only demo. */
   prefix?: string;
+  /** Rendered inside a modal: no page shell, « Annuler » calls onCancel. */
+  embedded?: boolean;
+  onCancel?: () => void;
 };
 
-export function BookForm({ action, values, quests, cells, currentQuest, currentCell, title, submitLabel, locked, prefix = "" }: Props) {
+export function BookForm({ action, values, quests, cells, currentQuest, currentCell, title, submitLabel, locked, prefix = "", embedded, onCancel }: Props) {
   const [state, formAction, pending] = useActionState(action, null);
   const [pages, setPages] = useState<number | "">(values.pages);
   const [type, setType] = useState(values.type);
@@ -43,11 +46,12 @@ export function BookForm({ action, values, quests, cells, currentQuest, currentC
   const effective = pages ? effectiveType(pages, type === "GRAPHIQUE") : type;
   const preview = pages ? readingPoints(pages) : 0;
 
+  const Shell = embedded ? "div" : "main";
   return (
-    <main className="flex flex-1 flex-col gap-4 p-5">
-      <h1>{title}</h1>
+    <Shell className={embedded ? "flex flex-col gap-4" : "flex flex-1 flex-col gap-4 p-5"}>
+      {!embedded && <h1>{title}</h1>}
       {locked && <p className="flash warn">🔍 {locked}</p>}
-      <form action={formAction} className="flex flex-col gap-4">
+      <form action={formAction} className="flex flex-col gap-4" data-book-form>
         {values.id && <input type="hidden" name="bookId" value={values.id} />}
         <label className="field">
           Titre
@@ -130,10 +134,16 @@ export function BookForm({ action, values, quests, cells, currentQuest, currentC
         <button type="submit" disabled={pending || !!locked} className="btn text-[17px]">
           {pending ? "Enregistrement…" : submitLabel}
         </button>
-        <Link href={`${prefix}/books`} className="text-center text-[13px] text-[color:var(--muted)]">
-          Annuler
-        </Link>
+        {embedded ? (
+          <button type="button" onClick={onCancel} className="text-center text-[13px] text-[color:var(--muted)] underline">
+            Annuler
+          </button>
+        ) : (
+          <Link href={`${prefix}/books`} className="text-center text-[13px] text-[color:var(--muted)]">
+            Annuler
+          </Link>
+        )}
       </form>
-    </main>
+    </Shell>
   );
 }
