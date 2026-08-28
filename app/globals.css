@@ -724,6 +724,14 @@
     flex-direction: column;
     gap: 6px;
   }
+  @media (min-width: 768px) {
+    .rail {
+      position: sticky;
+      top: 0;
+      height: 100dvh;
+      overflow-y: auto;
+    }
+  }
   .rail a {
     color: var(--muted);
     text-align: left;
