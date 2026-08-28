@@ -1600,35 +1600,37 @@
   font: inherit;
   cursor: pointer;
   color: var(--muted);
-  font-size: 10.5px;
-  font-weight: 700;
+  font-size: var(--fs-nav);
+  font-weight: 600;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--sp-1);
-  padding: 6px 0;
+  padding: 6px 4px;
   border-radius: var(--r-sm);
   text-decoration: none;
 }
-.bottomnav a .ic,
-.bottomnav button .ic {
-  font-size: 20px;
-  line-height: 1;
+.bottomnav a svg,
+.bottomnav button svg {
+  width: 22px;
+  height: 22px;
+  flex: none;
 }
+/* One active language for both breakpoints: a --hi chip, ink text, thicker
+   stroke. The CTA stays the only strong yellow on the page. */
 .bottomnav a[aria-current="page"],
 .bottomnav button[aria-current="page"],
 .bottomnav button[aria-expanded="true"] {
+  background: var(--hi);
   color: var(--ink);
 }
-.bottomnav a[aria-current="page"] .ic,
-.bottomnav button[aria-current="page"] .ic,
-.bottomnav button[aria-expanded="true"] .ic {
-  background: var(--kyle);
-  color: #1a1a1f;
-  border-radius: var(--r-sm);
-  padding: 2px 10px;
+.bottomnav a[aria-current="page"] svg,
+.bottomnav button[aria-current="page"] svg,
+.bottomnav button[aria-expanded="true"] svg {
+  stroke-width: 2.5;
 }
-.bottomnav .more-inline {
+.bottomnav .more-inline,
+.bottomnav .brand {
   display: none;
 }
 
@@ -1689,20 +1691,31 @@
     font-size: 14.5px;
     padding: 11px 14px;
   }
-  .player-shell .bottomnav .ic {
+  .player-shell .bottomnav a svg,
+  .player-shell .bottomnav button svg {
+    width: 20px;
+    height: 20px;
+  }
+  /* The wordmark tops the rail; it is hidden on the phone bar. */
+  .player-shell .bottomnav .brand {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: 4px 12px 18px;
+    font-family: var(--font-display);
+    font-weight: 700;
     font-size: var(--fs-d1);
+    color: var(--ink);
   }
-  .player-shell .bottomnav a[aria-current="page"] {
-    background: var(--hi);
-  }
-  .player-shell .bottomnav a[aria-current="page"] .ic {
-    background: transparent;
-    padding: 0;
-    color: inherit;
+  .player-shell .bottomnav .brand img {
+    width: 28px;
+    height: auto;
   }
   .player-shell .bottomnav .more-inline {
     display: flex;
   }
+  /* Secondary links sit at the bottom of the rail. */
   .player-shell .bottomnav .more-inline:first-of-type {
     margin-top: auto;
   }
