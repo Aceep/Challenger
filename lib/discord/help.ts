@@ -10,6 +10,7 @@ export function helpSections(channels: { library: string; adventure: string }): 
     {
       title: "📚 Lectures",
       lines: [
+        `Le plus simple\u00a0: le bouton **«\u00a0J’ai fini un livre\u00a0»** épinglé dans ${channels.library} — titre, auteur, pages, puis le type, la quête et la case.`,
         `**/ajouter-un-livre** titre · auteur · pages · type · quête · case — dans ${channels.library}`,
         `**/modifier-un-livre** livre · [champs] · supprimer — dans ${channels.library}`,
         "Points : pages ÷ 10 ; moins de 150 pages : pages ÷ 2 ÷ 10 (149 p. → 7,5 pts). Arrondi à 0,1.",

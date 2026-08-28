@@ -16,6 +16,13 @@ describe("aide et messages d'accueil", () => {
     expect(text).toContain("librairie");
   });
 
+  it("annonce le bouton dans la section Lectures", () => {
+    const lectures = helpSections({ library: "#librairie", adventure: "#aventure" })[0];
+    expect(lectures.title).toContain("Lectures");
+    expect(lectures.lines[0]).toContain("«\u00a0J’ai fini un livre\u00a0»");
+    expect(lectures.lines[0]).toContain("#librairie");
+  });
+
   it("garde les sections d'aide non vides", () => {
     const sections = helpSections({ library: "#librairie", adventure: "#aventure" });
     expect(sections.length).toBeGreaterThan(0);
