@@ -8,7 +8,7 @@ import { auth } from "@/auth";
 export default auth((req: NextRequest & { auth: unknown }) => {
   const { pathname } = req.nextUrl;
   const isPublic =
-    pathname === "/login" || pathname.startsWith("/api/auth") || pathname.startsWith("/api/discord");
+    pathname === "/login" || pathname.startsWith("/api/auth") || pathname.startsWith("/api/discord") || pathname.startsWith("/api/cron");
   if (!req.auth && !isPublic) {
     const url = new URL("/login", req.nextUrl.origin);
     url.searchParams.set("callbackUrl", pathname);
