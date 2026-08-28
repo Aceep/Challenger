@@ -1091,7 +1091,7 @@
   .player-shell .bottomnav .more-inline { display: flex; }
   .player-shell .bottomnav .more-inline:first-of-type { margin-top: auto; }
   .player-shell .bottomnav .more-btn { display: none; }
-  .player-shell main { padding: 36px 44px; gap: 22px; max-width: 1180px; }
+  .player-shell main { padding: 36px 44px; gap: 22px; max-width: 1180px; width: 100%; margin: 0 auto; }
   .player-shell main.home, .player-shell main.story, .player-shell main.help { max-width: 980px; }
   .player-shell .list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
   .player-shell main.home { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; }
