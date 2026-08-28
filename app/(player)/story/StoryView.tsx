@@ -68,7 +68,7 @@ export function StoryView({
   const tie = vote?.status === "OPEN" ? vote.tie : null;
 
   return (
-    <main className="flex flex-1 flex-col gap-5 p-5">
+    <main className="story flex flex-1 flex-col gap-5 p-5">
       {!demo && <LiveRefresh seconds={15} />}
       <Flash params={params} />
       <header>

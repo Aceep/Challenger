@@ -1049,3 +1049,53 @@
     transform: scale(0.97);
   }
 }
+
+/* --- player shell on desktop: full width, nav as a left rail ---------------- */
+.bottomnav .more-inline { display: none; }
+@media (min-width: 1024px) {
+  .player-shell {
+    max-width: 1320px;
+    display: grid;
+    grid-template-columns: 232px minmax(0, 1fr);
+    align-items: stretch;
+  }
+  .player-shell > .flex-1 { order: 2; min-width: 0; }
+  .player-shell .bottomnav {
+    order: 1;
+    position: sticky;
+    top: 0;
+    bottom: auto;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    border-top: 0;
+    border-right: 1px solid var(--line);
+    padding: 28px 12px;
+  }
+  .player-shell .bottomnav a,
+  .player-shell .bottomnav button {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 12px;
+    font-size: 14.5px;
+    padding: 10px 12px;
+  }
+  .player-shell .bottomnav .ic { font-size: 18px; }
+  .player-shell .bottomnav a[aria-current="page"] { background: var(--hi); }
+  .player-shell .bottomnav a[aria-current="page"] .ic { background: transparent; padding: 0; color: inherit; }
+  .player-shell .bottomnav .more-inline { display: flex; }
+  .player-shell .bottomnav .more-inline:first-of-type { margin-top: auto; }
+  .player-shell .bottomnav .more-btn { display: none; }
+  .player-shell main { padding: 36px 44px; gap: 22px; }
+  .player-shell .list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
+  .player-shell main.home { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; }
+  .player-shell main.home > header, .player-shell main.home > .flash { grid-column: 1 / -1; }
+  .player-shell main.home > .score { grid-row: span 2; }
+  .player-shell main.story .chapter { max-width: 68ch; }
+  .player-shell .bingo-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; column-gap: 24px; align-items: start; }
+  .player-shell .bingo-layout > * { grid-column: 1; }
+  .player-shell .bingo-layout > .sheet { grid-column: 2; grid-row: 1 / span 4; position: sticky; top: 24px; }
+  .player-shell .bingo-grid { gap: 8px; }
+  .player-shell .cell { font-size: 12.5px; min-height: 110px; }
+}

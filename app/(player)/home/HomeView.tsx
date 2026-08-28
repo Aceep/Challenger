@@ -39,7 +39,7 @@ export function HomeView({ userName, team, challengeName, challengeOver, score, 
   const now = new Date();
 
   return (
-    <main className="flex flex-1 flex-col gap-4 p-5">
+    <main className="home flex flex-1 flex-col gap-4 p-5">
       <div className="flex items-baseline justify-between gap-3">
         <h1>Salut {userName} 👋</h1>
         {signOutAction ? (
