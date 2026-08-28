@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { placeBookAction, removeBookAction } from "./actions";
 
 export type BoardCell = {
@@ -23,6 +23,8 @@ type Props = {
 
 export function BingoBoard({ title, size, cells, books, completedLines }: Props) {
   const [selected, setSelected] = useState<BoardCell | null>(null);
+  // The server re-renders the board after an action: close the panel then.
+  useEffect(() => setSelected(null), [cells]);
   const done = cells.filter((c) => c.complete).length;
   const textSize = size >= 6 ? "text-[8px]" : size === 5 ? "text-[9px]" : "text-[10px]";
   const editableIds = new Set(books.map((b) => b.id));
@@ -77,7 +79,7 @@ export function BingoBoard({ title, size, cells, books, completedLines }: Props)
                   {editableIds.has(b.id) && (
                     <form action={removeBookAction}>
                       <input type="hidden" name="bookId" value={b.id} />
-                      <button type="submit" onClick={() => setSelected(null)} className="text-xs text-red-600 underline">
+                      <button type="submit" className="text-xs text-red-600 underline">
                         Retirer
                       </button>
                     </form>
@@ -106,7 +108,7 @@ export function BingoBoard({ title, size, cells, books, completedLines }: Props)
                   ))}
               </select>
               <div className="flex gap-2">
-                <button type="submit" onClick={() => setSelected(null)} className="flex-1 rounded-lg bg-indigo-600 py-2 font-semibold text-white">
+                <button type="submit" className="flex-1 rounded-lg bg-indigo-600 py-2 font-semibold text-white">
                   Valider
                 </button>
                 <button type="button" onClick={() => setSelected(null)} className="rounded-lg px-3 py-2 text-slate-500">
