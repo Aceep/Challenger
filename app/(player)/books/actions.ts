@@ -16,7 +16,7 @@ async function actor(): Promise<{ actor: BookActor; challengeId: string | null; 
   return { actor: { id: user.id, role: user.role, teamId: team?.id ?? null, isCaptain: team?.captainId === user.id }, challengeId: team?.challengeId ?? null, teamId: team?.id ?? null };
 }
 
-const PATHS = ["/", "/books", "/leaderboard", "/bingo", "/quests", "/team"];
+const PATHS = ["/home", "/books", "/leaderboard", "/bingo", "/quests", "/team"];
 function refresh() {
   for (const p of PATHS) revalidatePath(p);
 }

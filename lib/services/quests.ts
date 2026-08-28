@@ -84,6 +84,7 @@ export async function listQuestsForTeam(challengeId: string, teamId: string | nu
       openAt: q.openAt,
       closeAt: q.closeAt,
       targetTeamId: q.targetTeamId,
+      origin: q.origin,
       open: isQuestOpen(q),
       done: q.completions.length > 0,
       linkedBooks: books.map((b) => ({ id: b.book.id, title: b.book.title, type: b.book.type, owner: b.book.user.name ?? "?" })),

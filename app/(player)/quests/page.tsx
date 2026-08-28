@@ -1,80 +1,36 @@
-import Link from "next/link";
 import { getActiveChallenge, getCurrentPlayer } from "@/lib/dal";
 import { listQuestsForTeam } from "@/lib/services/quests";
-
-const dateFmt = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+import { QuestsView } from "./QuestsView";
 
 export default async function QuestsPage() {
   const { team } = await getCurrentPlayer();
   const challenge = team?.challenge ?? (await getActiveChallenge());
   if (!challenge) {
-    return (
-      <main className="flex flex-1 flex-col gap-4 p-5">
-        <h1 className="text-2xl font-bold">Quêtes</h1>
-        <p className="text-slate-500">Aucun défi actif.</p>
-      </main>
-    );
+    return <QuestsView quests={[]} hasChallenge={false} hasTeam={false} teamColor="#2E4A7D" />;
   }
 
   const quests = await listQuestsForTeam(challenge.id, team?.id ?? null);
-  const open = quests.filter((q) => q.open);
-  const closed = quests.filter((q) => !q.open);
-
-  const Card = ({ q }: { q: (typeof quests)[number] }) => (
-    <li className={`rounded-xl bg-white p-4 shadow-sm dark:bg-slate-900 ${q.done ? "opacity-70" : ""}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="font-semibold">
-            {q.done ? "✅ " : q.progress > 0 ? "◐ " : ""}#{q.number} — {q.title}
-          </p>
-          <p className="text-xs text-slate-500">
-            {q.points} pts
-            {q.targetTeamId && " · spéciale pour ton équipe"}
-            {q.closeAt && ` · jusqu'au ${dateFmt.format(q.closeAt)}`}
-            {q.openAt && q.openAt > new Date() && ` · ouvre le ${dateFmt.format(q.openAt)}`}
-          </p>
-        </div>
-        {!q.done && q.open && team && (
-          <Link href="/books/new" className="shrink-0 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white">
-            + Lecture
-          </Link>
-        )}
-      </div>
-      {q.description && <p className="mt-2 whitespace-pre-line text-sm text-slate-600 dark:text-slate-400">{q.description}</p>}
-      {q.linkedBooks.length > 0 && (
-        <p className="mt-2 text-xs text-indigo-700 dark:text-indigo-300">
-          {q.linkedBooks.map((b) => `${b.owner} — ${b.title}${b.type === "GRAPHIQUE" ? " (½)" : ""}`).join(" / ")}
-          {!q.done && " · en attente de la seconde moitié"}
-        </p>
-      )}
-      {!q.done && q.linkedBooks.length === 0 && q.open && (
-        <p className="mt-2 text-xs text-slate-500">Se valide en enregistrant un roman, ou deux graphiques (d&apos;un ou deux membres de l&apos;équipe).</p>
-      )}
-    </li>
-  );
 
   return (
-    <main className="flex flex-1 flex-col gap-6 p-5">
-      <h1 className="text-2xl font-bold">Quêtes</h1>
-      {open.length === 0 ? (
-        <p className="text-slate-500">Aucune quête ouverte pour le moment.</p>
-      ) : (
-        <ul className="flex flex-col gap-3">
-          {open.map((q) => (
-            <Card key={q.id} q={q} />
-          ))}
-        </ul>
-      )}
-      {closed.length > 0 && (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-semibold uppercase text-slate-500">Fermées / à venir</h2>
-          <ul className="flex flex-col gap-3">
-            {closed.map((q) => (
-              <Card key={q.id} q={q} />
-            ))}
-          </ul>
-        </section>
-      )}
-    </main>
+    <QuestsView
+      quests={quests.map((q) => ({
+        id: q.id,
+        number: q.number,
+        title: q.title,
+        description: q.description,
+        points: q.points,
+        openAt: q.openAt,
+        closeAt: q.closeAt,
+        open: q.open,
+        done: q.done,
+        progress: q.done ? 1 : q.progress,
+        fromStory: q.origin === "STORY",
+        forMyTeam: !!q.targetTeamId,
+        linkedBooks: q.linkedBooks,
+      }))}
+      hasChallenge
+      hasTeam={!!team}
+      teamColor={team?.color ?? "#2E4A7D"}
+    />
   );
 }

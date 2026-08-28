@@ -6,7 +6,7 @@ import { getCurrentPlayer } from "@/lib/dal";
 import { announceResolution } from "@/lib/discord/events";
 import { breakTie, castBallot, chooseTargetTeam, confirmTieBreak } from "@/lib/services/story";
 
-const PATHS = ["/story", "/", "/leaderboard", "/quests"];
+const PATHS = ["/story", "/home", "/leaderboard", "/quests"];
 const field = (f: FormData, k: string) => String(f.get(k) ?? "");
 
 export async function voteAction(formData: FormData) {

@@ -13,7 +13,7 @@ export const requireUser = cache(async () => {
 
 export const requireAdmin = cache(async () => {
   const user = await requireUser();
-  if (user.role !== "ADMIN") redirect("/");
+  if (user.role !== "ADMIN") redirect("/home");
   return user;
 });
 

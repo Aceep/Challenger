@@ -29,12 +29,11 @@ type Props = {
   submitLabel: string;
   /** Sunday verification window is open (non-admins cannot write). */
   locked?: string | null;
+  /** `/demo` when rendered by the read-only demo. */
+  prefix?: string;
 };
 
-const field =
-  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base dark:border-slate-700 dark:bg-slate-900";
-
-export function BookForm({ action, values, quests, cells, currentQuest, currentCell, title, submitLabel, locked }: Props) {
+export function BookForm({ action, values, quests, cells, currentQuest, currentCell, title, submitLabel, locked, prefix = "" }: Props) {
   const [state, formAction, pending] = useActionState(action, null);
   const [pages, setPages] = useState<number | "">(values.pages);
   const [type, setType] = useState(values.type);
@@ -46,19 +45,19 @@ export function BookForm({ action, values, quests, cells, currentQuest, currentC
 
   return (
     <main className="flex flex-1 flex-col gap-4 p-5">
-      <h1 className="text-2xl font-bold">{title}</h1>
-      {locked && <p className="rounded-md bg-amber-100 p-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">{locked}</p>}
+      <h1>{title}</h1>
+      {locked && <p className="flash warn">🔍 {locked}</p>}
       <form action={formAction} className="flex flex-col gap-4">
         {values.id && <input type="hidden" name="bookId" value={values.id} />}
-        <label className="flex flex-col gap-1 text-sm font-medium">
+        <label className="field">
           Titre
-          <input name="title" required maxLength={200} defaultValue={values.title} className={field} autoFocus={!values.id} />
+          <input name="title" required maxLength={200} defaultValue={values.title} autoFocus={!values.id} />
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium">
+        <label className="field">
           Auteur·ice
-          <input name="author" required maxLength={120} defaultValue={values.author} className={field} />
+          <input name="author" required maxLength={120} defaultValue={values.author} />
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium">
+        <label className="field">
           Nombre de pages
           <input
             name="pages"
@@ -69,20 +68,26 @@ export function BookForm({ action, values, quests, cells, currentQuest, currentC
             required
             defaultValue={values.pages}
             onChange={(e) => setPages(e.target.value ? Number(e.target.value) : "")}
-            className={field}
           />
-          <span className="text-xs font-normal text-slate-500">
+          <span className="hint">
             Édition la plus avantageuse (hors gros caractères) ; livre audio = pagination papier.
-            {pages ? ` → ${fmtPoints(preview)} pt${preview >= 2 ? "s" : ""}` : ""}
+            {pages ? (
+              <>
+                {" → "}
+                <strong className="text-[color:var(--ink)]">
+                  {fmtPoints(preview)} pt{preview >= 2 ? "s" : ""}
+                </strong>
+              </>
+            ) : null}
           </span>
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium">
+        <label className="field">
           Type
-          <select name="type" value={type} onChange={(e) => setType(e.target.value as "ROMAN" | "GRAPHIQUE")} className={field}>
+          <select name="type" value={type} onChange={(e) => setType(e.target.value as "ROMAN" | "GRAPHIQUE")}>
             <option value="ROMAN">Roman</option>
             <option value="GRAPHIQUE">Graphique (BD, manga, roman graphique)</option>
           </select>
-          <span className="text-xs font-normal text-slate-500">
+          <span className="hint">
             {effective === "GRAPHIQUE"
               ? pages && pages < 150 && type === "ROMAN"
                 ? "Moins de 150 pages : compté comme graphique (points ÷ 2, ½ quête et ½ case)."
@@ -90,9 +95,9 @@ export function BookForm({ action, values, quests, cells, currentQuest, currentC
               : "Un roman valide seul une quête et/ou une case."}
           </span>
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium">
+        <label className="field">
           Valide une quête (optionnel)
-          <select name="questId" defaultValue={values.questId} className={field}>
+          <select name="questId" defaultValue={values.questId}>
             <option value="">— aucune —</option>
             {questOptions.map((q) => (
               <option key={q.value} value={q.value}>
@@ -101,9 +106,9 @@ export function BookForm({ action, values, quests, cells, currentQuest, currentC
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium">
+        <label className="field">
           Valide une case du bingo d&apos;équipe (optionnel)
-          <select name="cellId" defaultValue={values.cellId} className={field}>
+          <select name="cellId" defaultValue={values.cellId}>
             <option value="">— aucune —</option>
             {cellOptions.map((c) => (
               <option key={c.value} value={c.value}>
@@ -111,23 +116,21 @@ export function BookForm({ action, values, quests, cells, currentQuest, currentC
               </option>
             ))}
           </select>
-          <span className="text-xs font-normal text-slate-500">
+          <span className="hint">
             En cochant une quête ou une case, tu attestes avoir commencé la lecture après la parution de la grille (ou lu moins de la moitié d&apos;un roman).
           </span>
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium">
+        <label className="field">
           Terminé le
-          <input name="finishedAt" type="date" defaultValue={values.finishedAt || today} max={today} className={field} />
+          <input name="finishedAt" type="date" defaultValue={values.finishedAt || today} max={today} />
         </label>
 
-        {state?.error && (
-          <p className="rounded-md bg-red-100 p-3 text-sm text-red-800 dark:bg-red-950 dark:text-red-200">{state.error}</p>
-        )}
+        {state?.error && <p className="flash err">⚠️ {state.error}</p>}
 
-        <button type="submit" disabled={pending || !!locked} className="rounded-xl bg-indigo-600 py-3 text-lg font-semibold text-white disabled:opacity-60">
+        <button type="submit" disabled={pending || !!locked} className="btn text-[17px]">
           {pending ? "Enregistrement…" : submitLabel}
         </button>
-        <Link href="/books" className="text-center text-sm text-slate-500 underline">
+        <Link href={`${prefix}/books`} className="text-center text-[13px] text-[color:var(--muted)]">
           Annuler
         </Link>
       </form>

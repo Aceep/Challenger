@@ -7,7 +7,7 @@ import { getCurrentPlayer } from "@/lib/dal";
 import { describeResult, updateBook, type BookActor, type BookResult } from "@/lib/services/books";
 import { withLeaderWatch } from "@/lib/services/leaderboard";
 
-const PATHS = ["/bingo", "/", "/leaderboard", "/books", "/team"];
+const PATHS = ["/bingo", "/home", "/leaderboard", "/books", "/team"];
 
 async function run(fn: (actor: BookActor) => Promise<BookResult>, okLabel: string) {
   const { user, team } = await getCurrentPlayer();
