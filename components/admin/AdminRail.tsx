@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { EditionSwitcher } from "@/components/EditionSwitcher";
 import { Kyle } from "@/components/ui/Kyle";
+import type { AdminShellProps } from "./AdminShell";
 
 const GROUPS = [
   { group: null, items: [{ href: "/admin", label: "📊 Tableau de bord" }] },
@@ -27,7 +29,17 @@ const GROUPS = [
 ] as const;
 
 /** Left rail of the admin desk. `base` is "/demo" for the read-only demo. */
-export function AdminRail({ who, base = "", openQuestions = 0 }: { who: string; base?: string; /** Badge on FAQ: questions without an answer yet. */ openQuestions?: number }) {
+export function AdminRail({
+  who,
+  edition,
+  editions,
+  switchAction,
+  base = "",
+  openQuestions = 0,
+}: Omit<AdminShellProps, "children" | "openQuestions"> & {
+  /** Badge on FAQ: questions without an answer yet. */
+  openQuestions?: number;
+}) {
   const pathname = usePathname();
   return (
     <nav className="rail" aria-label="Administration">
@@ -37,6 +49,15 @@ export function AdminRail({ who, base = "", openQuestions = 0 }: { who: string; 
       <div className="flex items-center gap-2 px-2 pt-1.5 pb-4 font-display text-[17px] font-black">
         <Kyle width={28} />
         Aceep&amp;Kyle
+      </div>
+      <div className="edition">
+        <EditionSwitcher
+          current={{ ...edition, role: "ORGANIZER" }}
+          options={editions}
+          action={switchAction}
+          returnTo="/admin"
+          variant="rail"
+        />
       </div>
       {GROUPS.map((g, i) => (
         <div key={i} className="contents">

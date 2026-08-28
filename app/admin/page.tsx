@@ -27,7 +27,7 @@ function inWords(target: Date, now: Date) {
   return `dans ${Math.floor(h / 24)} j ${h % 24} h`;
 }
 
-export default async function AdminHome() {
+export default async function AdminHome({ searchParams }: PageProps<"/admin">) {
   const { challenge } = await requireOrganizer();
   const now = new Date();
   const since = new Date(now.getTime() - WEEK);
@@ -124,6 +124,7 @@ export default async function AdminHome() {
 
   return (
     <DashboardView
+      params={await searchParams}
       challenge={{ name: challenge.name, color: challenge.color, week, weeks }}
       kpis={{
         books,
