@@ -7,7 +7,7 @@ import { getHomeSummary } from "@/lib/services/home";
 import { CHALLENGE_COOKIE } from "@/lib/tenancy/select";
 import { HomeView } from "./HomeView";
 
-export default async function HomePage() {
+export default async function HomePage({ searchParams }: PageProps<"/home">) {
   const { user, team, challenge } = await getCurrentPlayer();
   const [summary, me_] = await Promise.all([
     getHomeSummary(user.id, team && challenge ? { id: team.id, challengeId: challenge.id, startAt: challenge.startAt, endAt: challenge.endAt } : null),
@@ -32,6 +32,7 @@ export default async function HomePage() {
             ? { position: rows[me].rank, total: rows.length, gapPoints: ahead ? Math.round((ahead.points - rows[me].points) * 10) / 10 : 0, ahead: ahead?.name ?? "" }
             : null
         }
+        params={await searchParams}
         stats={summary.stats}
         week={{ vote: summary.vote, pendingCells: summary.pendingCells }}
         signOutAction={async () => {

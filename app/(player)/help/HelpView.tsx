@@ -1,10 +1,19 @@
 import Link from "next/link";
 import { Card, Kyle, PageTitle, SectionHeading } from "@/components/ui";
+import { Flash } from "@/components/Flash";
+import { EditionSwitcher, type EditionSwitcherProps } from "@/components/EditionSwitcher";
 import { DiscordMock } from "@/components/tour/DiscordMock";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import type { HelpSection } from "@/lib/discord/help";
 
-export type HelpViewProps = { sections: HelpSection[]; demo?: boolean };
+export type HelpViewProps = {
+  sections: HelpSection[];
+  /** Current edition and the ones this person may switch to (see §Édition). */
+  edition: Pick<EditionSwitcherProps, "current" | "options" | "action">;
+  /** `?ok=` / `?error=` — the demo lands its « action simulée » flash here. */
+  params?: Record<string, string | string[] | undefined>;
+  demo?: boolean;
+};
 
 /**
  * The help copy is shared with the Discord bot, where the emoji in the section
@@ -25,11 +34,12 @@ export function Rich({ text }: { text: string }) {
 }
 
 /** Help & rules — pure view, reused by /demo. */
-export function HelpView({ sections, demo }: HelpViewProps) {
+export function HelpView({ sections, edition, params, demo }: HelpViewProps) {
   const home = demo ? "/demo" : "/home";
 
   return (
     <main className="help flex flex-1 flex-col gap-6 p-5">
+      {params && <Flash params={params} />}
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-4">
           <Kyle width={64} alt="Kyle, la mascotte" />
@@ -66,6 +76,14 @@ export function HelpView({ sections, demo }: HelpViewProps) {
           </Card>
         ))}
       </div>
+
+      <section className="section" id="edition">
+        <SectionHeading>Édition</SectionHeading>
+        <EditionSwitcher current={edition.current} options={edition.options} action={edition.action} returnTo="/home" variant="section" />
+        <p className="meta-xs">
+          Tout ce que tu vois (équipe, lectures, bingo, histoire) appartient à l’édition en cours. Changer d’édition ne perd rien.
+        </p>
+      </section>
 
       <section className="section">
         <SectionHeading>Thème</SectionHeading>
