@@ -38,8 +38,8 @@ export function SkeletonList({ n = 4, lines = 2 }: { n?: number; lines?: number 
 export function SkeletonPage({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
     <main className={`flex flex-1 flex-col gap-4 p-5 ${className}`} aria-busy="true" aria-live="polite">
-      <span className="sr-only">Chargement…</span>
       {children}
+      <span className="sr-only">Chargement…</span>
     </main>
   );
 }
