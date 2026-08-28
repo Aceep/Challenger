@@ -5,12 +5,12 @@ import { getCurrentPlayer } from "@/lib/dal";
 import { setDeputy } from "@/lib/services/team";
 
 export async function setDeputyAction(formData: FormData) {
-  const { user } = await getCurrentPlayer();
+  const { user, role } = await getCurrentPlayer();
   const teamId = String(formData.get("teamId") ?? "");
   const userId = String(formData.get("userId") ?? "") || null;
   if (!teamId) return;
   await withFlash("/team", async () => {
-    await setDeputy(teamId, userId, { id: user.id, role: user.role });
+    await setDeputy(teamId, userId, { id: user.id, role: role ?? "PLAYER" });
     return userId ? "Adjoint·e nommé·e." : "Adjoint·e retiré·e.";
   });
 }

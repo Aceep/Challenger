@@ -12,8 +12,9 @@ import { bookPatchSchema, bookSchema, deleteBook, describeResult, logBook, updat
 import { withLeaderWatch } from "@/lib/services/leaderboard";
 
 async function actor(): Promise<{ actor: BookActor; challengeId: string | null; teamId: string | null }> {
-  const { user, team } = await getCurrentPlayer();
-  return { actor: { id: user.id, role: user.role, teamId: team?.id ?? null, isCaptain: team?.captainId === user.id }, challengeId: team?.challengeId ?? null, teamId: team?.id ?? null };
+  const { user, challenge, role, team } = await getCurrentPlayer();
+  const challengeId = challenge?.id ?? null;
+  return { actor: { id: user.id, role: role ?? "PLAYER", challengeId, teamId: team?.id ?? null, isCaptain: team?.captainId === user.id }, challengeId, teamId: team?.id ?? null };
 }
 
 const PATHS = ["/home", "/books", "/leaderboard", "/bingo", "/quests", "/team"];

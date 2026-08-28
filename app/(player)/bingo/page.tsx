@@ -7,8 +7,8 @@ import { placeBookAction, removeBookAction } from "./actions";
 
 export default async function BingoPage({ searchParams }: PageProps<"/bingo">) {
   const params = await searchParams;
-  const { user, team } = await getCurrentPlayer();
-  if (!team) {
+  const { user, challenge, role, team } = await getCurrentPlayer();
+  if (!team || !challenge) {
     return (
       <BingoView
         grid={null}
@@ -34,7 +34,7 @@ export default async function BingoPage({ searchParams }: PageProps<"/bingo">) {
   ]);
   const isCaptain = team.captainId === user.id;
   const books = teamBooks
-    .filter((b) => canEditBook(b, { id: user.id, role: user.role, isCaptainOfOwner: isCaptain }))
+    .filter((b) => canEditBook(b, { id: user.id, role: role ?? "PLAYER", isCaptainOfOwner: isCaptain }))
     .map((b) => ({ id: b.id, title: b.title, type: b.type, owner: b.user.name ?? "?", placedOn: b.bingoFill?.cellId ?? null }));
 
   return (
@@ -43,7 +43,7 @@ export default async function BingoPage({ searchParams }: PageProps<"/bingo">) {
       total={board.total}
       history={board.history.map((h) => ({ id: h.id, order: h.grid.order, title: h.grid.title, completedAt: h.completedAt }))}
       books={books}
-      bonus={{ line: team.challenge.bingoLineBonus, full: team.challenge.bingoFullBonus }}
+      bonus={{ line: challenge.bingoLineBonus, full: challenge.bingoFullBonus }}
       hasTeam
       params={params}
       placeBookAction={placeBookAction}

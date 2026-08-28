@@ -10,11 +10,11 @@ import { withLeaderWatch } from "@/lib/services/leaderboard";
 const PATHS = ["/bingo", "/home", "/leaderboard", "/books", "/team"];
 
 async function run(fn: (actor: BookActor) => Promise<BookResult>, okLabel: string) {
-  const { user, team } = await getCurrentPlayer();
-  const actor: BookActor = { id: user.id, role: user.role, teamId: team?.id ?? null, isCaptain: team?.captainId === user.id };
+  const { user, challenge, role, team } = await getCurrentPlayer();
+  const actor: BookActor = { id: user.id, role: role ?? "PLAYER", challengeId: challenge?.id ?? null, teamId: team?.id ?? null, isCaptain: team?.captainId === user.id };
   await withFlash("/bingo", async () => {
-    const { result, before, after: top } = await withLeaderWatch(team?.challengeId, () => fn(actor));
-    if (team) after(() => announceRankChange(team.challengeId, before, top));
+    const { result, before, after: top } = await withLeaderWatch(challenge?.id, () => fn(actor));
+    if (team && challenge) after(() => announceRankChange(challenge.id, before, top));
     if (team && result.cell?.grid) after(() => announceGridChange(team.id, result.cell!.grid!));
     return [okLabel, describeResult(result, false)].filter(Boolean).join(" · ");
   }, PATHS);

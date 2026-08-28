@@ -6,9 +6,9 @@ import { BookForm } from "../BookForm";
 import { logBookAction } from "../actions";
 
 export default async function NewBookPage() {
-  const { user, team } = await getCurrentPlayer();
-  const [quests, cells] = team ? await Promise.all([questChoices(team.challengeId, team.id), cellChoices(team.id)]) : [[], []];
-  const locked = user.role !== "ADMIN" && isVerificationWindow(new Date()) ? VERIFICATION_MESSAGE : null;
+  const { challenge, role, team } = await getCurrentPlayer();
+  const [quests, cells] = team && challenge ? await Promise.all([questChoices(challenge.id, team.id), cellChoices(team.id)]) : [[], []];
+  const locked = role !== "ORGANIZER" && isVerificationWindow(new Date()) ? VERIFICATION_MESSAGE : null;
 
   return (
     <BookForm

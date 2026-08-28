@@ -7,7 +7,7 @@ import { breakTieAction, chooseTargetAction, confirmTieAction, voteAction } from
 
 export default async function StoryPage({ searchParams }: PageProps<"/story">) {
   const params = await searchParams;
-  const { user, team } = await getCurrentPlayer();
+  const { user, role, team } = await getCurrentPlayer();
   const view = team ? await getTeamStoryView(team.id, user.id) : null;
   const actions = { voteAction, chooseTargetAction, breakTieAction, confirmTieAction };
 
@@ -25,7 +25,7 @@ export default async function StoryPage({ searchParams }: PageProps<"/story">) {
         allies={[]}
         history={[]}
         isCaptain={false}
-        isAdmin={user.role === "ADMIN"}
+        isAdmin={role === "ORGANIZER"}
         params={params}
         {...actions}
       />
@@ -62,7 +62,7 @@ export default async function StoryPage({ searchParams }: PageProps<"/story">) {
       allies={view.allies}
       history={view.history.map((h) => ({ title: h.title, choiceLabel: h.choiceLabel }))}
       isCaptain={view.isCaptain}
-      isAdmin={user.role === "ADMIN"}
+      isAdmin={role === "ORGANIZER"}
       params={params}
       {...actions}
     />

@@ -1,10 +1,9 @@
-import { getActiveChallenge, getCurrentPlayer } from "@/lib/dal";
+import { getCurrentPlayer } from "@/lib/dal";
 import { getLeaderboard } from "@/lib/services/leaderboard";
 import { LeaderboardView } from "./LeaderboardView";
 
 export default async function LeaderboardPage() {
-  const { team } = await getCurrentPlayer();
-  const challenge = team?.challenge ?? (await getActiveChallenge());
+  const { team, challenge } = await getCurrentPlayer();
   if (!challenge) return <LeaderboardView challengeName={null} rows={[]} myTeamId={null} finished={false} />;
 
   const rows = await getLeaderboard(challenge.id);

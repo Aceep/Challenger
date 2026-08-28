@@ -2,17 +2,19 @@
 
 import { withFlash } from "@/lib/actions";
 import { getCurrentPlayer } from "@/lib/dal";
+import { GameError } from "@/lib/errors";
 import { askQuestion, deleteQuestion, pinQuestion, replyToQuestion, resolveQuestion } from "@/lib/services/questions";
 
 const field = (f: FormData, k: string) => String(f.get(k) ?? "");
 const paths = (questionId?: string) => ["/faq", "/admin/faq", ...(questionId ? [`/faq/${questionId}`] : [])];
 
 export async function askQuestionAction(formData: FormData) {
-  const { user } = await getCurrentPlayer();
+  const { user, challenge } = await getCurrentPlayer();
   await withFlash(
     "/faq",
     async () => {
-      const r = await askQuestion({ userId: user.id, title: field(formData, "title"), detail: field(formData, "detail") });
+      if (!challenge) throw new GameError("Rejoins un défi pour poser une question.");
+      const r = await askQuestion({ userId: user.id, challengeId: challenge.id, title: field(formData, "title"), detail: field(formData, "detail") });
       return r.threadUrl ? "Question publiée : le sujet est ouvert dans le forum Discord." : "Question publiée sur le site.";
     },
     paths(),
@@ -62,7 +64,7 @@ export async function pinAction(formData: FormData) {
   );
 }
 
-/** Admin only — redirects to the list since the question no longer exists. */
+/** Organisers only — redirects to the list since the question no longer exists. */
 export async function deleteAction(formData: FormData) {
   const { user } = await getCurrentPlayer();
   const questionId = field(formData, "questionId");
