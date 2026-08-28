@@ -19,7 +19,7 @@ function Rich({ text }: { text: string }) {
 /** Help & rules — pure view, reused by /demo. */
 export function HelpView({ sections, demo }: HelpViewProps) {
   return (
-    <main className="flex flex-1 flex-col gap-4 p-5">
+    <main className="help flex flex-1 flex-col gap-4 p-5">
       <header className="flex items-center gap-3">
         <Kyle width={64} alt="Kyle, la mascotte" />
         <div>
