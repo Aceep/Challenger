@@ -5,55 +5,99 @@
    Thème clair « Papier » par défaut, thème sombre « Encre ».
 --------------------------------------------------------------------------- */
 
+/* One token block for both themes: `color-scheme` decides which side of every
+   `light-dark()` pair is used, so there is no duplicated dark palette. The
+   anti-flash script in app/layout.tsx sets `data-theme` when the user picks a
+   theme by hand; without it the system preference applies. */
 :root {
+  color-scheme: light dark;
+
+  /* Brand — identical in both themes. */
   --kyle: #ffd84a;
   --kyle-deep: #f5c400;
   --olive: #7c9a2b;
-  --olive-soft: #e4ebcb;
   --brick: #c8553d;
-  --edition: #2e4a7d;
-  --bg: #fbf8f0;
-  --surface: #ffffff;
-  --surface-2: #f3eee0;
-  --ink: #1a1a1f;
-  --muted: #6b675c;
-  --line: #e4ddc9;
-  --btn: #f5c400;
-  --btn-ink: #1a1a1f;
-  --hi: #fff2b3;
-  --shadow: 0 1px 2px rgba(40, 30, 0, 0.06), 0 6px 20px rgba(40, 30, 0, 0.06);
+
+  /* Paper & ink. */
+  --bg: light-dark(#fbf8f0, #141518);
+  --surface: light-dark(#ffffff, #1e2025);
+  --surface-2: light-dark(#f3eee0, #26282e);
+  --ink: light-dark(#1a1a1f, #f3efe4);
+  --ink-2: light-dark(#3a3833, #d8d3c6);
+  --muted: light-dark(#6b675c, #a39f92);
+  --line: light-dark(#e4ddc9, #33363d);
+  --line-strong: light-dark(#d2c9b0, #43474f);
+  --hi: light-dark(#fff2b3, #3a3410);
+  --olive-soft: light-dark(#e4ebcb, #2e3a1a);
+  --edition: light-dark(#2e4a7d, #7fa3e6);
+  --btn: light-dark(#f5c400, #ffd84a);
+  --btn-ink: light-dark(#1a1a1f, #141518);
+
+  /* Text-contrast variants — fills keep the brand values. */
+  --olive-ink: light-dark(#5f7a1c, #a9c95a);
+  --brick-ink: light-dark(#b3452f, #e8836c);
+  --ink-rule: color-mix(in srgb, var(--ink) 55%, transparent);
+  --brick-soft: color-mix(in srgb, var(--brick) 14%, transparent);
+  --kyle-ring: color-mix(in srgb, var(--kyle) 45%, transparent);
+
+  /* Radius: 4 steps. */
+  --r-xs: 6px;
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 18px;
+  --r-pill: 999px;
+
+  /* Spacing scale. */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+
+  /* Type scale (named `--fs-*` so the Tailwind `--text-*` namespace is left alone). */
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-base: 15px;
+  --fs-md: 17px;
+  --fs-nav: 11px;
+  --fs-d1: 18px;
+  --fs-d2: 22px;
+  --fs-d3: 28px;
+  --fs-d4: 34px;
+  --fs-d5: 56px;
+
+  /* Border: 1.5px = the edge of a thing, 1px = a rule drawn on the paper. */
+  --bw: 1.5px;
+
+  /* Shadows. */
+  --shadow-raised: 0 1px 2px light-dark(rgba(40, 30, 0, 0.06), rgba(0, 0, 0, 0.4));
+  --shadow-card: 0 1px 2px light-dark(rgba(40, 30, 0, 0.06), rgba(0, 0, 0, 0.4)),
+    0 6px 20px light-dark(rgba(40, 30, 0, 0.06), rgba(0, 0, 0, 0.35));
+  /* Alias kept for anything still reading the old name. */
+  --shadow: var(--shadow-card);
+  --shadow-float: 0 0 0 1.5px light-dark(transparent, var(--kyle-ring)),
+    0 10px 24px light-dark(rgba(40, 30, 0, 0.12), rgba(0, 0, 0, 0.5));
+  --shadow-modal: 0 30px 80px light-dark(rgba(40, 30, 0, 0.25), rgba(0, 0, 0, 0.6));
+  --shadow-nav: 0 -8px 24px light-dark(rgba(40, 30, 0, 0.08), rgba(0, 0, 0, 0.35));
+  --shadow-rail: 4px 0 24px light-dark(rgba(40, 30, 0, 0.06), rgba(0, 0, 0, 0.35));
+
+  /* Motion. */
+  --dur-fast: 120ms;
+  --dur: 160ms;
+  --dur-slow: 280ms;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-pop: cubic-bezier(0.2, 0.9, 0.3, 1.3);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #141518;
-    --surface: #1e2025;
-    --surface-2: #26282e;
-    --ink: #f3efe4;
-    --muted: #a39f92;
-    --line: #33363d;
-    --btn: #ffd84a;
-    --btn-ink: #141518;
-    --hi: #3a3410;
-    --olive-soft: #2e3a1a;
-    --edition: #7fa3e6;
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
-  }
+:root[data-theme="light"] {
+  color-scheme: light;
 }
 
 :root[data-theme="dark"] {
-  --bg: #141518;
-  --surface: #1e2025;
-  --surface-2: #26282e;
-  --ink: #f3efe4;
-  --muted: #a39f92;
-  --line: #33363d;
-  --btn: #ffd84a;
-  --btn-ink: #141518;
-  --hi: #3a3410;
-  --olive-soft: #2e3a1a;
-  --edition: #7fa3e6;
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
+  color-scheme: dark;
 }
 
 @theme {
@@ -77,6 +121,21 @@
   --color-btn: var(--btn);
   --color-btn-ink: var(--btn-ink);
   --color-hi: var(--hi);
+  --color-ink-2: var(--ink-2);
+  --color-line-strong: var(--line-strong);
+  --color-olive-ink: var(--olive-ink);
+  --color-brick-ink: var(--brick-ink);
+
+  /* Names chosen so they do not collide with Tailwind's own scales. */
+  --radius-card: var(--r-md);
+  --radius-sheet: var(--r-lg);
+  --radius-chip: var(--r-sm);
+  --radius-stamp: var(--r-xs);
+  --radius-pill: var(--r-pill);
+
+  /* The `--shadow-*` tokens above are already `--shadow-…` names: exposing them
+     here would make Tailwind emit `--shadow-card: var(--shadow-card)`. They are
+     used directly in CSS (and as `shadow-[var(--shadow-card)]` if ever needed). */
 }
 
 @layer base {
@@ -119,10 +178,7 @@
     font-size: 0.9em;
   }
 
-  :focus-visible {
-    outline: 2px solid var(--kyle-deep);
-    outline-offset: 2px;
-  }
+  /* The single focus ring lives with the other interaction rules, further down. */
 
   ::selection {
     background: var(--hi);
@@ -150,7 +206,7 @@
     justify-content: center;
     gap: 8px;
     border: 0;
-    border-radius: 12px;
+    border-radius: var(--r-md);
     padding: 12px 18px;
     font-weight: 800;
     background: var(--btn);
@@ -165,24 +221,24 @@
   .btn.ghost {
     background: transparent;
     color: var(--ink);
-    border: 1.5px solid var(--line);
+    border: var(--bw) solid var(--line);
   }
   .btn.small {
     padding: 7px 12px;
     font-size: 13px;
-    border-radius: 9px;
+    border-radius: var(--r-sm);
   }
   .btn.danger {
     background: transparent;
     color: var(--brick);
-    border: 1.5px solid var(--brick);
+    border: var(--bw) solid var(--brick);
   }
 
   .card {
     background: var(--surface);
-    border-radius: 16px;
+    border-radius: var(--r-md);
     padding: 16px;
-    box-shadow: var(--shadow);
+    box-shadow: var(--shadow-card);
   }
 
   .pill {
@@ -190,7 +246,7 @@
     align-items: center;
     gap: 6px;
     padding: 3px 9px;
-    border-radius: 999px;
+    border-radius: var(--r-pill);
     font-size: 12px;
     font-weight: 700;
   }
@@ -212,7 +268,7 @@
   }
 
   .flash {
-    border-radius: 12px;
+    border-radius: var(--r-md);
     padding: 10px 14px;
     font-size: 14px;
     font-weight: 600;
@@ -260,8 +316,8 @@
     font-weight: 400;
     font-size: 15px;
     padding: 10px 12px;
-    border: 1.5px solid var(--line);
-    border-radius: 10px;
+    border: var(--bw) solid var(--line);
+    border-radius: var(--r-sm);
     background: var(--surface);
     color: var(--ink);
     width: 100%;
@@ -313,9 +369,9 @@
   /* --- joueur ------------------------------------------------------------- */
   .score {
     background: var(--surface);
-    border-radius: 20px;
+    border-radius: var(--r-lg);
     padding: 18px;
-    box-shadow: var(--shadow);
+    box-shadow: var(--shadow-card);
     border-top: 5px solid var(--edition);
   }
   .score .value {
@@ -421,8 +477,8 @@
     place-items: center;
     width: 34px;
     height: 34px;
-    border-radius: 10px;
-    border: 1.5px solid var(--line);
+    border-radius: var(--r-sm);
+    border: var(--bw) solid var(--line);
     background: var(--surface);
     color: var(--muted);
     cursor: pointer;
@@ -444,7 +500,7 @@
   }
   .cell {
     min-height: 92px;
-    border-radius: 10px;
+    border-radius: var(--r-sm);
     padding: 6px 6px 7px;
     font-size: 11px;
     line-height: 1.25;
@@ -453,8 +509,8 @@
     gap: 4px;
     overflow: hidden;
     background: var(--surface);
-    box-shadow: var(--shadow);
-    border: 1.5px solid transparent;
+    box-shadow: var(--shadow-card);
+    border: var(--bw) solid transparent;
     text-align: left;
     color: var(--ink);
     position: relative;
@@ -526,11 +582,11 @@
   }
 
   .sheet {
-    border-radius: 16px;
+    border-radius: var(--r-md);
     padding: 14px;
     background: var(--surface);
-    box-shadow: var(--shadow);
-    border: 1.5px solid var(--kyle-deep);
+    box-shadow: var(--shadow-card);
+    border: var(--bw) solid var(--kyle-deep);
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -560,7 +616,7 @@
 
   .bar {
     height: 6px;
-    border-radius: 99px;
+    border-radius: var(--r-pill);
     background: var(--surface-2);
     overflow: hidden;
   }
@@ -585,8 +641,8 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
-    border: 1.5px solid var(--line);
-    border-radius: 14px;
+    border: var(--bw) solid var(--line);
+    border-radius: var(--r-md);
     padding: 12px 14px;
     background: var(--surface);
     text-align: left;
@@ -735,7 +791,7 @@
     align-items: center;
     gap: 3px;
     padding: 4px 0;
-    border-radius: 10px;
+    border-radius: var(--r-sm);
     text-decoration: none;
   }
   .bottomnav a .ic,
@@ -753,7 +809,7 @@
   .bottomnav button[aria-expanded="true"] .ic {
     background: var(--kyle);
     color: #1a1a1f;
-    border-radius: 10px;
+    border-radius: var(--r-sm);
     padding: 2px 10px;
   }
 
@@ -778,7 +834,7 @@
     color: var(--muted);
     text-align: left;
     padding: 9px 12px;
-    border-radius: 10px;
+    border-radius: var(--r-sm);
     font-weight: 700;
     display: flex;
     gap: 10px;
@@ -827,7 +883,7 @@
     align-items: center;
     gap: 8px;
     padding: 6px 12px;
-    border-radius: 999px;
+    border-radius: var(--r-pill);
     background: var(--edition);
     color: #fff;
     font-weight: 800;
@@ -888,8 +944,8 @@
   }
 
   .node {
-    border: 1.5px solid var(--line);
-    border-radius: 14px;
+    border: var(--bw) solid var(--line);
+    border-radius: var(--r-md);
     padding: 14px 16px;
     background: var(--surface);
     display: flex;
@@ -907,7 +963,7 @@
     align-items: center;
     font-size: 13px;
     padding: 6px 10px;
-    border-radius: 8px;
+    border-radius: var(--r-xs);
     background: var(--surface-2);
   }
   .node .c .fx {
@@ -922,7 +978,7 @@
     gap: 10px;
     align-items: flex-start;
     padding: 10px 12px;
-    border-radius: 10px;
+    border-radius: var(--r-sm);
     background: var(--hi);
     font-size: 13.5px;
   }
@@ -1010,7 +1066,7 @@
     gap: 20px;
   }
   .edition {
-    border-radius: 18px;
+    border-radius: var(--r-lg);
     padding: 22px;
     color: #fff;
     position: relative;
@@ -1096,19 +1152,6 @@
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .btn,
-  .cell,
-  .choice {
-    transition: transform 0.12s ease;
-  }
-  .btn:active,
-  .cell:active,
-  .choice:active {
-    transform: scale(0.97);
-  }
-}
-
 /* --- player shell on desktop: full width, nav as a left rail ---------------- */
 .bottomnav .more-inline { display: none; }
 @media (min-width: 1024px) {
@@ -1174,7 +1217,7 @@
 /* --- loading: skeletons and spinners ---------------------------------------- */
 .skel {
   display: block;
-  border-radius: 8px;
+  border-radius: var(--r-xs);
   background: var(--surface-2);
   background-image: linear-gradient(90deg, var(--surface-2) 0%, var(--surface) 50%, var(--surface-2) 100%);
   background-size: 200% 100%;
@@ -1201,21 +1244,17 @@ button[aria-busy="true"] {
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
-@media (prefers-reduced-motion: reduce) {
-  .skel, .spinner { animation: none; }
-}
-
 /* --- modal ------------------------------------------------------------------ */
 .modal {
   position: fixed;
   inset: 0;
   margin: auto;
   border: 0;
-  border-radius: 18px;
+  border-radius: var(--r-lg);
   padding: 0;
   background: var(--surface);
   color: var(--ink);
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--shadow-modal);
   max-height: calc(100dvh - 32px);
   overflow: hidden;
   display: flex;
@@ -1251,7 +1290,7 @@ button[aria-busy="true"] {
   padding: 24px;
   background: rgba(20, 21, 24, 0.45);
 }
-.modal-confirm .card { max-width: 420px; border: 1.5px solid var(--kyle-deep); }
+.modal-confirm .card { max-width: 420px; border: var(--bw) solid var(--kyle-deep); }
 /* On phones the modal becomes a full page. */
 @media (max-width: 767px) {
   .modal {
@@ -1272,25 +1311,26 @@ button[aria-busy="true"] {
   }
 }
 @media (hover: hover) {
-  .btn:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0, 0, 0, 0.14); filter: brightness(1.03); }
+  .btn:not(:disabled):hover { transform: translateY(-1px); box-shadow: var(--shadow-float); filter: brightness(1.03); }
   .btn.ghost:not(:disabled):hover { background: var(--surface-2); }
-  .btn.danger:not(:disabled):hover { background: color-mix(in srgb, var(--brick) 12%, transparent); }
+  .btn.danger:not(:disabled):hover { background: var(--brick-soft); }
   a.underline:hover, .book .actions a:hover, .book .actions button:hover { color: var(--ink); text-decoration-thickness: 2px; }
-  .cell:hover { transform: translateY(-2px); box-shadow: 0 8px 18px rgba(0, 0, 0, 0.14); }
+  .cell:hover { transform: translateY(-2px); }
   .choice:not(:disabled):hover { border-color: var(--kyle-deep); background: var(--hi); }
-  .rank:hover, .member:hover, .book:hover, .quest:hover, .kpi:hover, .node:hover, .pillars .card:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12); }
+  .rank:hover, .member:hover, .book:hover, .quest:hover, .kpi:hover, .node:hover, .pillars .card:hover { transform: translateY(-2px); }
   .data-table tbody tr:hover td { background: var(--hi); }
   .rail a:hover { background: var(--surface-2); color: var(--ink); }
   .bottomnav a:hover, .bottomnav button:hover { color: var(--ink); }
   .bottomnav a:hover .ic, .bottomnav button:hover .ic { transform: translateY(-2px); }
   .modal-x:hover, .toast-x:hover { background: var(--hi); color: var(--ink); }
-  .edition:hover { transform: translateY(-3px); box-shadow: 0 16px 36px rgba(0, 0, 0, 0.25); }
+  .edition:hover { transform: translateY(-3px); box-shadow: var(--shadow-float); }
   .score a:hover { color: var(--ink); }
 }
 .btn:not(:disabled):active, .rank:active, .member:active, .book:active, .quest:active, .node:active { transform: translateY(0) scale(0.985); box-shadow: none; }
+.cell:active, .choice:not(:disabled):active { transform: scale(0.97); }
 .data-table tbody tr:active td { background: var(--kyle); color: #1a1a1f; }
 .bottomnav a .ic, .bottomnav button .ic { transition: transform 0.16s ease; }
-:focus-visible { outline: 3px solid var(--kyle-deep); outline-offset: 2px; border-radius: 6px; }
+:focus-visible { outline: 3px solid var(--kyle-deep); outline-offset: 2px; border-radius: var(--r-xs); }
 .btn:focus-visible, .cell:focus-visible, .choice:focus-visible { box-shadow: 0 0 0 4px color-mix(in srgb, var(--kyle-deep) 35%, transparent); outline-offset: 1px; }
 .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--kyle-deep); box-shadow: 0 0 0 3px color-mix(in srgb, var(--kyle) 40%, transparent); outline: none; }
 .field input, .field select, .field textarea { transition: border-color 0.16s ease, box-shadow 0.16s ease; }
@@ -1313,8 +1353,10 @@ button[aria-busy="true"] {
 @keyframes kyle-hop { 0%, 100% { transform: translateY(0) rotate(0); } 40% { transform: translateY(-7px) rotate(-6deg); } 60% { transform: translateY(-5px) rotate(5deg); } }
 @keyframes kyle-shake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-4px) rotate(-4deg); } 40% { transform: translateX(4px) rotate(4deg); } 60% { transform: translateX(-3px); } 80% { transform: translateX(3px); } }
 @keyframes cell-pop { 0% { transform: scale(0.9); } 55% { transform: scale(1.08); box-shadow: 0 0 0 6px color-mix(in srgb, var(--olive) 35%, transparent); } 100% { transform: scale(1); } }
+/* One reduced-motion block for the whole stylesheet. */
 @media (prefers-reduced-motion: reduce) {
-  .toast, .kyle-react.hop, .kyle-react.shake, .cell.pop { animation: none; }
+  .skel, .spinner, .toast, .kyle-react.hop, .kyle-react.shake, .cell.pop { animation: none; }
+  .btn:active, .cell:active, .choice:active { transform: none; }
 }
 
 /* --- spacing pass: one scale (8 / 12 / 16 / 20 / 24 / 32), more air ------------ */
@@ -1335,20 +1377,14 @@ main > header, main > div:first-child { padding: 4px 0 6px; }
 @media (max-width: 1023px) {
   main.flex-1 { padding: 24px 20px 32px; gap: 20px; }
 }
-.bottomnav { padding: 10px 6px calc(12px + env(safe-area-inset-bottom)); box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.08); }
+.bottomnav { padding: 10px 6px calc(12px + env(safe-area-inset-bottom)); box-shadow: var(--shadow-nav); }
 .bottomnav a, .bottomnav button { gap: 4px; padding: 6px 0; }
-.rail { padding: 24px 14px; gap: 6px; box-shadow: 4px 0 24px rgba(0, 0, 0, 0.06); }
+.rail { padding: 24px 14px; gap: 6px; box-shadow: var(--shadow-rail); }
 .rail a { padding: 10px 14px; }
 .rail .group { padding: 18px 14px 6px; }
 @media (min-width: 1024px) {
-  .player-shell .bottomnav { box-shadow: 4px 0 24px rgba(0, 0, 0, 0.06); padding: 32px 14px; gap: 6px; }
+  .player-shell .bottomnav { box-shadow: var(--shadow-rail); padding: 32px 14px; gap: 6px; }
   .player-shell .bottomnav a, .player-shell .bottomnav button { padding: 11px 14px; }
-}
-:root[data-theme="dark"] .bottomnav, :root[data-theme="dark"] .rail { box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35); }
-:root[data-theme="dark"] .rail, :root[data-theme="dark"] .player-shell .bottomnav { box-shadow: 4px 0 24px rgba(0, 0, 0, 0.35); }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .bottomnav { box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35); }
-  :root:not([data-theme="light"]) .rail, :root:not([data-theme="light"]) .player-shell .bottomnav { box-shadow: 4px 0 24px rgba(0, 0, 0, 0.35); }
 }
 
 /* quest progress matrix */
@@ -1358,10 +1394,10 @@ main > header, main > div:first-child { padding: 4px 0 6px; }
   min-width: 36px;
   height: 30px;
   padding: 0 8px;
-  border-radius: 8px;
+  border-radius: var(--r-xs);
   font-weight: 800;
   text-decoration: none;
-  border: 1.5px solid var(--line);
+  border: var(--bw) solid var(--line);
   color: var(--muted);
   background: var(--surface);
 }
@@ -1386,24 +1422,11 @@ main > header, main > div:first-child { padding: 4px 0 6px; }
 .book .foot { flex-direction: column; align-items: center; gap: 8px; width: 100%; }
 .book .note:empty { display: none; }
 
-/* dark theme: shadows vanish on the dark ground, so hover lifts with a lighter surface and a soft yellow ring */
+/* Shadows vanish on the dark ground, so `--shadow-float` carries the soft yellow
+   ring in dark and nothing in light — one rule instead of two theme copies. */
 @media (hover: hover) {
-  :root[data-theme="dark"] .rank:hover, :root[data-theme="dark"] .member:hover, :root[data-theme="dark"] .book:hover, :root[data-theme="dark"] .quest:hover,
-  :root[data-theme="dark"] .kpi:hover, :root[data-theme="dark"] .node:hover, :root[data-theme="dark"] .pillars .card:hover, :root[data-theme="dark"] .cell:hover,
-  :root[data-theme="dark"] .edition:hover {
-    background-color: var(--surface-2);
-    box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--kyle) 45%, transparent), 0 12px 28px rgba(0, 0, 0, 0.5);
+  .rank:hover, .member:hover, .book:hover, .quest:hover, .kpi:hover, .node:hover, .pillars .card:hover, .cell:hover, .edition:hover {
+    box-shadow: var(--shadow-float);
   }
-  :root[data-theme="dark"] .cell.done:hover { background-color: var(--olive); }
-  :root[data-theme="dark"] .btn:not(:disabled):hover { box-shadow: 0 0 0 3px color-mix(in srgb, var(--kyle) 30%, transparent); }
-}
-@media (hover: hover) and (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .rank:hover, :root:not([data-theme="light"]) .member:hover, :root:not([data-theme="light"]) .book:hover, :root:not([data-theme="light"]) .quest:hover,
-  :root:not([data-theme="light"]) .kpi:hover, :root:not([data-theme="light"]) .node:hover, :root:not([data-theme="light"]) .pillars .card:hover, :root:not([data-theme="light"]) .cell:hover,
-  :root:not([data-theme="light"]) .edition:hover {
-    background-color: var(--surface-2);
-    box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--kyle) 45%, transparent), 0 12px 28px rgba(0, 0, 0, 0.5);
-  }
-  :root:not([data-theme="light"]) .cell.done:hover { background-color: var(--olive); }
-  :root:not([data-theme="light"]) .btn:not(:disabled):hover { box-shadow: 0 0 0 3px color-mix(in srgb, var(--kyle) 30%, transparent); }
+  .cell.done:hover { background-color: var(--olive); }
 }
