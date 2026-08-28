@@ -1054,7 +1054,7 @@
 .bottomnav .more-inline { display: none; }
 @media (min-width: 1024px) {
   .player-shell {
-    max-width: 1320px;
+    max-width: none;
     display: grid;
     grid-template-columns: 232px minmax(0, 1fr);
     align-items: stretch;
