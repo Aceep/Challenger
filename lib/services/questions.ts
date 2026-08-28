@@ -161,18 +161,18 @@ export function openQuestionsCount(challengeId: string) {
 
 /** Creates the question and opens its forum thread (site-only when no forum yet). */
 export async function askQuestion({ userId, challengeId, title, detail }: { userId: string; challengeId: string; title: string; detail?: string }) {
-  const user = await actorOf(userId, challengeId);
-  assertWritable(user.role);
+  const actor = await actorOf(userId, challengeId);
+  assertWritable(actor.role);
   const input = askSchema.parse({ title, detail });
   const challenge = await challengeOf(challengeId);
 
-  const question = await prisma.question.create({ data: { challengeId: challenge.id, authorId: user.id, title: input.title, body: input.detail } });
+  const question = await prisma.question.create({ data: { challengeId: challenge.id, authorId: actor.id, title: input.title, body: input.detail } });
 
   let url: string | null = null;
   if (challenge.discordFaqChannelId) {
     const post = await createForumPost(challenge.discordFaqChannelId, {
       name: input.title,
-      content: questionPostContent({ authorDiscordId: user.discordId, roleId: challenge.discordAdminRoleId, body: input.detail || input.title }),
+      content: questionPostContent({ authorDiscordId: actor.discordId, roleId: challenge.discordAdminRoleId, body: input.detail || input.title }),
       appliedTags: tagsFor("OPEN", parseFaqTags(challenge.discordFaqTags)),
       allowedMentions: challenge.discordAdminRoleId ? { roles: [challenge.discordAdminRoleId] } : undefined,
     });
@@ -189,22 +189,22 @@ export async function replyToQuestion({ userId, questionId, body }: { userId: st
   const text = replySchema.parse({ body }).body;
   const question = await prisma.question.findUnique({ where: { id: questionId }, include: { challenge: true, author: { select: { id: true, name: true, discordId: true } } } });
   if (!question) throw new GameError("Question introuvable.");
-  const user = await actorOf(userId, question.challengeId);
-  assertWritable(user.role);
+  const actor = await actorOf(userId, question.challengeId);
+  assertWritable(actor.role);
   if (question.status === "RESOLVED") throw new GameError("Cette question est résolue : rouvre un nouveau sujet si besoin.");
 
-  const isAdmin = user.role === "ORGANIZER";
+  const isAdmin = actor.role === "ORGANIZER";
   await prisma.questionMessage.create({
-    data: { questionId: question.id, authorId: user.id, discordUserId: user.discordId, discordUserName: user.name, body: text, isAdmin },
+    data: { questionId: question.id, authorId: actor.id, discordUserId: actor.discordId, discordUserName: actor.name, body: text, isAdmin },
   });
 
   const status = nextStatus(question.status as QuestionStatus, { adminReplied: isAdmin });
   const tags = parseFaqTags(question.challenge.discordFaqTags);
 
   if (question.discordThreadId) {
-    const mention = isAdmin && question.author.discordId && question.author.id !== user.id ? question.author.discordId : null;
+    const mention = isAdmin && question.author.discordId && question.author.id !== actor.id ? question.author.discordId : null;
     const messageId = await postMessage(question.discordThreadId, {
-      content: replyContent({ name: displayName(user), isAdmin, mentionUserId: mention, body: text }),
+      content: replyContent({ name: displayName(actor), isAdmin, mentionUserId: mention, body: text }),
       allowedMentions: mention ? { users: [mention] } : { users: [] },
     });
     // The bot's own message becomes the new poll cursor: it must never be re-imported.
@@ -219,15 +219,15 @@ export async function replyToQuestion({ userId, questionId, body }: { userId: st
 export async function resolveQuestion({ userId, questionId }: { userId: string; questionId: string }) {
   const question = await prisma.question.findUnique({ where: { id: questionId }, include: { challenge: true } });
   if (!question) throw new GameError("Question introuvable.");
-  const user = await actorOf(userId, question.challengeId);
-  if (user.role !== "ORGANIZER" && question.authorId !== user.id) throw new GameError("Seul·e l'auteur·rice ou l'organisation peut clore la question.");
+  const actor = await actorOf(userId, question.challengeId);
+  if (actor.role !== "ORGANIZER" && question.authorId !== actor.id) throw new GameError("Seul·e l'auteur·rice ou l'organisation peut clore la question.");
   if (question.status === "RESOLVED") return { alreadyResolved: true };
-  assertWritable(user.role);
+  assertWritable(actor.role);
 
   await prisma.question.update({ where: { id: question.id }, data: { status: "RESOLVED", resolvedAt: new Date() } });
   if (question.discordThreadId) {
     // Post before archiving: a locked thread refuses new messages.
-    await postMessage(question.discordThreadId, { content: resolvedContent(displayName(user)) });
+    await postMessage(question.discordThreadId, { content: resolvedContent(displayName(actor)) });
     await patchThread(question.discordThreadId, {
       applied_tags: tagsFor("RESOLVED", parseFaqTags(question.challenge.discordFaqTags)),
       archived: true,
@@ -241,8 +241,8 @@ export async function resolveQuestion({ userId, questionId }: { userId: string; 
 export async function deleteQuestion({ userId, questionId }: { userId: string; questionId: string }) {
   const question = await prisma.question.findUnique({ where: { id: questionId } });
   if (!question) throw new GameError("Question introuvable.");
-  const user = await actorOf(userId, question.challengeId);
-  if (user.role !== "ORGANIZER") throw new GameError("Réservé à l'organisation.");
+  const actor = await actorOf(userId, question.challengeId);
+  if (actor.role !== "ORGANIZER") throw new GameError("Réservé à l'organisation.");
   const threadDeleted = question.discordThreadId ? await deleteChannel(question.discordThreadId) : false;
   await prisma.question.delete({ where: { id: question.id } });
   return { title: question.title, threadDeleted };
@@ -252,8 +252,8 @@ export async function deleteQuestion({ userId, questionId }: { userId: string; q
 export async function pinQuestion({ userId, questionId, pinned }: { userId: string; questionId: string; pinned: boolean }) {
   const question = await prisma.question.findUnique({ where: { id: questionId } });
   if (!question) throw new GameError("Question introuvable.");
-  const user = await actorOf(userId, question.challengeId);
-  if (user.role !== "ORGANIZER") throw new GameError("Réservé à l'organisation.");
+  const actor = await actorOf(userId, question.challengeId);
+  if (actor.role !== "ORGANIZER") throw new GameError("Réservé à l'organisation.");
   await prisma.question.update({ where: { id: question.id }, data: { pinned } });
   if (question.discordThreadId && question.pinned !== pinned) await postMessage(question.discordThreadId, { content: pinnedContent(pinned) });
   return { pinned };
