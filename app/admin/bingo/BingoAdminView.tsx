@@ -1,10 +1,21 @@
 import Link from "next/link";
-import { Card, KyleEmpty, Pill } from "@/components/ui";
+import { BingoBoard, type BoardCell } from "@/app/(player)/bingo/BingoBoard";
+import { Card, Eyebrow, KyleEmpty, Pill } from "@/components/ui";
 import { Flash } from "@/components/Flash";
 import type { ActionState } from "@/lib/forms";
 import { GridForm, type GridValues } from "./GridForm";
 
 export type GridProgress = "done" | "half" | "free";
+
+/** The active grid of one team, with the readings the admin may move around. */
+export type TeamBoard = {
+  teamId: string;
+  teamName: string;
+  grid: { id: string; order: number; title: string; size: number; cells: BoardCell[]; completedLines: number } | null;
+  total: number;
+  history: { id: string; order: number; title: string; completedAt: Date | null }[];
+  books: { id: string; title: string; type: "ROMAN" | "GRAPHIQUE"; owner: string; placedOn: string | null }[];
+};
 
 export type AdminGridRow = GridValues & {
   id: string;
@@ -21,11 +32,17 @@ export type BingoAdminViewProps = {
   /** Grid currently open in the edit form (`?edit=<id>`). */
   editingId: string | null;
   params: Record<string, string | string[] | undefined>;
+  /** Team whose board is shown below the table (`?team=<id>`). */
+  teamBoard: TeamBoard | null;
   demo?: boolean;
   saveGridAction: (prev: ActionState, formData: FormData) => Promise<ActionState>;
   moveGridAction: (formData: FormData) => Promise<void>;
   deleteGridAction: (formData: FormData) => Promise<void>;
+  placeTeamBookAction: (formData: FormData) => Promise<void>;
+  removeTeamBookAction: (formData: FormData) => Promise<void>;
 };
+
+const dateFmt = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short" });
 
 function MiniGrid({ cells, size }: { cells: GridProgress[]; size: number }) {
   return (
@@ -45,10 +62,13 @@ export function BingoAdminView({
   bonus,
   editingId,
   params,
+  teamBoard,
   demo,
   saveGridAction,
   moveGridAction,
   deleteGridAction,
+  placeTeamBookAction,
+  removeTeamBookAction,
 }: BingoAdminViewProps) {
   const base = demo ? "/demo/admin/bingo" : "/admin/bingo";
   const editing = grids.find((g) => g.id === editingId) ?? null;
@@ -132,6 +152,73 @@ export function BingoAdminView({
           ) : (
             <GridForm grid={null} action={saveGridAction} number={grids.length + 1} />
           )}
+
+          <section className="flex flex-col gap-4">
+            <div className="topline">
+              <h2>Grilles des équipes</h2>
+              <span className="text-[13.5px] text-[color:var(--muted)]">
+                Clique une case pour retirer une lecture mal posée ou en poser une à la place de l&apos;équipe. Les lignes et les bonus sont recalculés.
+              </span>
+            </div>
+
+            <Card>
+              <form method="get" action={base} className="flex flex-wrap items-end gap-4">
+                <label className="field max-w-xs flex-1">
+                  Équipe
+                  <select name="team" defaultValue={teamBoard?.teamId ?? ""}>
+                    {teams.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button className="btn small">Afficher la grille</button>
+              </form>
+            </Card>
+
+            {!teamBoard ? (
+              <KyleEmpty>Crée une équipe pour suivre son bingo.</KyleEmpty>
+            ) : teamBoard.grid ? (
+              <BingoBoard
+                title={teamBoard.grid.title}
+                size={teamBoard.grid.size}
+                cells={teamBoard.grid.cells}
+                books={teamBoard.books}
+                completedLines={teamBoard.grid.completedLines}
+                order={teamBoard.grid.order}
+                total={teamBoard.total}
+                heading={
+                  <div>
+                    <Eyebrow>{teamBoard.teamName}</Eyebrow>
+                    <p className="text-[13px] text-[color:var(--muted)]">
+                      Grille {teamBoard.grid.order} sur {teamBoard.total} · «&nbsp;{teamBoard.grid.title}&nbsp;» ·{" "}
+                      {teamBoard.grid.cells.filter((c) => c.complete).length}/{teamBoard.grid.size * teamBoard.grid.size} ·{" "}
+                      {teamBoard.grid.completedLines} ligne{teamBoard.grid.completedLines > 1 ? "s" : ""}
+                    </p>
+                  </div>
+                }
+                hint="Un roman valide la case : le ½ déjà posé revient en attente. Un graphique = ½ case. ✓ = déjà placé ailleurs (il sera déplacé). En tant qu'admin tu peux poser n'importe quelle lecture de l'équipe."
+                placeBookAction={placeTeamBookAction}
+                removeBookAction={removeTeamBookAction}
+              />
+            ) : (
+              <KyleEmpty>
+                {teamBoard.total === 0 ? "Aucune grille n'est encore prête." : `${teamBoard.teamName} a terminé les ${teamBoard.total} grilles 🏆`}
+              </KyleEmpty>
+            )}
+
+            {teamBoard && teamBoard.history.length > 0 && (
+              <div className="flex flex-col gap-1">
+                <Eyebrow>Grilles terminées</Eyebrow>
+                {teamBoard.history.map((h) => (
+                  <p key={h.id} className="text-[13px] text-[color:var(--muted)]">
+                    ✅ Grille {h.order} — «&nbsp;{h.title}&nbsp;»{h.completedAt ? ` · terminée le ${dateFmt.format(h.completedAt)}` : ""}
+                  </p>
+                ))}
+              </div>
+            )}
+          </section>
         </>
       )}
     </>

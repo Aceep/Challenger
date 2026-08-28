@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { BingoCell, Pill } from "@/components/ui";
 
@@ -22,11 +22,15 @@ type Props = {
   completedLines: number;
   order: number;
   total: number;
+  /** Replaces the player heading (admin supervision reuses the board). */
+  heading?: ReactNode;
+  /** Replaces the "who may place a reading" note under the panel. */
+  hint?: ReactNode;
   placeBookAction: (formData: FormData) => Promise<void>;
   removeBookAction: (formData: FormData) => Promise<void>;
 };
 
-export function BingoBoard({ title, size, cells, books, completedLines, order, total, placeBookAction, removeBookAction }: Props) {
+export function BingoBoard({ title, size, cells, books, completedLines, order, total, heading, hint, placeBookAction, removeBookAction }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // Derived from the latest props so the panel reflects the cell after an action.
   const selected = cells.find((c) => c.id === selectedId) ?? null;
@@ -35,12 +39,14 @@ export function BingoBoard({ title, size, cells, books, completedLines, order, t
 
   return (
     <section className="bingo-layout flex flex-col gap-3">
-      <div>
-        <h1>Bingo d&apos;équipe</h1>
-        <p className="text-[13px] text-[color:var(--muted)]">
-          Grille {order} sur {total} · « {title} » · {done}/{size * size} · {completedLines} ligne{completedLines > 1 ? "s" : ""}
-        </p>
-      </div>
+      {heading ?? (
+        <div>
+          <h1>Bingo d&apos;équipe</h1>
+          <p className="text-[13px] text-[color:var(--muted)]">
+            Grille {order} sur {total} · « {title} » · {done}/{size * size} · {completedLines} ligne{completedLines > 1 ? "s" : ""}
+          </p>
+        </div>
+      )}
 
       <div className="bingo-grid" style={{ gridTemplateColumns: `repeat(${size}, minmax(0, 1fr))` }}>
         {cells.map((c) => (
@@ -142,8 +148,12 @@ export function BingoBoard({ title, size, cells, books, completedLines, order, t
                 </button>
               </div>
               <p className="text-xs text-[color:var(--muted)]">
-                Un roman valide la case : le ½ déjà posé revient en attente. Un graphique = ½ case. ✓ = déjà placé ailleurs (il sera déplacé). Tu peux placer tes
-                lectures pendant 1 h après leur ajout ; ensuite c&apos;est le·la capitaine.
+                {hint ?? (
+                  <>
+                    Un roman valide la case : le ½ déjà posé revient en attente. Un graphique = ½ case. ✓ = déjà placé ailleurs (il sera déplacé). Tu peux placer
+                    tes lectures pendant 1 h après leur ajout ; ensuite c&apos;est le·la capitaine.
+                  </>
+                )}
               </p>
             </form>
           )}
