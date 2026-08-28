@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card, KyleEmpty, Pill } from "@/components/ui";
 import { DataTable } from "@/components/ui/DataTable";
 import { Flash } from "@/components/Flash";
+import { teamDiscordReady } from "@/lib/discord/permissions";
 import { fmtPoints } from "@/lib/format";
 import type { ActionState } from "@/lib/forms";
 import { TeamEditModal } from "./TeamEditModal";
@@ -18,6 +19,8 @@ export type AdminTeamRow = {
   deputyId: string;
   adventureChannel: string | null;
   libraryChannel: string | null;
+  /** Discord role carried by the team members (created by the bot setup). */
+  discordRole: string | null;
   gridLabel: string;
   points: number;
 };
@@ -63,15 +66,14 @@ export function TeamsView({
         <KyleEmpty>Active un défi pour créer des équipes.</KyleEmpty>
       ) : (
         <>
-          <Card>
+          <Card data-tour="teams-table">
             <DataTable
               head={[
                 "Équipe",
                 "Membres",
                 "Capitaine",
                 "Adjoint·e",
-                "Salon aventure",
-                "Salon librairie",
+                "Discord",
                 "Grille",
                 { label: "Points", className: "text-right" },
                 "",
@@ -86,8 +88,15 @@ export function TeamsView({
                   <td className="num">{t.members.length}</td>
                   <td>{t.captain ?? <Pill tone="no">à nommer</Pill>}</td>
                   <td>{t.deputy ?? <Pill tone="no">à nommer</Pill>}</td>
-                  <td>{t.adventureChannel ? <code>{t.adventureChannel}</code> : <Pill tone="no">manquant</Pill>}</td>
-                  <td>{t.libraryChannel ? <code>{t.libraryChannel}</code> : <Pill tone="no">manquant</Pill>}</td>
+                  <td>
+                    {teamDiscordReady({ discordRoleId: t.discordRole, discordChannelId: t.adventureChannel, discordLibraryChannelId: t.libraryChannel }) ? (
+                      <Pill tone="ok">rôle et salons ✓</Pill>
+                    ) : (
+                      <Link href={demo ? "/demo/admin/challenge" : "/admin/challenge"} className="underline">
+                        <Pill tone="no">à configurer</Pill>
+                      </Link>
+                    )}
+                  </td>
                   <td className="num">{t.gridLabel}</td>
                   <td className="num text-right font-extrabold">{fmtPoints(t.points)}</td>
                   <td>

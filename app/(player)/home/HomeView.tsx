@@ -67,6 +67,7 @@ export function HomeView({ userName, team, challengeName, challengeOver, score, 
 
       {team && challengeName ? (
         <ScoreCard
+          data-tour="home-score"
           teamName={team.name}
           teamColor={team.color}
           challengeName={challengeName}
@@ -107,7 +108,7 @@ export function HomeView({ userName, team, challengeName, challengeOver, score, 
         />
       </div>
 
-      <Button href={p("/books/new")} size="lg" className="cta">
+      <Button href={p("/books/new")} size="lg" className="cta" data-tour="home-add">
         <PlusIcon />
         J’ai fini une lecture
       </Button>

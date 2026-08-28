@@ -44,7 +44,7 @@ export function DashboardView({ challenge, kpis, todo, leaderboard, bot, recentB
         )}
       </div>
 
-      <div className="kpis">
+      <div className="kpis" data-tour="admin-dashboard">
         <Card className="kpi">
           <p className="v num">{kpis.books}</p>
           <p className="l">

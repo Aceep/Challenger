@@ -87,17 +87,19 @@ export function QuestsView({ quests, hasChallenge, hasTeam, teamColor, demo }: Q
   return (
     <main className="flex flex-1 flex-col gap-6 p-5">
       <PageTitle>Quêtes</PageTitle>
-      {!hasChallenge ? (
-        <KyleEmpty>Aucun défi actif.</KyleEmpty>
-      ) : open.length === 0 ? (
-        <KyleEmpty>Aucune quête ouverte pour le moment.</KyleEmpty>
-      ) : (
-        <ul className="list">
-          {open.map((q) => (
-            <QuestCard key={q.id} q={q} teamColor={teamColor} prefix={prefix} canAdd={hasTeam && !q.done} />
-          ))}
-        </ul>
-      )}
+      <div data-tour="quests-list">
+        {!hasChallenge ? (
+          <KyleEmpty>Aucun défi actif.</KyleEmpty>
+        ) : open.length === 0 ? (
+          <KyleEmpty>Aucune quête ouverte pour le moment.</KyleEmpty>
+        ) : (
+          <ul className="list">
+            {open.map((q) => (
+              <QuestCard key={q.id} q={q} teamColor={teamColor} prefix={prefix} canAdd={hasTeam && !q.done} />
+            ))}
+          </ul>
+        )}
+      </div>
 
       {closed.length > 0 && (
         <section className="section">

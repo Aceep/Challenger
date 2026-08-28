@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
+import { teamDiscordReady } from "@/lib/discord/permissions";
 import { effectiveType, readingPoints, round1 } from "@/lib/scoring/reading";
 import {
+  DEMO_ADMIN_TEAMS,
   DEMO_BOARD_CELLS,
   DEMO_BOOKS,
   DEMO_BY_SOURCE,
   DEMO_DECLARED_GRAPHIC,
+  DEMO_DISCORD_SETUP,
   DEMO_HOME,
   DEMO_LEADERBOARD,
   DEMO_LEDGER,
@@ -61,6 +64,18 @@ describe("données de démo", () => {
     expect(DEMO_HOME.stats.romans).toBe(DEMO_MY_BOOKS.filter((b) => b.type === "ROMAN").length);
     expect(DEMO_HOME.stats.graphiques).toBe(DEMO_MY_BOOKS.filter((b) => b.type === "GRAPHIQUE").length);
     expect(round1(DEMO_HOME.stats.myPoints)).toBe(sum(DEMO_MY_BOOKS.map((b) => b.points)));
+  });
+
+  it("garde l'état Discord de la démo cohérent avec les équipes affichées", () => {
+    const ready = DEMO_ADMIN_TEAMS.filter((t) =>
+      teamDiscordReady({ discordRoleId: t.discordRole, discordChannelId: t.adventureChannel, discordLibraryChannelId: t.libraryChannel }),
+    );
+    expect(DEMO_DISCORD_SETUP.teamsTotal).toBe(DEMO_ADMIN_TEAMS.length);
+    expect(DEMO_DISCORD_SETUP.teamsReady).toBe(ready.length);
+    // One team is deliberately left unconfigured, to show the « à configurer » state.
+    expect(ready.length).toBeLessThan(DEMO_ADMIN_TEAMS.length);
+    expect(DEMO_DISCORD_SETUP.complete).toBe(false);
+    expect(DEMO_DISCORD_SETUP.inviteUrl).toContain("discord.com/oauth2/authorize");
   });
 
   it("décrit une grille de bingo valide : une seule ligne complète et des ½ en attente", () => {

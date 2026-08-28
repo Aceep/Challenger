@@ -136,15 +136,17 @@ export function BooksView({ books, teamBooks, isCaptain, teamColor, params, demo
 
       <Flash params={params} />
 
-      {books.length === 0 ? (
-        <KyleEmpty>Aucune lecture pour l’instant. Termine-en une et reviens : Kyle compte les pages.</KyleEmpty>
-      ) : (
-        <ul className="list">
-          {books.map((b) => (
-            <Row key={b.id} b={b} teamColor={teamColor} prefix={prefix} deleteBookAction={deleteBookAction} />
-          ))}
-        </ul>
-      )}
+      <div data-tour="books-list">
+        {books.length === 0 ? (
+          <KyleEmpty>Aucune lecture pour l’instant. Termine-en une et reviens : Kyle compte les pages.</KyleEmpty>
+        ) : (
+          <ul className="list">
+            {books.map((b) => (
+              <Row key={b.id} b={b} teamColor={teamColor} prefix={prefix} deleteBookAction={deleteBookAction} />
+            ))}
+          </ul>
+        )}
+      </div>
 
       <section className="section">
         <SectionHeading action={isCaptain ? <Pill tone="type">capitaine</Pill> : undefined}>Lectures de l’équipe</SectionHeading>

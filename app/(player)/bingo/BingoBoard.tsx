@@ -64,7 +64,7 @@ export function BingoBoard({ title, size, cells, books, completedLines, order, t
         </PageTitle>
       )}
 
-      <div className="bingo-grid" style={{ gridTemplateColumns: `repeat(${size}, minmax(0, 1fr))` }}>
+      <div className="bingo-grid" data-tour="bingo-board" style={{ gridTemplateColumns: `repeat(${size}, minmax(0, 1fr))` }}>
         {cells.map((c) => (
           <BingoCell
             key={c.id}
