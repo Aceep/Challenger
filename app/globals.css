@@ -1376,3 +1376,6 @@ main > header, main > div:first-child { padding: 4px 0 6px; }
 .list > li > .card, .list > div > .card, .list > .card { flex: 1 1 auto; height: 100%; min-width: 0; }
 .list .card { max-height: 420px; overflow: auto; overscroll-behavior: contain; }
 .list .card.book { max-height: 240px; }
+/* reading card: content vertically centered next to the full-height cover */
+.book .body { justify-content: center; padding-top: 12px; padding-bottom: 12px; }
+.book .foot { margin-top: 8px; }
