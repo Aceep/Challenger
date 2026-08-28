@@ -39,7 +39,10 @@ function toPayload(m: OutgoingMessage) {
   return { content: m.content, embeds: m.embeds, components: rows, allowed_mentions: toAllowedMentions(m.allowedMentions) };
 }
 
-async function request<T>(path: string, method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE", body?: unknown): Promise<T | null> {
+/** Marker returned by `listMessages` when the channel/thread no longer exists (404). */
+export const GONE = Symbol("discord-gone");
+
+async function request<T>(path: string, method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE", body?: unknown, onNotFound?: () => void): Promise<T | null> {
   if (!enabled()) return null;
   try {
     const res = await fetch(`${API}${path}`, {
@@ -48,7 +51,8 @@ async function request<T>(path: string, method: "GET" | "POST" | "PATCH" | "PUT"
       body: body ? JSON.stringify(body) : undefined,
     });
     if (!res.ok) {
-      console.error(`[discord] ${method} ${path} → ${res.status}: ${(await res.text()).slice(0, 300)}`);
+      if (res.status === 404 && onNotFound) onNotFound();
+      else console.error(`[discord] ${method} ${path} → ${res.status}: ${(await res.text()).slice(0, 300)}`);
       return null;
     }
     return res.status === 204 ? ({} as T) : ((await res.json()) as T);
@@ -126,11 +130,20 @@ export type DiscordMessage = {
   author?: { id: string; username?: string; global_name?: string | null; bot?: boolean };
 };
 
-/** Up to 100 messages of a channel/thread, optionally only those after a message id. */
-export async function listMessages(channelId: string, after?: string | null): Promise<DiscordMessage[]> {
+/** Up to 100 messages of a channel/thread, optionally only those after a message id; `GONE` when the thread was deleted. */
+export async function listMessages(channelId: string, after?: string | null): Promise<DiscordMessage[] | typeof GONE> {
   const q = new URLSearchParams({ limit: "100" });
   if (after) q.set("after", after);
-  return (await request<DiscordMessage[]>(`/channels/${channelId}/messages?${q}`, "GET")) ?? [];
+  let gone = false;
+  const r = await request<DiscordMessage[]>(`/channels/${channelId}/messages?${q}`, "GET", undefined, () => (gone = true));
+  return gone ? GONE : (r ?? []);
+}
+
+/** Deletes a channel or thread (already-deleted is treated as success). */
+export async function deleteChannel(channelId: string): Promise<boolean> {
+  let gone = false;
+  const r = await request(`/channels/${channelId}`, "DELETE", undefined, () => (gone = true));
+  return gone || r !== null;
 }
 
 /** Updates a thread: tags, archive, lock. */

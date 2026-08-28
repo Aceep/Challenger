@@ -3,6 +3,7 @@ import { Card, Eyebrow, KyleEmpty, Pill } from "@/components/ui";
 import { Flash } from "@/components/Flash";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { StatusPill, type FaqStatus } from "@/app/(player)/faq/FaqListView";
+import { DeleteQuestionButton } from "@/app/(player)/faq/DeleteQuestionButton";
 
 /** What `getFaqSetup` reports about the Discord wiring. */
 export type FaqForumInfo = {
@@ -25,6 +26,7 @@ export type AdminQuestionRow = {
   createdAt: Date;
   messages: number;
   discordUrl: string | null;
+  discordDeleted: boolean;
 };
 
 export type FaqAdminViewProps = {
@@ -37,12 +39,13 @@ export type FaqAdminViewProps = {
   syncAction: (formData: FormData) => Promise<void>;
   resolveAction: (formData: FormData) => Promise<void>;
   pinAction: (formData: FormData) => Promise<void>;
+  deleteAction: (formData: FormData) => Promise<void>;
 };
 
 const dateFmt = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
 /** Admin › FAQ — pure view, reused by /demo/admin. */
-export function FaqAdminView({ forum, questions, hasChallenge, params, demo, setupAction, syncAction, resolveAction, pinAction }: FaqAdminViewProps) {
+export function FaqAdminView({ forum, questions, hasChallenge, params, demo, setupAction, syncAction, resolveAction, pinAction, deleteAction }: FaqAdminViewProps) {
   const p = (path: string) => (demo ? `/demo${path}` : path);
   const open = questions.filter((q) => q.status === "OPEN").length;
 
@@ -51,7 +54,7 @@ export function FaqAdminView({ forum, questions, hasChallenge, params, demo, set
       <div className="topline">
         <h1>FAQ</h1>
         {open > 0 && <Pill tone="wait">{open} sans réponse</Pill>}
-        <span className="text-[13.5px] text-[color:var(--muted)]">Chaque question est un sujet du forum Discord ; les réponses circulent dans les deux sens.</span>
+        <span className="text-[13.5px] text-[color:var(--muted)]">Chaque question est un sujet du forum Discord ; les réponses circulent dans les deux sens. Un sujet supprimé sur Discord reste ici.</span>
       </div>
       <Flash params={params} />
 
@@ -202,6 +205,8 @@ export function FaqAdminView({ forum, questions, hasChallenge, params, demo, set
                               Discord ↗
                             </a>
                           )}
+                          {q.discordDeleted && <Pill tone="no">sujet Discord supprimé</Pill>}
+                          <DeleteQuestionButton questionId={q.id} title={q.title} hasThread={!!q.discordUrl} action={deleteAction} iconOnly />
                         </span>
                       </td>
                     </tr>

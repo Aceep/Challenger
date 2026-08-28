@@ -529,6 +529,7 @@ export const DEMO_QUESTIONS: FaqQuestionRow[] = [
     createdAt: hoursAgo(52),
     messages: 2,
     lastAnswer: { author: "Alycia", body: QUESTION_MESSAGES["demo-question-manga"][0].body },
+    discordDeleted: false,
     discordUrl: faqThread(1),
   },
   {
@@ -541,6 +542,7 @@ export const DEMO_QUESTIONS: FaqQuestionRow[] = [
     createdAt: hoursAgo(22),
     messages: 2,
     lastAnswer: { author: "Alycia", body: QUESTION_MESSAGES["demo-question-tome"][1].body },
+    discordDeleted: false,
     discordUrl: faqThread(2),
   },
   {
@@ -553,6 +555,7 @@ export const DEMO_QUESTIONS: FaqQuestionRow[] = [
     createdAt: hoursAgo(6),
     messages: 1,
     lastAnswer: null,
+    discordDeleted: false,
     discordUrl: faqThread(3),
   },
   {
@@ -565,6 +568,7 @@ export const DEMO_QUESTIONS: FaqQuestionRow[] = [
     createdAt: hoursAgo(2),
     messages: 0,
     lastAnswer: null,
+    discordDeleted: false,
     discordUrl: faqThread(4),
   },
   {
@@ -577,6 +581,7 @@ export const DEMO_QUESTIONS: FaqQuestionRow[] = [
     createdAt: hoursAgo(72),
     messages: 1,
     lastAnswer: { author: "Alycia", body: QUESTION_MESSAGES["demo-question-equipe"][0].body },
+    discordDeleted: false,
     discordUrl: faqThread(5),
   },
 ];
@@ -591,10 +596,12 @@ export const DEMO_QUESTION_THREADS: QuestionDetailView[] = DEMO_QUESTIONS.map((q
   author: q.author,
   createdAt: q.createdAt,
   discordUrl: q.discordUrl,
+  discordDeleted: q.discordDeleted,
   messages: QUESTION_MESSAGES[q.id] ?? [],
   canReply: q.status !== "RESOLVED",
   canResolve: q.status !== "RESOLVED" && q.author === DEMO_PLAYER.name,
   canPin: false,
+  canDelete: false,
 }));
 
 /** Admin › FAQ: the forum is wired, one question is still unanswered. */

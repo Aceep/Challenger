@@ -4,6 +4,7 @@ import { Flash } from "@/components/Flash";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { StatusPill, type FaqStatus } from "./FaqListView";
 import { ResolveQuestionButton } from "./ResolveQuestionButton";
+import { DeleteQuestionButton } from "./DeleteQuestionButton";
 
 export type QuestionMessageRow = {
   id: string;
@@ -24,11 +25,15 @@ export type QuestionDetailView = {
   author: string;
   createdAt: Date;
   discordUrl: string | null;
+  /** The forum thread was deleted on Discord: the question lives on the site only. */
+  discordDeleted: boolean;
   messages: QuestionMessageRow[];
   canReply: boolean;
   /** Author or admin, while the question is not resolved. */
   canResolve: boolean;
   canPin: boolean;
+  /** Admin only. */
+  canDelete: boolean;
 };
 
 export type QuestionViewProps = {
@@ -38,17 +43,19 @@ export type QuestionViewProps = {
   replyAction: (formData: FormData) => Promise<void>;
   resolveAction: (formData: FormData) => Promise<void>;
   pinAction: (formData: FormData) => Promise<void>;
+  deleteAction: (formData: FormData) => Promise<void>;
 };
 
 const dateFmt = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
 /** One question and its thread — pure view, reused by /demo. */
-export function QuestionView({ question: q, params, demo, replyAction, resolveAction, pinAction }: QuestionViewProps) {
+export function QuestionView({ question: q, params, demo, replyAction, resolveAction, pinAction, deleteAction }: QuestionViewProps) {
   const base = demo ? "/demo/faq" : "/faq";
 
   return (
     <main className="flex flex-1 flex-col gap-4 p-5">
       <Flash params={params} />
+      {q.discordDeleted && <p className="flash warn">⚠️ Le sujet Discord de cette question a été supprimé : elle ne vit plus que sur le site.</p>}
       <header className="flex flex-col gap-2">
         <Link href={base} className="text-[13px] text-[color:var(--muted)]">
           ← FAQ
@@ -98,7 +105,7 @@ export function QuestionView({ question: q, params, demo, replyAction, resolveAc
           <label className="field">
             Répondre
             <textarea name="body" rows={3} required maxLength={1000} placeholder="Ta réponse…" />
-            <span className="hint">Elle sera publiée ici et dans le sujet Discord.</span>
+            <span className="hint">{q.discordUrl ? "Elle sera publiée ici et dans le sujet Discord." : "Elle sera publiée ici."}</span>
           </label>
           <SubmitButton className="btn" pendingLabel="Envoi…">
             Envoyer la réponse
@@ -119,6 +126,7 @@ export function QuestionView({ question: q, params, demo, replyAction, resolveAc
             </SubmitButton>
           </form>
         )}
+        {q.canDelete && <DeleteQuestionButton questionId={q.id} title={q.title} hasThread={!!q.discordUrl} action={deleteAction} />}
         {q.discordUrl && (
           <a href={q.discordUrl} target="_blank" rel="noreferrer" className="ml-auto text-[13px] underline">
             Voir sur Discord ↗

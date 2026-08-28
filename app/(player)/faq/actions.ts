@@ -2,7 +2,7 @@
 
 import { withFlash } from "@/lib/actions";
 import { getCurrentPlayer } from "@/lib/dal";
-import { askQuestion, pinQuestion, replyToQuestion, resolveQuestion } from "@/lib/services/questions";
+import { askQuestion, deleteQuestion, pinQuestion, replyToQuestion, resolveQuestion } from "@/lib/services/questions";
 
 const field = (f: FormData, k: string) => String(f.get(k) ?? "");
 const paths = (questionId?: string) => ["/faq", "/admin/faq", ...(questionId ? [`/faq/${questionId}`] : [])];
@@ -59,5 +59,20 @@ export async function pinAction(formData: FormData) {
       return pinned ? "Ajoutée aux questions fréquentes." : "Retirée des questions fréquentes.";
     },
     paths(questionId),
+  );
+}
+
+/** Admin only — redirects to the list since the question no longer exists. */
+export async function deleteAction(formData: FormData) {
+  const { user } = await getCurrentPlayer();
+  const questionId = field(formData, "questionId");
+  if (!questionId) return;
+  await withFlash(
+    "/faq",
+    async () => {
+      const r = await deleteQuestion({ userId: user.id, questionId });
+      return r.threadDeleted ? `« ${r.title} » supprimée, sujet Discord inclus.` : `« ${r.title} » supprimée.`;
+    },
+    paths(),
   );
 }
