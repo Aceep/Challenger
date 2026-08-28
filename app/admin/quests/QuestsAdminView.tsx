@@ -1,9 +1,11 @@
 import Link from "next/link";
-import { Card, Eyebrow, KyleEmpty, Pill, ProgressBar } from "@/components/ui";
+import { Card, KyleEmpty, Pill, ProgressBar } from "@/components/ui";
 import { Flash } from "@/components/Flash";
 import { SubmitButton } from "@/components/ui/SubmitButton";
+import { PencilIcon, TrashIcon } from "@/components/ui/icons";
 import type { ActionState } from "@/lib/forms";
-import { QuestForm, type QuestFormValues } from "./QuestForm";
+import type { QuestFormValues } from "./QuestForm";
+import { QuestModal } from "./QuestModal";
 
 /** One team's quest progress, with the readings the admin may attach or detach. */
 export type TeamQuestProgress = {
@@ -30,8 +32,8 @@ export type AdminQuestRow = QuestFormValues & {
   window: string;
   target: string;
   fromStory: boolean;
-  /** Per team: "done" (✅) or "half" (½). */
-  progress: { team: string; state: "done" | "half" }[];
+  /** Per team id: "done" (✅) or "half" (½). Teams absent are not started. */
+  progress: { teamId: string; team: string; state: "done" | "half" }[];
 };
 
 export type QuestsAdminViewProps = {
@@ -39,9 +41,14 @@ export type QuestsAdminViewProps = {
   teams: { id: string; name: string }[];
   hasChallenge: boolean;
   editingId: string | null;
+  /** `?new=1` opens the creation modal. */
+  creating: boolean;
+  /** Number the next quest will get. */
+  nextNumber: number;
   params: Record<string, string | string[] | undefined>;
-  /** Team whose progress is shown below the table (`?team=<id>`). */
+  /** Team whose progress is detailed (`?team=<id>`), with `?quest=<id>` focusing one quest. */
   teamProgress: TeamQuestProgress | null;
+  selectedQuestId: string | null;
   demo?: boolean;
   saveQuestAction: (prev: ActionState, formData: FormData) => Promise<ActionState>;
   deleteQuestAction: (formData: FormData) => Promise<void>;
@@ -55,8 +62,11 @@ export function QuestsAdminView({
   teams,
   hasChallenge,
   editingId,
+  creating,
+  nextNumber,
   params,
   teamProgress,
+  selectedQuestId,
   demo,
   saveQuestAction,
   deleteQuestAction,
@@ -65,14 +75,18 @@ export function QuestsAdminView({
 }: QuestsAdminViewProps) {
   const base = demo ? "/demo/admin/quests" : "/admin/quests";
   const editing = quests.find((q) => q.id === editingId);
+  const focusedQuest = teamProgress?.quests.find((q) => q.id === selectedQuestId) ?? null;
 
   return (
     <>
       <div className="topline">
         <h1>Quêtes</h1>
-        <span className="text-[13.5px] text-[color:var(--muted)]">
-          Collectives : une équipe valide une quête avec un roman, ou deux graphiques.
-        </span>
+        <span className="text-[13.5px] text-[color:var(--muted)]">Collectives : une équipe valide une quête avec un roman, ou deux graphiques.</span>
+        {hasChallenge && (
+          <Link href={`${base}?new=1`} className="btn small ml-auto">
+            + Nouvelle quête
+          </Link>
+        )}
       </div>
       <Flash params={params} />
 
@@ -89,7 +103,11 @@ export function QuestsAdminView({
                   <th className="text-right">Points</th>
                   <th>Fenêtre</th>
                   <th>Cible</th>
-                  <th>Validée par</th>
+                  {teams.map((t) => (
+                    <th key={t.id} className="text-center">
+                      {t.name}
+                    </th>
+                  ))}
                   <th />
                 </tr>
               </thead>
@@ -103,24 +121,34 @@ export function QuestsAdminView({
                     <td className="num text-right">{q.points}</td>
                     <td>{q.window}</td>
                     <td>{q.target}</td>
-                    <td>
-                      {q.progress.length === 0
-                        ? "—"
-                        : q.progress.map((p) => (
-                            <span key={p.team} className="mr-2 whitespace-nowrap">
-                              {p.team} {p.state === "done" ? "✅" : <Pill tone="wait">½</Pill>}
-                            </span>
-                          ))}
-                    </td>
+                    {teams.map((t) => {
+                      const st = q.progress.find((p) => p.teamId === t.id)?.state ?? "none";
+                      const focused = teamProgress?.teamId === t.id && selectedQuestId === q.id;
+                      return (
+                        <td key={t.id} className="text-center">
+                          <Link
+                            href={`${base}?team=${t.id}&quest=${q.id}`}
+                            scroll={false}
+                            className={`progress-cell ${st} ${focused ? "focused" : ""}`}
+                            title={`${t.name} — ${st === "done" ? "validée" : st === "half" ? "à moitié (½)" : "pas commencée"} · voir le détail`}
+                          >
+                            {st === "done" ? "✅" : st === "half" ? "½" : "—"}
+                          </Link>
+                        </td>
+                      );
+                    })}
                     <td className="whitespace-nowrap">
-                      <Link href={`${base}?edit=${q.id}`} className="underline">
-                        Modifier
-                      </Link>{" "}
-                      ·{" "}
-                      <form action={deleteQuestAction} className="inline">
-                        <input type="hidden" name="questId" value={q.id} />
-                        <button className="text-[color:var(--brick)] underline">Supprimer</button>
-                      </form>
+                      <span className="inline-flex gap-1.5">
+                        <Link href={`${base}?edit=${q.id}`} scroll={false} className="icon-btn" title="Modifier" aria-label={`Modifier la quête #${q.number}`}>
+                          <PencilIcon />
+                        </Link>
+                        <form action={deleteQuestAction} className="inline">
+                          <input type="hidden" name="questId" value={q.id} />
+                          <button className="icon-btn danger" title="Supprimer" aria-label={`Supprimer la quête #${q.number}`}>
+                            <TrashIcon />
+                          </button>
+                        </form>
+                      </span>
                     </td>
                   </tr>
                 ))}
@@ -128,108 +156,72 @@ export function QuestsAdminView({
             </table>
           </Card>
 
-          {editing ? (
-            <QuestForm quest={editing} teams={teams} action={saveQuestAction} closeHref={base} />
-          ) : (
-            <QuestForm teams={teams} action={saveQuestAction} />
-          )}
+          <p className="text-[13px] text-[color:var(--muted)]">
+            ✅ validée · ½ une moitié posée · — pas commencée. Clique une case pour voir les lectures rattachées et corriger.
+          </p>
 
-          <section className="flex flex-col gap-4">
-            <div className="topline">
-              <h2>Avancement par équipe</h2>
-              <span className="text-[13.5px] text-[color:var(--muted)]">
-                Rattache ou détache une lecture pour corriger une quête. La validation et les points sont recalculés.
-              </span>
-            </div>
+          {(creating || editing) && <QuestModal quest={editing} nextNumber={nextNumber} teams={teams} base={base} action={saveQuestAction} />}
 
-            <Card>
-              <form method="get" action={base} className="flex flex-wrap items-end gap-4">
-                <label className="field max-w-xs flex-1">
-                  Équipe
-                  <select name="team" defaultValue={teamProgress?.teamId ?? ""}>
-                    {teams.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <button className="btn small">Afficher l&apos;avancement</button>
-              </form>
-            </Card>
-
-            {!teamProgress ? (
-              <KyleEmpty>Crée une équipe pour suivre ses quêtes.</KyleEmpty>
-            ) : teamProgress.quests.length === 0 ? (
-              <KyleEmpty>Aucune quête ne concerne {teamProgress.teamName}.</KyleEmpty>
-            ) : (
-              <ul className="list">
-                {teamProgress.quests.map((q) => (
-                  <li key={q.id}>
-                    <Card className="quest">
-                      <div className="head">
-                        <p className="n">
-                          <span className="no">#{q.number}</span>
-                          {q.title}
-                        </p>
-                        {q.done ? <Pill tone="ok">validée</Pill> : q.progress > 0 ? <Pill tone="wait">½</Pill> : !q.open ? <Pill tone="type">fermée</Pill> : null}
-                      </div>
-                      <ProgressBar ratio={q.progress} half={q.progress > 0 && q.progress < 1} />
-                      {q.linkedBooks.length > 0 ? (
-                        <ul className="flex flex-col gap-1 text-[13px]">
-                          {q.linkedBooks.map((b) => (
-                            <li key={b.id} className="flex items-center justify-between gap-2">
-                              <span className="min-w-0 truncate">
-                                {b.owner} — <strong>{b.title}</strong> {b.type === "GRAPHIQUE" && <Pill tone="wait">½</Pill>}
-                              </span>
-                              <form action={detachQuestBookAction}>
-                                <input type="hidden" name="bookId" value={b.id} />
-                                <button type="submit" className="text-xs text-[color:var(--brick)] underline">
-                                  Retirer
-                                </button>
-                              </form>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="text-xs text-[color:var(--muted)]">{q.points} pts · aucune lecture rattachée.</p>
-                      )}
-                      {!q.done && teamProgress.freeBooks.length > 0 && (
-                        <form action={attachQuestBookAction} className="flex flex-wrap items-end gap-2">
-                          <input type="hidden" name="questId" value={q.id} />
-                          <label className="field min-w-0 flex-1">
-                            Rattacher une lecture
-                            <select name="bookId" required defaultValue="">
-                              <option value="" disabled>
-                                Choisir une lecture…
-                              </option>
-                              {teamProgress.freeBooks.map((b) => (
-                                <option key={b.id} value={b.id}>
-                                  {b.label}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                          <SubmitButton className="btn small" pendingLabel="…">
-                            Rattacher
+          {teamProgress && focusedQuest && (
+            <section className="flex flex-col gap-3">
+              <div className="topline">
+                <h2>
+                  #{focusedQuest.number} — {focusedQuest.title} · {teamProgress.teamName}
+                </h2>
+                {focusedQuest.done ? <Pill tone="ok">validée</Pill> : focusedQuest.progress > 0 ? <Pill tone="wait">½ — en attente de la seconde moitié</Pill> : !focusedQuest.open ? <Pill tone="type">fermée</Pill> : <Pill tone="type">pas commencée</Pill>}
+                <Link href={base} scroll={false} className="ml-auto text-[13px] underline">
+                  Fermer
+                </Link>
+              </div>
+              <Card className="quest" style={{ border: "1.5px solid var(--kyle-deep)" }}>
+                <ProgressBar ratio={focusedQuest.progress} half={focusedQuest.progress > 0 && focusedQuest.progress < 1} />
+                {focusedQuest.linkedBooks.length > 0 ? (
+                  <ul className="flex flex-col gap-1.5 text-[14px]">
+                    {focusedQuest.linkedBooks.map((b) => (
+                      <li key={b.id} className="flex items-center justify-between gap-2">
+                        <span className="min-w-0 truncate">
+                          {b.owner} — <strong>{b.title}</strong> {b.type === "GRAPHIQUE" && <Pill tone="wait">½</Pill>}
+                        </span>
+                        <form action={detachQuestBookAction}>
+                          <input type="hidden" name="bookId" value={b.id} />
+                          <SubmitButton className="btn small danger" pendingLabel="…">
+                            Retirer
                           </SubmitButton>
                         </form>
-                      )}
-                    </Card>
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            {teamProgress && teamProgress.freeBooks.length === 0 && (
-              <div className="flex flex-col gap-1">
-                <Eyebrow>Lectures disponibles</Eyebrow>
-                <p className="text-[13px] text-[color:var(--muted)]">
-                  Toutes les lectures de {teamProgress.teamName} sont déjà rattachées à une quête.
-                </p>
-              </div>
-            )}
-          </section>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-[13px] text-[color:var(--muted)]">Aucune lecture rattachée pour {teamProgress.teamName}.</p>
+                )}
+                {!focusedQuest.done &&
+                  (teamProgress.freeBooks.length > 0 ? (
+                    <form action={attachQuestBookAction} className="flex flex-wrap items-end gap-2 border-t border-[color:var(--line)] pt-3">
+                      <input type="hidden" name="questId" value={focusedQuest.id} />
+                      <label className="field min-w-0 flex-1">
+                        Rattacher une lecture de {teamProgress.teamName}
+                        <select name="bookId" required defaultValue="">
+                          <option value="" disabled>
+                            Choisir une lecture…
+                          </option>
+                          {teamProgress.freeBooks.map((b) => (
+                            <option key={b.id} value={b.id}>
+                              {b.label}
+                            </option>
+                          ))}
+                        </select>
+                        <span className="hint">Seules les lectures sans quête apparaissent. La validation et les points sont recalculés.</span>
+                      </label>
+                      <SubmitButton className="btn small" pendingLabel="…">
+                        Rattacher
+                      </SubmitButton>
+                    </form>
+                  ) : (
+                    <p className="text-[13px] text-[color:var(--muted)]">Toutes les lectures de {teamProgress.teamName} sont déjà rattachées à une quête.</p>
+                  ))}
+              </Card>
+            </section>
+          )}
         </>
       )}
     </>

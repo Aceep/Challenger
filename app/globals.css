@@ -1316,3 +1316,56 @@ button[aria-busy="true"] {
 @media (prefers-reduced-motion: reduce) {
   .toast, .kyle-react.hop, .kyle-react.shake, .cell.pop { animation: none; }
 }
+
+/* --- spacing pass: one scale (8 / 12 / 16 / 20 / 24 / 32), more air ------------ */
+.card { padding: 20px; }
+.card.book { padding: 0; }
+.kpi { padding: 20px 22px; }
+.score { padding: 22px; }
+.data-table th { padding: 12px 14px; }
+.data-table td { padding: 14px; }
+.quest, .rank, .member { gap: 10px; }
+.topline { gap: 16px; padding: 4px 0 6px; }
+.topline h1, main > header h1, main > div:first-child h1 { line-height: 1.15; }
+main > header, main > div:first-child { padding: 4px 0 6px; }
+.field { gap: 6px; }
+.form-grid { gap: 16px; }
+.desk main, .player-shell main { gap: 24px; }
+.phone-pad, .player-shell main { padding-top: 24px; }
+@media (max-width: 1023px) {
+  main.flex-1 { padding: 24px 20px 32px; gap: 20px; }
+}
+.bottomnav { padding: 10px 6px calc(12px + env(safe-area-inset-bottom)); box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.08); }
+.bottomnav a, .bottomnav button { gap: 4px; padding: 6px 0; }
+.rail { padding: 24px 14px; gap: 6px; box-shadow: 4px 0 24px rgba(0, 0, 0, 0.06); }
+.rail a { padding: 10px 14px; }
+.rail .group { padding: 18px 14px 6px; }
+@media (min-width: 1024px) {
+  .player-shell .bottomnav { box-shadow: 4px 0 24px rgba(0, 0, 0, 0.06); padding: 32px 14px; gap: 6px; }
+  .player-shell .bottomnav a, .player-shell .bottomnav button { padding: 11px 14px; }
+}
+:root[data-theme="dark"] .bottomnav, :root[data-theme="dark"] .rail { box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35); }
+:root[data-theme="dark"] .rail, :root[data-theme="dark"] .player-shell .bottomnav { box-shadow: 4px 0 24px rgba(0, 0, 0, 0.35); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .bottomnav { box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35); }
+  :root:not([data-theme="light"]) .rail, :root:not([data-theme="light"]) .player-shell .bottomnav { box-shadow: 4px 0 24px rgba(0, 0, 0, 0.35); }
+}
+
+/* quest progress matrix */
+.progress-cell {
+  display: inline-grid;
+  place-items: center;
+  min-width: 36px;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 8px;
+  font-weight: 800;
+  text-decoration: none;
+  border: 1.5px solid var(--line);
+  color: var(--muted);
+  background: var(--surface);
+}
+.progress-cell.done { background: var(--olive-soft); color: var(--olive); border-color: transparent; }
+.progress-cell.half { background: var(--hi); color: var(--ink); border-color: var(--kyle-deep); }
+.progress-cell.focused { outline: 2px solid var(--kyle-deep); outline-offset: 2px; }
+.progress-cell:hover { border-color: var(--kyle-deep); }

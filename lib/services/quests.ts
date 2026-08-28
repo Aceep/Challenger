@@ -44,8 +44,11 @@ export function createQuest(challengeId: string, input: QuestInput) {
   });
 }
 
+/** The number is assigned once at creation and never edited. */
 export function updateQuest(id: string, input: QuestInput) {
-  return prisma.quest.update({ where: { id }, data: { ...input, ...(input.number === undefined && { number: undefined }) } });
+  const { number: _ignored, ...data } = input;
+  void _ignored;
+  return prisma.quest.update({ where: { id }, data });
 }
 
 export function deleteQuest(id: string) {

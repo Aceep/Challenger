@@ -54,13 +54,10 @@ async function adminActor(): Promise<BookActor> {
   return { id: admin.id, role: "ADMIN", teamId: null, isCaptain: false };
 }
 
-/** Back to the progress of the team being supervised. */
-const progressPath = (teamId: string) => (teamId ? `/admin/quests?team=${encodeURIComponent(teamId)}` : "/admin/quests");
-
-/** Attaches (or moves) a reading of the team to a quest, as an admin. Bind `teamId`. */
-export async function attachQuestBookAction(teamId: string, formData: FormData) {
+/** Attaches (or moves) a reading of the team to a quest, as an admin. Bind the page to return to. */
+export async function attachQuestBookAction(returnTo: string, formData: FormData) {
   const actor = await adminActor();
-  const path = progressPath(teamId);
+  const path = returnTo || "/admin/quests";
   const questId = String(formData.get("questId") ?? "");
   const bookId = String(formData.get("bookId") ?? "");
   await withFlash(path, async () => {
@@ -70,9 +67,9 @@ export async function attachQuestBookAction(teamId: string, formData: FormData) 
   }, REVALIDATE_PROGRESS);
 }
 
-export async function detachQuestBookAction(teamId: string, formData: FormData) {
+export async function detachQuestBookAction(returnTo: string, formData: FormData) {
   const actor = await adminActor();
-  const path = progressPath(teamId);
+  const path = returnTo || "/admin/quests";
   const bookId = String(formData.get("bookId") ?? "");
   await withFlash(path, async () => {
     if (!bookId) return;
