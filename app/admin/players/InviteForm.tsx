@@ -34,7 +34,7 @@ export function InviteForm({
         Rôle
         <select name="role" defaultValue="PLAYER">
           <option value="PLAYER">Joueur·euse</option>
-          <option value="ADMIN">Admin</option>
+          <option value="ORGANIZER">Organisateur·ice</option>
         </select>
       </label>
       {state?.error && <p className="flash err">⚠️ {state.error}</p>}

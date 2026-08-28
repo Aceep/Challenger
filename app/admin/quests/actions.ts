@@ -5,7 +5,7 @@ import { userMessage } from "@/lib/errors";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { announceQuest } from "@/lib/discord/events";
-import { getActiveChallenge, requireAdmin } from "@/lib/dal";
+import { requireOrganizer } from "@/lib/dal";
 import { parseForm, type ActionState } from "@/lib/forms";
 import { createQuest, deleteQuest, questSchema, updateQuest } from "@/lib/services/quests";
 import { describeResult, updateBook, type BookActor } from "@/lib/services/books";
@@ -19,9 +19,7 @@ function refresh() {
 }
 
 export async function saveQuestAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireAdmin();
-  const challenge = await getActiveChallenge();
-  if (!challenge) return { error: "Aucun défi actif." };
+  const { challenge } = await requireOrganizer();
   const id = String(formData.get("id") ?? "") || null;
   formData.delete("id");
   const parsed = parseForm(questSchema, formData);
@@ -40,7 +38,7 @@ export async function saveQuestAction(_prev: ActionState, formData: FormData): P
 }
 
 export async function deleteQuestAction(formData: FormData) {
-  await requireAdmin();
+  await requireOrganizer();
   const id = String(formData.get("questId") ?? "");
   await withFlash("/admin/quests", async () => {
     if (id) await deleteQuest(id);
@@ -48,10 +46,10 @@ export async function deleteQuestAction(formData: FormData) {
   }, REVALIDATE);
 }
 
-/** An admin acts for the whole challenge: no team, no captaincy, no Sunday window. */
+/** An organiser acts for the whole challenge: no team, no captaincy, no Sunday window. */
 async function adminActor(): Promise<BookActor> {
-  const admin = await requireAdmin();
-  return { id: admin.id, role: "ADMIN", teamId: null, isCaptain: false };
+  const { user, challenge } = await requireOrganizer();
+  return { id: user.id, role: "ORGANIZER", challengeId: challenge.id, teamId: null, isCaptain: false };
 }
 
 /** Attaches (or moves) a reading of the team to a quest, as an admin. Bind the page to return to. */

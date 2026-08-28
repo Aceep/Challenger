@@ -3,7 +3,7 @@
 import { withFlash } from "@/lib/actions";
 import { userMessage } from "@/lib/errors";
 import { revalidatePath } from "next/cache";
-import { getActiveChallenge, requireAdmin } from "@/lib/dal";
+import { requireOrganizer } from "@/lib/dal";
 import { parseForm, type ActionState } from "@/lib/forms";
 import { createGrid, deleteGrid, gridSchema, moveGrid, updateGrid } from "@/lib/services/bingo";
 import { describeResult, updateBook, type BookActor } from "@/lib/services/books";
@@ -17,9 +17,7 @@ function refresh() {
 }
 
 export async function saveGridAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireAdmin();
-  const challenge = await getActiveChallenge();
-  if (!challenge) return { error: "Aucun défi actif." };
+  const { challenge } = await requireOrganizer();
   const gridId = String(formData.get("gridId") ?? "") || null;
   formData.delete("gridId");
   const parsed = parseForm(gridSchema, formData);
@@ -35,7 +33,7 @@ export async function saveGridAction(_prev: ActionState, formData: FormData): Pr
 }
 
 export async function moveGridAction(formData: FormData) {
-  await requireAdmin();
+  await requireOrganizer();
   const gridId = String(formData.get("gridId") ?? "");
   const direction = formData.get("direction") === "up" ? "up" : "down";
   await withFlash("/admin/bingo", async () => {
@@ -45,7 +43,7 @@ export async function moveGridAction(formData: FormData) {
 }
 
 export async function deleteGridAction(formData: FormData) {
-  await requireAdmin();
+  await requireOrganizer();
   const gridId = String(formData.get("gridId") ?? "");
   await withFlash("/admin/bingo", async () => {
     if (gridId) await deleteGrid(gridId);
@@ -53,10 +51,10 @@ export async function deleteGridAction(formData: FormData) {
   }, REVALIDATE);
 }
 
-/** An admin acts for the whole challenge: no team, no captaincy, no Sunday window. */
+/** An organiser acts for the whole challenge: no team, no captaincy, no Sunday window. */
 async function adminActor(): Promise<BookActor> {
-  const admin = await requireAdmin();
-  return { id: admin.id, role: "ADMIN", teamId: null, isCaptain: false };
+  const { user, challenge } = await requireOrganizer();
+  return { id: user.id, role: "ORGANIZER", challengeId: challenge.id, teamId: null, isCaptain: false };
 }
 
 /** Back to the board of the team being supervised. */

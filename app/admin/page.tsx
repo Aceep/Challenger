@@ -1,4 +1,4 @@
-import { getActiveChallenge, requireAdmin } from "@/lib/dal";
+import { requireOrganizer } from "@/lib/dal";
 import { prisma } from "@/lib/db";
 import { teamDiscordReady } from "@/lib/discord/permissions";
 import { cellLabel } from "@/lib/services/bingo";
@@ -28,17 +28,19 @@ function inWords(target: Date, now: Date) {
 }
 
 export default async function AdminHome() {
-  await requireAdmin();
+  const { challenge } = await requireOrganizer();
   const now = new Date();
-  const challenge = await getActiveChallenge();
   const since = new Date(now.getTime() - WEEK);
+  // Every counter is scoped to this edition: another challenge never leaks here.
+  const ofChallenge = { team: { challengeId: challenge.id } };
 
   const [books, recentCount, players, activePlayers, recent, lastTick, weekly] = await Promise.all([
-    prisma.book.count({ where: { deletedAt: null, ...(challenge ? { team: { challengeId: challenge.id } } : {}) } }),
-    prisma.book.count({ where: { deletedAt: null, createdAt: { gte: since } } }),
-    prisma.user.count(),
-    prisma.book.findMany({ where: { createdAt: { gte: since } }, distinct: ["userId"], select: { userId: true } }),
+    prisma.book.count({ where: { deletedAt: null, ...ofChallenge } }),
+    prisma.book.count({ where: { deletedAt: null, createdAt: { gte: since }, ...ofChallenge } }),
+    prisma.challengeMember.count({ where: { challengeId: challenge.id } }),
+    prisma.book.findMany({ where: { createdAt: { gte: since }, ...ofChallenge }, distinct: ["userId"], select: { userId: true } }),
     prisma.book.findMany({
+      where: ofChallenge,
       orderBy: { updatedAt: "desc" },
       take: 8,
       include: {
@@ -52,21 +54,22 @@ export default async function AdminHome() {
     prisma.botEvent.findFirst({ where: { key: { startsWith: "weekly:" } }, orderBy: { createdAt: "desc" } }),
   ]);
 
-  const [rows, ties, dormant, pointSum, discordTeams, openQuestions] = challenge
-    ? await Promise.all([
-        getLeaderboard(challenge.id),
-        tiedVotes(now),
-        dormantTeams(7, now),
-        prisma.pointEvent.aggregate({ where: { createdAt: { gte: challenge.startAt, lte: challenge.endAt } }, _sum: { amount: true } }),
-        prisma.team.findMany({ where: { challengeId: challenge.id }, select: { discordRoleId: true, discordChannelId: true, discordLibraryChannelId: true } }),
-        openQuestionsCount(challenge.id),
-      ])
-    : [[], [], [], null, [], 0];
+  const [rows, ties, dormant, pointSum, discordTeams, openQuestions] = await Promise.all([
+    getLeaderboard(challenge.id),
+    tiedVotes(now),
+    dormantTeams(7, now),
+    prisma.pointEvent.aggregate({
+      where: { createdAt: { gte: challenge.startAt, lte: challenge.endAt }, team: { challengeId: challenge.id } },
+      _sum: { amount: true },
+    }),
+    prisma.team.findMany({ where: { challengeId: challenge.id }, select: { discordRoleId: true, discordChannelId: true, discordLibraryChannelId: true } }),
+    openQuestionsCount(challenge.id),
+  ]);
 
   const discordMissing = discordTeams.filter((t) => !teamDiscordReady(t)).length;
 
   const todo: DashboardViewProps["todo"] = [
-    ...(challenge && discordMissing > 0
+    ...(discordMissing > 0
       ? [
           {
             id: "discord",
@@ -116,12 +119,12 @@ export default async function AdminHome() {
 
   const nextSunday = parisInstant(dueSundayKey(now), 20);
   const target = nextSunday > now ? nextSunday : new Date(nextSunday.getTime() + WEEK);
-  const weeks = challenge ? Math.max(1, Math.ceil((challenge.endAt.getTime() - challenge.startAt.getTime()) / WEEK)) : 0;
-  const week = challenge ? Math.min(weeks, Math.max(1, Math.ceil((now.getTime() - challenge.startAt.getTime()) / WEEK))) : 0;
+  const weeks = Math.max(1, Math.ceil((challenge.endAt.getTime() - challenge.startAt.getTime()) / WEEK));
+  const week = Math.min(weeks, Math.max(1, Math.ceil((now.getTime() - challenge.startAt.getTime()) / WEEK)));
 
   return (
     <DashboardView
-      challenge={challenge ? { name: challenge.name, color: challenge.color, week, weeks } : null}
+      challenge={{ name: challenge.name, color: challenge.color, week, weeks }}
       kpis={{
         books,
         booksLast7: recentCount,

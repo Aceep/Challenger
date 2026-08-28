@@ -1,7 +1,7 @@
 "use server";
 
 import { withFlash } from "@/lib/actions";
-import { requireAdmin } from "@/lib/dal";
+import { requireOrganizer } from "@/lib/dal";
 import { GameError } from "@/lib/errors";
 import { parseForm } from "@/lib/forms";
 import { bookPatchSchema, deleteBook, describeResult, updateBook, type BookActor } from "@/lib/services/books";
@@ -9,10 +9,10 @@ import { bookPatchSchema, deleteBook, describeResult, updateBook, type BookActor
 /** Every player screen that shows points, links or the ledger. */
 const REVALIDATE = ["/admin/readings", "/admin", "/books", "/bingo", "/quests", "/team", "/home", "/leaderboard"];
 
-/** An admin acts for the whole challenge: no team, no captaincy, no Sunday window. */
+/** An organiser acts for the whole challenge: no team, no captaincy, no Sunday window. */
 async function adminActor(): Promise<BookActor> {
-  const admin = await requireAdmin();
-  return { id: admin.id, role: "ADMIN", teamId: null, isCaptain: false };
+  const { user, challenge } = await requireOrganizer();
+  return { id: user.id, role: "ORGANIZER", challengeId: challenge.id, teamId: null, isCaptain: false };
 }
 
 /** Keeps the current filters (`?team=…&q=…`) when redirecting back to the table. */

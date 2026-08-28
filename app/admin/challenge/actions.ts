@@ -3,19 +3,20 @@
 import { withFlash } from "@/lib/actions";
 import { GameError, userMessage } from "@/lib/errors";
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/dal";
+import { requireOrganizer, requireUser } from "@/lib/dal";
 import { parseForm, type ActionState } from "@/lib/forms";
 import { challengeSchema, upsertChallenge } from "@/lib/services/admin";
 import { setupGuild } from "@/lib/services/discord-setup";
 
 export async function saveChallengeAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireAdmin();
   const id = String(formData.get("id") ?? "") || null;
+  // Editing an edition needs to organise *that* edition; creating one only needs an account.
+  const { user } = id ? await requireOrganizer(id) : await requireUser().then((u) => ({ user: u }));
   formData.delete("id");
   const parsed = parseForm(challengeSchema, formData);
   if ("error" in parsed) return { error: parsed.error };
   try {
-    await upsertChallenge(id, parsed.data);
+    await upsertChallenge(id, parsed.data, user.id);
   } catch (e) {
     return { error: userMessage(e) };
   }
@@ -30,8 +31,8 @@ export async function saveChallengeAction(_prev: ActionState, formData: FormData
  * Resumable — a second run only reports what was already in place.
  */
 export async function setupDiscordAction(formData: FormData) {
-  await requireAdmin();
   const challengeId = String(formData.get("challengeId") ?? "");
+  if (challengeId) await requireOrganizer(challengeId);
   await withFlash(
     "/admin/challenge",
     async () => {

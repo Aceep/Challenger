@@ -1,4 +1,4 @@
-import { getActiveChallenge, requireAdmin } from "@/lib/dal";
+import { requireOrganizer } from "@/lib/dal";
 import { prisma } from "@/lib/db";
 import { getReadingAdmin, listReadingsAdmin } from "@/lib/services/admin-readings";
 import { cellChoices, questChoices } from "@/lib/services/autocomplete";
@@ -10,9 +10,8 @@ const updatedFmt = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "sh
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
 
 export default async function AdminReadingsPage({ searchParams }: PageProps<"/admin/readings">) {
-  await requireAdmin();
+  const { challenge } = await requireOrganizer();
   const params = await searchParams;
-  const challenge = await getActiveChallenge();
   const actions = { updateReadingAction, deleteReadingAction };
   const filters = { teamId: one(params.team), userId: one(params.user), q: one(params.q), deleted: one(params.deleted) === "1" };
 
@@ -39,7 +38,7 @@ export default async function AdminReadingsPage({ searchParams }: PageProps<"/ad
     listReadingsAdmin(challenge.id, { ...filters, page }),
     prisma.team.findMany({ where: { challengeId: challenge.id }, orderBy: { name: "asc" }, select: { id: true, name: true, color: true } }),
     prisma.teamMember.findMany({
-      where: { team: { challengeId: challenge.id } },
+      where: { challengeId: challenge.id },
       orderBy: { user: { name: "asc" } },
       select: { user: { select: { id: true, name: true } } },
     }),
