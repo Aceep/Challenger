@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { Card, Eyebrow, KyleEmpty, Pill } from "@/components/ui";
+import { Card, KyleEmpty, Pill } from "@/components/ui";
 import { Flash } from "@/components/Flash";
 import { fmtPoints } from "@/lib/format";
 import type { ActionState } from "@/lib/forms";
+import { TeamEditModal } from "./TeamEditModal";
 import { TeamForm } from "./TeamForm";
 
 export type AdminTeamRow = {
@@ -23,7 +24,7 @@ export type AdminTeamRow = {
 export type TeamsViewProps = {
   teams: AdminTeamRow[];
   hasChallenge: boolean;
-  /** Team currently open in the edit card (`?edit=<id>`). */
+  /** Team currently open in the edit modal (`?edit=<id>`). */
   editingId: string | null;
   params: Record<string, string | string[] | undefined>;
   demo?: boolean;
@@ -101,81 +102,17 @@ export function TeamsView({
             </table>
           </Card>
 
-          {editing ? (
-            <Card className="form-grid" style={{ border: "1.5px solid var(--kyle-deep)" }}>
-              <Eyebrow className="wide">Modifier · {editing.name}</Eyebrow>
-              <form action={updateTeamAction} className="wide form-grid">
-                <input type="hidden" name="teamId" value={editing.id} />
-                <label className="field">
-                  Nom
-                  <input name="name" defaultValue={editing.name} required />
-                </label>
-                <label className="field">
-                  Couleur
-                  <input name="color" type="color" defaultValue={editing.color} />
-                </label>
-                <label className="field">
-                  Salon aventure (id)
-                  <input name="discordChannelId" defaultValue={editing.adventureChannel ?? ""} placeholder="id du salon #aventure" />
-                </label>
-                <label className="field">
-                  Salon librairie (id)
-                  <input
-                    name="discordLibraryChannelId"
-                    defaultValue={editing.libraryChannel ?? ""}
-                    placeholder="id du salon #librairie"
-                    style={editing.libraryChannel ? undefined : { borderColor: "var(--brick)" }}
-                  />
-                  {!editing.libraryChannel && (
-                    <span className="hint" style={{ color: "var(--brick)" }}>
-                      Sans ce salon, /ajouter-un-livre est refusé pour cette équipe.
-                    </span>
-                  )}
-                </label>
-                <div className="wide flex flex-wrap items-center gap-2.5">
-                  <button className="btn">Enregistrer</button>
-                  <Link href={base} className="btn ghost">
-                    Fermer
-                  </Link>
-                </div>
-              </form>
+          <TeamForm action={createTeamAction} />
 
-              <form action={setCaptainAction} className="field">
-                <input type="hidden" name="teamId" value={editing.id} />
-                <span>Capitaine</span>
-                <select name="userId" defaultValue={editing.captainId}>
-                  <option value="">— aucun·e —</option>
-                  {editing.members.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name}
-                    </option>
-                  ))}
-                </select>
-                <button className="btn small ghost mt-1 self-start">Enregistrer le capitaine</button>
-              </form>
-
-              <form action={setDeputyAction} className="field">
-                <input type="hidden" name="teamId" value={editing.id} />
-                <span>Adjoint·e</span>
-                <select name="userId" defaultValue={editing.deputyId}>
-                  <option value="">— aucun·e —</option>
-                  {editing.members.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name}
-                    </option>
-                  ))}
-                </select>
-                <span className="hint">Le·la capitaine peut aussi le·la nommer depuis sa page d&apos;équipe.</span>
-                <button className="btn small ghost mt-1 self-start">Enregistrer l&apos;adjoint·e</button>
-              </form>
-
-              <form action={deleteTeamAction} className="wide flex justify-end">
-                <input type="hidden" name="teamId" value={editing.id} />
-                <button className="btn danger">Supprimer l&apos;équipe</button>
-              </form>
-            </Card>
-          ) : (
-            <TeamForm action={createTeamAction} />
+          {editing && (
+            <TeamEditModal
+              team={editing}
+              base={base}
+              updateTeamAction={updateTeamAction}
+              deleteTeamAction={deleteTeamAction}
+              setCaptainAction={setCaptainAction}
+              setDeputyAction={setDeputyAction}
+            />
           )}
         </>
       )}
