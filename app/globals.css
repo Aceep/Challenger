@@ -86,6 +86,12 @@
   --shadow-nav: 0 -8px 24px light-dark(rgba(40, 30, 0, 0.08), rgba(0, 0, 0, 0.35));
   --shadow-rail: 4px 0 24px light-dark(rgba(40, 30, 0, 0.06), rgba(0, 0, 0, 0.35));
 
+  /* Ornaments: a paper grain tile and the hand-drawn stroke under page titles.
+     Both are inline SVG data URIs so nothing extra is fetched. */
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --ink-underline: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 8'%3E%3Cpath d='M2 5.5c18-3 36-3.5 58-3 20 .4 38 1.6 58 .5' fill='none' stroke='%23f5c400' stroke-width='3.2' stroke-linecap='round'/%3E%3C/svg%3E");
+  --check-badge: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7'/%3E%3C/svg%3E");
+
   /* Motion. */
   --dur-fast: 120ms;
   --dur: 160ms;
@@ -155,6 +161,21 @@
     font-size: var(--fs-base);
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
+    position: relative;
+    isolation: isolate;
+  }
+
+  /* Paper grain, site-wide: a fixed 180 px noise tile behind everything. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image: var(--grain);
+    background-size: 180px;
+    opacity: light-dark(0.035, 0.05);
+    mix-blend-mode: overlay;
   }
 
   h1,
@@ -167,11 +188,11 @@
   }
 
   h1 {
-    font-size: 26px;
+    font-size: var(--fs-d3);
   }
 
   h2 {
-    font-size: 20px;
+    font-size: var(--fs-d1);
   }
 
   h3 {
@@ -206,6 +227,96 @@
     font-weight: 700;
   }
 
+  /* Fraunces italic, for the few places where the voice softens: a first name,
+     an author, the « pts » unit, a story kicker. Never on a number. */
+  .accent {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 500;
+    font-variation-settings: "opsz" 18;
+  }
+
+  .meta {
+    font-size: var(--fs-sm);
+    color: var(--muted);
+    line-height: 1.45;
+  }
+  .meta-xs {
+    font-size: var(--fs-xs);
+    color: var(--muted);
+    line-height: 1.35;
+  }
+  .meta strong,
+  .meta-xs strong {
+    color: var(--ink);
+    font-weight: 700;
+  }
+  /* `·`-joined facts, with room to breathe. */
+  .meta.row {
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: var(--sp-3);
+  }
+  .meta.row > span + span::before {
+    content: "·";
+    margin-right: var(--sp-3);
+    opacity: 0.5;
+  }
+
+  .ico {
+    width: 18px;
+    height: 18px;
+    flex: none;
+  }
+  .ico-sm {
+    width: 14px;
+    height: 14px;
+    flex: none;
+  }
+
+  /* --- headings ---------------------------------------------------------- */
+  .page-title {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--sp-4);
+  }
+  .page-title.stack {
+    flex-direction: column;
+    gap: var(--sp-2);
+  }
+  /* The one ornament reserved for h1: a hand-drawn stroke in Kyle's yellow. */
+  .page-title h1::after {
+    content: "";
+    display: block;
+    width: 3.2em;
+    height: 6px;
+    margin-top: 6px;
+    background: var(--ink-underline) no-repeat left / contain;
+  }
+
+  .section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+  }
+  .section-heading {
+    display: flex;
+    align-items: baseline;
+    gap: var(--sp-3);
+  }
+  /* Dotted leader, like a table of contents. */
+  .section-heading::after {
+    content: "";
+    flex: 1;
+    border-top: 1px dotted var(--ink-rule);
+    transform: translateY(-0.25em);
+    order: 1;
+  }
+  .section-heading > .act {
+    order: 2;
+  }
+
   /* --- buttons ----------------------------------------------------------- */
   .btn {
     display: inline-flex;
@@ -215,6 +326,7 @@
     border: 0;
     border-radius: var(--r-md);
     padding: 12px 18px;
+    font-size: var(--fs-base);
     font-weight: 800;
     background: var(--btn);
     color: var(--btn-ink);
@@ -228,17 +340,35 @@
   .btn.ghost {
     background: transparent;
     color: var(--ink);
-    border: var(--bw) solid var(--line);
+    border: var(--bw) solid var(--line-strong);
+    font-weight: 700;
   }
+  /* `.small` is the name the admin screens use; `.sm` is the new one. */
+  .btn.sm,
   .btn.small {
-    padding: 7px 12px;
+    padding: 8px 12px;
     font-size: var(--fs-sm);
     border-radius: var(--r-sm);
   }
+  .btn.lg {
+    padding: 14px 22px;
+    font-size: var(--fs-md);
+  }
   .btn.danger {
     background: transparent;
-    color: var(--brick);
+    color: var(--brick-ink);
     border: var(--bw) solid var(--brick);
+    font-weight: 700;
+  }
+  .btn svg {
+    width: 18px;
+    height: 18px;
+    flex: none;
+  }
+  .btn.sm svg,
+  .btn.small svg {
+    width: 16px;
+    height: 16px;
   }
 
   .icon-btn {
@@ -264,16 +394,26 @@
   }
 
   /* --- surfaces ---------------------------------------------------------- */
+  /* Three tiers so a list row, a panel and a highlight are not the same object:
+     flat = a rule on the paper, raised = a sheet lifted a little, card = a panel. */
   .card {
     background: var(--surface);
     border-radius: var(--r-md);
     padding: var(--sp-5);
     box-shadow: var(--shadow-card);
   }
+  .card.flat {
+    box-shadow: none;
+    border: 1px solid var(--line);
+  }
+  .card.raised {
+    box-shadow: var(--shadow-raised);
+    border: 1px solid var(--line-strong);
+  }
 
   .sheet {
-    border-radius: var(--r-md);
-    padding: 14px;
+    border-radius: var(--r-lg);
+    padding: var(--sp-4);
     background: var(--surface);
     box-shadow: var(--shadow-card);
     border: var(--bw) solid var(--kyle-deep);
@@ -283,6 +423,7 @@
   }
 
   /* --- pills, flashes, textures ------------------------------------------ */
+  /* Soft pastilles for classification (a type, a name). */
   .pill {
     display: inline-flex;
     align-items: center;
@@ -290,42 +431,123 @@
     padding: 3px 9px;
     border-radius: var(--r-pill);
     font-size: var(--fs-xs);
-    font-weight: 700;
+    font-weight: 600;
   }
   .pill.ok {
     background: var(--olive-soft);
-    color: var(--olive);
+    color: var(--olive-ink);
   }
   .pill.wait {
-    background: var(--hi);
+    background-image: repeating-linear-gradient(135deg, var(--hi) 0 6px, transparent 6px 12px);
     color: var(--ink);
   }
   .pill.no {
-    background: color-mix(in srgb, var(--brick) 15%, transparent);
-    color: var(--brick);
+    background: var(--brick-soft);
+    color: var(--brick-ink);
   }
   .pill.type {
     background: var(--surface-2);
     color: var(--muted);
   }
+  .pill svg {
+    flex: none;
+  }
+
+  /* Inked stamps, only for a state: validée, en attente ½, imposée par
+     l'histoire, ex æquo, Vainqueur, Ton vote, vous. */
+  .stamp {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-1);
+    padding: 3px 8px;
+    border-radius: var(--r-xs);
+    border: var(--bw) solid currentColor;
+    font: 600 11px/1.3 var(--font-body);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    transform: rotate(-2deg);
+    box-shadow: inset 0 0 0 2px var(--surface), inset 0 0 0 3px currentColor;
+    background: var(--surface);
+    white-space: nowrap;
+  }
+  .stamp.ok {
+    color: var(--olive-ink);
+  }
+  .stamp.no {
+    color: var(--brick-ink);
+  }
+  .stamp.wait {
+    color: var(--ink);
+    background: repeating-linear-gradient(135deg, var(--hi) 0 5px, var(--surface) 5px 10px);
+    box-shadow: inset 0 0 0 2px var(--surface), inset 0 0 0 3px var(--kyle-deep);
+    border-color: var(--kyle-deep);
+  }
+  .stamp.me {
+    color: var(--ink);
+  }
+  .stamp.type {
+    color: var(--muted);
+  }
+  .stamp.xs {
+    font-size: 10px;
+    padding: 1px 6px;
+  }
 
   .flash {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
     border-radius: var(--r-md);
     padding: 10px 14px;
     font-size: 14px;
     font-weight: 600;
+    border: var(--bw) solid transparent;
+  }
+  .flash svg {
+    flex: none;
   }
   .flash.ok {
     background: var(--olive-soft);
-    color: var(--olive);
+    color: var(--olive-ink);
+    border-color: color-mix(in srgb, var(--olive) 40%, transparent);
   }
   .flash.warn {
     background: var(--hi);
     color: var(--ink);
+    border-color: color-mix(in srgb, var(--kyle-deep) 50%, transparent);
   }
   .flash.err {
     background: var(--brick-soft);
-    color: var(--brick);
+    color: var(--brick-ink);
+    border-color: color-mix(in srgb, var(--brick) 40%, transparent);
+  }
+
+  /* Drawn rank medal. */
+  .medal {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--ink);
+    border: var(--bw) solid var(--line-strong);
+    flex: none;
+  }
+  .medal.m1 {
+    background: var(--kyle);
+    border-color: var(--kyle-deep);
+    color: #1a1a1f;
+  }
+  .medal.m2 {
+    background: var(--surface-2);
+  }
+  .medal.m3 {
+    background: color-mix(in srgb, var(--brick) 70%, var(--kyle));
+    border-color: var(--brick);
+    color: #fff;
   }
 
   .stripes {
@@ -354,7 +576,7 @@
   }
 
   .bar {
-    height: 6px;
+    height: 8px;
     border-radius: var(--r-pill);
     background: var(--surface-2);
     overflow: hidden;
@@ -374,7 +596,7 @@
     flex-direction: column;
     gap: var(--sp-1);
     font-size: var(--fs-sm);
-    font-weight: 700;
+    font-weight: 600;
   }
   .field input,
   .field select,
@@ -432,7 +654,10 @@
     border-radius: var(--r-lg);
     padding: 22px;
     box-shadow: var(--shadow-card);
-    border-top: 5px solid var(--edition);
+    border-top: 4px solid var(--edition);
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-1);
   }
   .score .value {
     font-family: var(--font-display);
@@ -442,25 +667,62 @@
     letter-spacing: -0.02em;
   }
   .score .value small {
-    font-size: var(--fs-d1);
-    font-weight: 700;
-    font-family: var(--font-body);
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 500;
+    font-size: 20px;
     color: var(--muted);
-    margin-left: var(--sp-1);
+    margin-left: var(--sp-2);
   }
 
   .stat2 {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--sp-3);
+  }
+  .stat {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    padding: var(--sp-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-1);
+    min-width: 0;
+  }
+  .stat .v,
+  .stat2 .v {
+    font-family: var(--font-display);
+    font-size: var(--fs-d3);
+    font-weight: 700;
+    line-height: 1.1;
   }
   .stat2 .card {
     padding: 12px 14px;
   }
-  .stat2 .v {
-    font-family: var(--font-display);
-    font-size: 26px;
-    font-weight: 900;
+
+  /* « Cette semaine » — an icon column and one line per thing to do. */
+  .agenda {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .agenda li {
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+    font-size: 14px;
+  }
+  .agenda svg {
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .agenda a {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-color: var(--kyle-deep);
+    text-decoration-thickness: 2px;
   }
 
   /* --- lists: cards of a row share the tallest height, no inner scroll ---- */
@@ -484,69 +746,81 @@
   }
 
   /* --- reading card ------------------------------------------------------ */
+  /* A points plate in the team colour, vertically centred, then the reading
+     itself left-aligned: title, author, facts, what it validates. */
   .book {
     display: grid;
-    grid-template-columns: 56px minmax(0, 1fr);
+    grid-template-columns: 48px minmax(0, 1fr);
     gap: 14px;
-    padding: 0;
-    overflow: hidden;
-    height: 100%;
-    min-height: 118px;
+    padding: 14px;
+    align-items: center;
+    min-width: 0;
   }
   .card.book {
-    padding: 0;
+    padding: 14px;
   }
-  .book .cover {
-    height: 100%;
-    border-radius: 0;
+  .plate {
+    width: 48px;
+    height: 64px;
+    border-radius: 5px;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: var(--fs-base);
+    letter-spacing: -0.01em;
+    position: relative;
+    box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.25);
+  }
+  .plate .half {
+    position: absolute;
+    top: -7px;
+    right: -7px;
+    background: var(--surface);
+    color: var(--ink);
+    border: var(--bw) solid var(--kyle-deep);
+    border-radius: var(--r-xs);
+    font: 700 10px/1 var(--font-body);
+    padding: 3px 4px;
+    transform: rotate(6deg);
   }
   .book .body {
     display: flex;
     flex-direction: column;
-    gap: 3px;
-    padding: 12px 12px 12px 0;
+    gap: var(--sp-1);
     min-width: 0;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-  }
-  .book .head {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
   }
   .book .t {
-    font-weight: 800;
+    font-weight: 700;
     line-height: 1.25;
-  }
-  .book .s {
-    font-size: var(--fs-sm);
-    color: var(--muted);
-  }
-  .book .pts {
-    font-family: var(--font-display);
-    font-weight: 900;
-    font-size: var(--fs-d1);
-    white-space: nowrap;
-    line-height: 1.1;
+    display: flex;
+    gap: var(--sp-2);
+    align-items: center;
+    flex-wrap: wrap;
   }
   .book .links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-2) var(--sp-3);
     font-size: var(--fs-xs);
-    color: var(--olive);
-    font-weight: 700;
+    font-weight: 600;
+    color: var(--olive-ink);
+  }
+  .book .links span {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-1);
   }
   .book .foot {
-    margin-top: var(--sp-2);
     display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: var(--sp-2);
-    width: 100%;
-    padding-top: var(--sp-1);
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: var(--sp-1);
   }
   .book .note {
-    font-size: 11.5px;
+    font-size: var(--fs-xs);
     color: var(--muted);
   }
   .book .note:empty {
@@ -556,17 +830,19 @@
     display: inline-flex;
     gap: var(--sp-1);
     flex: none;
+    margin-left: auto;
   }
 
   /* --- bingo ------------------------------------------------------------- */
   .bingo-grid {
     display: grid;
-    gap: 5px;
+    gap: var(--sp-1);
   }
+  /* A ruled grid, not a stack of floating tiles: border, no shadow. */
   .cell {
     min-height: 92px;
     border-radius: var(--r-sm);
-    padding: 6px 6px 7px;
+    padding: 6px 5px 7px;
     font-size: var(--fs-nav);
     line-height: 1.25;
     display: flex;
@@ -574,8 +850,7 @@
     gap: var(--sp-1);
     overflow: hidden;
     background: var(--surface);
-    box-shadow: var(--shadow-card);
-    border: var(--bw) solid transparent;
+    border: var(--bw) solid var(--line);
     text-align: left;
     color: var(--ink);
     position: relative;
@@ -584,8 +859,8 @@
     position: absolute;
     top: 4px;
     right: 6px;
-    font-size: 9px;
-    font-weight: 800;
+    font-size: 10px;
+    font-weight: 700;
     letter-spacing: 0.04em;
     opacity: 0.55;
   }
@@ -600,7 +875,7 @@
     hyphens: auto;
   }
   .cell .n {
-    font-weight: 800;
+    font-weight: 700;
     margin-top: auto;
     display: flex;
     flex-direction: column;
@@ -613,14 +888,26 @@
     -webkit-line-clamp: 2;
     overflow-wrap: anywhere;
   }
+  /* Validated: olive-soft ground, olive edge, and a drawn check in the corner —
+     the text stays ink, so it reads at 11 px. */
   .cell.done {
-    background: var(--olive);
-    color: #fff;
+    background: var(--olive-soft);
     border-color: var(--olive);
   }
-  .cell.done .p {
-    opacity: 0.75;
+  .cell.done .k {
+    display: none;
   }
+  .cell.done::after {
+    content: "";
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--olive) var(--check-badge) no-repeat center / 11px;
+  }
+  /* Half: the hatching, the app's strongest graphic asset. */
   .cell.half {
     border-color: var(--kyle-deep);
     background-image: repeating-linear-gradient(135deg, var(--hi) 0 5px, transparent 5px 10px);
@@ -643,7 +930,8 @@
     height: 12px;
     border-radius: 3px;
     vertical-align: -2px;
-    margin-right: var(--sp-1);
+    margin-right: 5px;
+    border: 1px solid var(--line);
   }
 
   /* --- quests ------------------------------------------------------------ */
@@ -660,54 +948,101 @@
   }
   .quest .n {
     font-family: var(--font-display);
-    font-weight: 900;
+    font-weight: 700;
     font-size: var(--fs-d1);
+    line-height: 1.2;
   }
   .quest .n .no {
     color: var(--muted);
+    font-style: italic;
     font-weight: 500;
     margin-right: var(--sp-1);
   }
+  /* Imposed by the story: a left rule in the team colour. */
+  .quest.story {
+    border-left: 4px solid var(--team, var(--kyle-deep));
+  }
+  /* Closed or not open yet: the meta greys out, the title stays readable. */
+  .quest.closed .n,
+  .quest.closed .meta {
+    color: var(--muted);
+  }
 
   /* --- story ------------------------------------------------------------- */
+  /* A notebook margin line down the chapter. */
   .chapter {
     font-family: var(--font-display);
     font-size: 16px;
-    line-height: 1.55;
+    line-height: 1.6;
     font-weight: 500;
     white-space: pre-line;
+    border-left: 2px solid var(--kyle);
+    padding-left: var(--sp-4);
   }
 
   .choice {
     display: flex;
     flex-direction: column;
     gap: var(--sp-1);
-    border: var(--bw) solid var(--line);
+    border: var(--bw) solid var(--line-strong);
     border-radius: var(--r-md);
-    padding: 12px 14px;
+    padding: 14px 16px;
     background: var(--surface);
     text-align: left;
     color: var(--ink);
     width: 100%;
+    position: relative;
   }
   .choice.mine {
     border-color: var(--kyle-deep);
     background: var(--hi);
   }
+  .choice.mine .stamp {
+    position: absolute;
+    top: -10px;
+    right: 12px;
+  }
   .choice.locked {
-    opacity: 0.55;
+    color: var(--muted);
+    border-style: dashed;
+  }
+  .choice.locked .l {
+    display: flex;
+    gap: var(--sp-1);
+    align-items: center;
   }
   .choice .l {
-    font-weight: 800;
+    font-weight: 700;
   }
   .choice .e {
     font-size: var(--fs-xs);
-    color: var(--olive);
-    font-weight: 700;
+    color: var(--olive-ink);
+    font-weight: 600;
   }
   .choice .v {
     font-size: var(--fs-xs);
     color: var(--muted);
+  }
+
+  /* Breadcrumb of the chapters already played. */
+  .path {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-1) 10px;
+  }
+  .path li {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-1);
+    font-size: var(--fs-sm);
+    color: var(--muted);
+  }
+  .path li:last-child {
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .path svg {
+    color: var(--line-strong);
   }
 
   /* --- leaderboard, team ------------------------------------------------- */
@@ -726,7 +1061,11 @@
     text-align: center;
   }
   .rank .nm {
-    font-weight: 800;
+    font-weight: 700;
+    display: flex;
+    gap: var(--sp-2);
+    align-items: center;
+    flex-wrap: wrap;
   }
   .rank .sub {
     font-size: var(--fs-xs);
@@ -736,10 +1075,10 @@
     margin-left: auto;
     font-family: var(--font-display);
     font-size: var(--fs-d2);
-    font-weight: 900;
+    font-weight: 700;
   }
   .rank.me {
-    outline: 2px solid var(--kyle-deep);
+    border-color: var(--kyle-deep);
   }
 
   .member {
@@ -749,7 +1088,11 @@
     padding: 10px 12px;
   }
   .member .nm {
-    font-weight: 800;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: var(--sp-1);
+    flex-wrap: wrap;
   }
   .member .sub {
     font-size: var(--fs-xs);
@@ -757,11 +1100,12 @@
   }
   .member .pts {
     margin-left: auto;
-    font-weight: 900;
+    font-weight: 700;
     font-family: var(--font-display);
     font-size: var(--fs-d1);
   }
 
+  /* Ruled paper: dotted rows, + in olive ink, − in brick ink. */
   .ledger {
     display: flex;
     flex-direction: column;
@@ -771,46 +1115,94 @@
     display: flex;
     justify-content: space-between;
     gap: 10px;
-    padding: 7px 0;
-    border-bottom: 1px solid var(--line);
+    padding: var(--sp-2) 0;
+    border-bottom: 1px dotted var(--line-strong);
   }
   .ledger > div:last-child {
     border-bottom: 0;
   }
   .ledger .plus {
-    color: var(--olive);
+    color: var(--olive-ink);
     font-weight: 800;
   }
   .ledger .minus {
-    color: var(--brick);
+    color: var(--brick-ink);
     font-weight: 800;
   }
 
   /* --- empty state, help ------------------------------------------------- */
+  /* A dashed box, not a card: nothing is there yet. */
   .kyle-empty {
     display: flex;
-    gap: 12px;
+    gap: 14px;
     align-items: center;
+    padding: var(--sp-4);
+    border: var(--bw) dashed var(--line-strong);
+    border-radius: var(--r-md);
     color: var(--muted);
-    font-size: 14px;
+    font-size: var(--fs-base);
+  }
+  .kyle-empty .copy {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 500;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+    align-items: flex-start;
+    min-width: 0;
   }
 
   .help-card h3 {
     font-size: var(--fs-md);
-    margin-bottom: var(--sp-1);
+    margin-bottom: var(--sp-2);
   }
   .help-card ul {
     margin: 0;
-    padding-left: var(--fs-d1);
-    font-size: 13.5px;
+    padding: 0;
+    font-size: var(--fs-sm);
     color: var(--muted);
     display: flex;
     flex-direction: column;
-    gap: var(--sp-1);
-    list-style: disc;
+    list-style: none;
+  }
+  .help-card li {
+    padding: var(--sp-2) 0;
+    border-bottom: 1px dotted var(--line-strong);
+  }
+  .help-card li:last-child {
+    border-bottom: 0;
   }
   .help-card ul strong {
     color: var(--ink);
+    font-weight: 700;
+  }
+
+  /* Auto / Clair / Sombre. */
+  .segmented {
+    display: inline-flex;
+    gap: var(--sp-1);
+    padding: var(--sp-1);
+    border: var(--bw) solid var(--line-strong);
+    border-radius: var(--r-pill);
+    align-self: flex-start;
+  }
+  .segmented button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-1);
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    font: 600 var(--fs-sm) / 1 var(--font-body);
+    padding: var(--sp-2) 14px;
+    border-radius: var(--r-pill);
+    cursor: pointer;
+  }
+  .segmented button[aria-pressed="true"] {
+    background: var(--btn);
+    color: var(--btn-ink);
+    font-weight: 700;
   }
 
   /* ─── ADMIN ───────────────────────────────────────────────────────────── */
@@ -1409,6 +1801,14 @@ main > div:first-child h1 {
   background-size: 200% 100%;
   animation: skel-shimmer 1.4s ease-in-out infinite;
 }
+.skel.line {
+  height: 12px;
+  border-radius: var(--r-xs);
+}
+.skel.title {
+  height: 28px;
+  border-radius: var(--r-xs);
+}
 .spinner {
   display: inline-block;
   width: 1em;
@@ -1453,19 +1853,22 @@ button[aria-busy="true"] {
   justify-content: space-between;
   gap: var(--sp-3);
   padding: 18px 22px 12px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px dotted var(--ink-rule);
 }
 .modal-head h2 {
   font-size: 20px;
 }
 .modal-x {
+  display: inline-grid;
+  place-items: center;
   border: 0;
   background: var(--surface-2);
   color: var(--muted);
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  font-weight: 800;
+  cursor: pointer;
+  flex: none;
 }
 .modal-x:hover {
   color: var(--ink);
@@ -1511,6 +1914,8 @@ button[aria-busy="true"] {
   animation: toast-in var(--dur-slow) var(--ease-pop) both;
 }
 .toast-x {
+  display: inline-grid;
+  place-items: center;
   border: 0;
   background: transparent;
   color: inherit;
@@ -1518,7 +1923,7 @@ button[aria-busy="true"] {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  font-weight: 800;
+  cursor: pointer;
   flex: none;
 }
 .kyle-react {
@@ -1627,6 +2032,7 @@ button[aria-busy="true"] {
   .toast-x,
   .edition,
   .pillars .card,
+  .is-interactive,
   .icon-btn {
     transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease), background-color var(--dur) var(--ease),
       color var(--dur) var(--ease), border-color var(--dur) var(--ease), opacity var(--dur) var(--ease);
@@ -1693,7 +2099,8 @@ button[aria-busy="true"] {
     color: var(--ink);
   }
   .edition:hover,
-  .pillars .card:hover {
+  .pillars .card:hover,
+  .is-interactive:hover {
     transform: translateY(-3px);
     box-shadow: var(--shadow-float);
   }

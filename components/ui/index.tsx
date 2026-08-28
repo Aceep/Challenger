@@ -2,24 +2,33 @@ import Link from "next/link";
 import { CountUp } from "@/components/ui/CountUp";
 import type { ComponentProps, ReactNode } from "react";
 import { fmtDelta, fmtPoints } from "@/lib/format";
+import { ArrowRightIcon, CheckIcon, Medal } from "./icons";
 import { Kyle } from "./Kyle";
 
-export { Kyle };
+export { Kyle, Medal };
 
 const cx = (...parts: (string | false | null | undefined)[]) => parts.filter(Boolean).join(" ");
 
 type Variant = "primary" | "ghost" | "danger";
 const variantClass: Record<Variant, string> = { primary: "", ghost: "ghost", danger: "danger" };
 
-/** Primary / ghost / danger button, optionally small. Renders an <a> when `href` is given. */
+/** Primary / ghost / danger button in three sizes. Renders an `<a>` when `href` is given. */
 export function Button({
   variant = "primary",
+  size = "md",
   small,
   className,
   href,
   ...props
-}: { variant?: Variant; small?: boolean; href?: string } & Omit<ComponentProps<"button">, "ref">) {
-  const cls = cx("btn", variantClass[variant], small && "small", className);
+}: {
+  variant?: Variant;
+  size?: "sm" | "md" | "lg";
+  /** Kept for the admin screens, same thing as `size="sm"`. */
+  small?: boolean;
+  href?: string;
+} & Omit<ComponentProps<"button">, "ref">) {
+  const scale = small || size === "sm" ? "sm" : size === "lg" ? "lg" : "";
+  const cls = cx("btn", variantClass[variant], scale, className);
   if (href) {
     return (
       <Link href={href} className={cls}>
@@ -30,11 +39,31 @@ export function Button({
   return <button {...props} className={cls} />;
 }
 
-export function Card({ className, children, style }: { className?: string; children: ReactNode; style?: React.CSSProperties }) {
+/**
+ * `card` is a panel, `flat` a row on the paper, `raised` a sheet lifted a
+ * little, `sheet` the yellow-edged working panel. `interactive` adds the hover
+ * lift — only for something the whole of which is clickable.
+ */
+export function Card({
+  tier = "card",
+  interactive,
+  className,
+  children,
+  style,
+  as: As = "div",
+}: {
+  tier?: "card" | "flat" | "raised" | "sheet";
+  interactive?: boolean;
+  className?: string;
+  children: ReactNode;
+  style?: React.CSSProperties;
+  as?: "div" | "section" | "li" | "article";
+}) {
+  const base = tier === "sheet" ? "sheet" : cx("card", tier !== "card" && tier);
   return (
-    <div className={cx("card", className)} style={style}>
+    <As className={cx(base, interactive && "is-interactive", className)} style={style}>
       {children}
-    </div>
+    </As>
   );
 }
 
@@ -46,10 +75,87 @@ export function Eyebrow({ children, className, style }: { children: ReactNode; c
   );
 }
 
-export type PillTone = "ok" | "wait" | "no" | "type";
+/** Secondary line: 13 px muted. `row` joins its `<span>` children with `·`. */
+export function Meta({
+  children,
+  row,
+  xs,
+  className,
+  style,
+}: {
+  children: ReactNode;
+  row?: boolean;
+  xs?: boolean;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <p className={cx(xs ? "meta-xs" : "meta", row && "row", className)} style={style}>
+      {children}
+    </p>
+  );
+}
 
-export function Pill({ tone = "type", children, className }: { tone?: PillTone; children: ReactNode; className?: string }) {
-  return <span className={cx("pill", tone, className)}>{children}</span>;
+/** Page heading: h1 with the ink underline, an optional kicker and a right action. */
+export function PageTitle({
+  children,
+  kicker,
+  action,
+  stack,
+  style,
+  className,
+}: {
+  children: ReactNode;
+  /** Rendered above the title (eyebrow, team name…). */
+  kicker?: ReactNode;
+  /** Rendered on the right of the title (a button, a link). */
+  action?: ReactNode;
+  /** Puts the action under the title instead of beside it. */
+  stack?: boolean;
+  style?: React.CSSProperties;
+  className?: string;
+}) {
+  return (
+    <header className={cx("flex flex-col gap-1", className)}>
+      {kicker}
+      <div className={cx("page-title", stack && "stack")}>
+        <h1 style={style}>{children}</h1>
+        {action}
+      </div>
+    </header>
+  );
+}
+
+/** Section heading: Fraunces h2 followed by a dotted leader, optional action. */
+export function SectionHeading({ children, action }: { children: ReactNode; action?: ReactNode }) {
+  return (
+    <div className="section-heading">
+      <h2>{children}</h2>
+      {action ? <span className="act">{action}</span> : null}
+    </div>
+  );
+}
+
+export type PillTone = "ok" | "wait" | "no" | "type" | "me";
+
+/**
+ * A soft pastille for a classification; `stamp` turns it into the inked state
+ * mark (validée, en attente ½, ex æquo, Ton vote…).
+ */
+export function Pill({
+  tone = "type",
+  stamp,
+  xs,
+  children,
+  className,
+}: {
+  tone?: PillTone;
+  stamp?: boolean;
+  xs?: boolean;
+  children: ReactNode;
+  className?: string;
+}) {
+  return <span className={cx(stamp ? "stamp" : "pill", tone, stamp && xs && "xs", className)}>{children}</span>;
 }
 
 /** Team (or edition) avatar: first letter over the team colour. */
@@ -72,15 +178,15 @@ export function Field({ label, hint, children, className }: { label: ReactNode; 
   );
 }
 
-/** Small figure card (2-up on mobile). */
+/** Small figure tile (2-up on mobile): flat, Fraunces 700. */
 export function Stat({ label, value, hint, tone }: { label: ReactNode; value: ReactNode; hint?: ReactNode; tone?: "brick" | "olive" }) {
   return (
-    <div className="card">
+    <div className="stat">
       <p className="eyebrow">{label}</p>
-      <p className="v num" style={tone ? { color: `var(--${tone})` } : undefined}>
+      <p className="v num" style={tone ? { color: `var(--${tone}-ink)` } : undefined}>
         {value}
       </p>
-      {hint ? <p className="text-xs text-[color:var(--muted)]">{hint}</p> : null}
+      {hint ? <p className="meta-xs">{hint}</p> : null}
     </div>
   );
 }
@@ -93,7 +199,7 @@ export function ScoreCard({
   points,
   rankLine,
   href = "/team",
-  linkLabel = "Équipe →",
+  linkLabel = "Équipe",
 }: {
   teamName: string;
   teamColor: string;
@@ -105,19 +211,22 @@ export function ScoreCard({
 }) {
   return (
     <section className="score" style={{ borderTopColor: teamColor }}>
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-baseline justify-between gap-3">
         <span className="eyebrow" style={{ color: teamColor }}>
-          {teamName} · {challengeName}
+          {teamName}
         </span>
-        <Link href={href} className="text-xs text-[color:var(--muted)]">
-          {linkLabel}
-        </Link>
+        <span className="accent text-[14px] text-[color:var(--muted)]">{challengeName}</span>
       </div>
       <p className="value num">
         <CountUp value={points} />
-        <small>pts</small>
+        <small className="accent">pts</small>
       </p>
-      {rankLine ? <p className="text-[13px] text-[color:var(--muted)]">{rankLine}</p> : null}
+      <div className="flex items-center justify-between gap-3">
+        {rankLine ? <Meta>{rankLine}</Meta> : <span />}
+        <Link href={href} className="btn sm ghost">
+          {linkLabel} <ArrowRightIcon />
+        </Link>
+      </div>
     </section>
   );
 }
@@ -131,16 +240,21 @@ export function ProgressBar({ ratio, half }: { ratio: number; half?: boolean }) 
   );
 }
 
-export function KyleEmpty({ children, card = true }: { children: ReactNode; card?: boolean }) {
+/** Dashed box with Kyle: nothing here yet. */
+export function KyleEmpty({ children, action }: { children: ReactNode; card?: boolean; action?: ReactNode }) {
   return (
-    <div className={cx("kyle-empty", card && "card")}>
+    <div className="kyle-empty">
       <Kyle width={54} />
-      <span>{children}</span>
+      <span className="copy">
+        <span>{children}</span>
+        {action}
+      </span>
     </div>
   );
 }
 
 export function RankRow({
+  rank,
   medal,
   name,
   sub,
@@ -149,7 +263,10 @@ export function RankRow({
   me,
   tie,
 }: {
-  medal: ReactNode;
+  /** Position, drawn as a medal for the podium. */
+  rank?: number;
+  /** Legacy slot, still accepted by the demo pages. */
+  medal?: ReactNode;
   name: string;
   sub: ReactNode;
   points: number;
@@ -158,13 +275,21 @@ export function RankRow({
   tie?: boolean;
 }) {
   return (
-    <li className={cx("card rank", me && "me")} style={{ borderLeftColor: color }}>
-      <span className="pos" aria-hidden={typeof medal === "string" && medal.length > 1}>
-        {medal}
-      </span>
+    <li className={cx("card flat rank", me && "me")} style={{ borderLeftColor: color }}>
+      {typeof rank === "number" ? <Medal rank={rank} /> : <span className="pos">{medal}</span>}
       <div className="min-w-0">
-        <p className="nm truncate">
-          {name} {tie ? <Pill tone="type">ex æquo</Pill> : null}
+        <p className="nm">
+          <span className="truncate">{name}</span>
+          {me ? (
+            <Pill stamp tone="me">
+              vous
+            </Pill>
+          ) : null}
+          {tie ? (
+            <Pill stamp tone="type">
+              ex æquo
+            </Pill>
+          ) : null}
         </p>
         <p className="sub">{sub}</p>
       </div>
@@ -173,14 +298,34 @@ export function RankRow({
   );
 }
 
-export function MemberRow({ name, sub, points, color, badge }: { name: string; sub: ReactNode; points: number; color: string; badge?: string }) {
+export function MemberRow({
+  name,
+  sub,
+  points,
+  color,
+  badge,
+  badgeIcon,
+}: {
+  name: string;
+  sub: ReactNode;
+  points: number;
+  color: string;
+  /** « capitaine » / « adjointe »… */
+  badge?: string;
+  badgeIcon?: ReactNode;
+}) {
   return (
-    <li className="card member">
-      <Avatar name={name} color={color} />
+    <li className="card flat member">
+      <Avatar name={name} color={color} size={32} />
       <div className="min-w-0">
-        <p className="nm truncate">
-          {badge ? `${badge} ` : ""}
-          {name}
+        <p className="nm">
+          <span className="truncate">{name}</span>
+          {badge ? (
+            <Pill tone="type">
+              {badgeIcon}
+              {badge}
+            </Pill>
+          ) : null}
         </p>
         <p className="sub">{sub}</p>
       </div>
@@ -189,10 +334,10 @@ export function MemberRow({ name, sub, points, color, badge }: { name: string; s
   );
 }
 
-/** Append-only point events, + in olive, − in brick. */
+/** Append-only point events, + in olive ink, − in brick ink, on dotted rules. */
 export function Ledger({ entries }: { entries: { id: string; label: ReactNode; amount: number }[] }) {
   return (
-    <div className="ledger card">
+    <div className="ledger card flat">
       {entries.map((e) => (
         <div key={e.id}>
           <span className="min-w-0 truncate">{e.label}</span>
@@ -229,9 +374,17 @@ export function BingoCell({
       title={`${label} — ${prompt}`}
       className={cx("cell", state === "done" && "done", state === "half" && "half", selected && "sel", pop && "pop")}
     >
-      <span className="k" aria-hidden="true">{label}</span>
+      <span className="k" aria-hidden="true">
+        {label}
+      </span>
       <span className="p">{prompt}</span>
       {note ? <span className="n">{note}</span> : null}
+      {state === "done" ? <span className="sr-only">validée</span> : null}
     </button>
   );
+}
+
+/** Small olive check, for « terminée » lines. */
+export function DoneMark() {
+  return <CheckIcon className="text-[color:var(--olive-ink)]" />;
 }
