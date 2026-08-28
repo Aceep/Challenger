@@ -20,8 +20,8 @@ export default async function EditBookPage({ params }: PageProps<"/books/[id]/ed
   if (!editable) {
     return (
       <main className="flex flex-1 flex-col gap-4 p-5">
-        <h1 className="text-2xl font-bold">Modifier une lecture</h1>
-        <p className="rounded-md bg-amber-100 p-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+        <h1>Modifier une lecture</h1>
+        <p className="flash warn">
           {book.userId === user.id
             ? "La modification n'est possible que pendant 1 h après l'ajout. Demande à ton·ta capitaine."
             : "Seul·e le·la capitaine de l'équipe peut modifier cette lecture."}

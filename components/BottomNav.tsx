@@ -4,31 +4,24 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const ITEMS = [
-  { href: "/", label: "Accueil", icon: "🏠" },
+  { href: "/home", label: "Accueil", icon: "🏠" },
   { href: "/books", label: "Lectures", icon: "📚" },
   { href: "/bingo", label: "Bingo", icon: "🎯" },
   { href: "/quests", label: "Quêtes", icon: "🗺️" },
   { href: "/story", label: "Histoire", icon: "📖" },
-  { href: "/leaderboard", label: "Classement", icon: "🏆" },
 ] as const;
 
-export function BottomNav({ isAdmin }: { isAdmin: boolean }) {
+/** Five tabs, as in the mockup: Classement, Équipe, Aide and Admin live on the home screen. */
+export function BottomNav({ base = "" }: { base?: string }) {
   const pathname = usePathname();
-  const items = isAdmin ? [...ITEMS, { href: "/admin", label: "Admin", icon: "⚙️" } as const] : ITEMS;
-
   return (
-    <nav className="sticky bottom-0 z-10 flex border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)] dark:border-slate-800 dark:bg-slate-900">
-      {items.map((item) => {
-        const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+    <nav className="bottomnav sticky bottom-0 z-10" aria-label="Navigation">
+      {ITEMS.map((item) => {
+        const href = `${base}${item.href}`;
+        const active = item.href === "/home" ? pathname === href : pathname.startsWith(href);
         return (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-xs ${
-              active ? "font-semibold text-indigo-600 dark:text-indigo-400" : "text-slate-500"
-            }`}
-          >
-            <span className="text-xl" aria-hidden>
+          <Link key={item.href} href={href} aria-current={active ? "page" : undefined}>
+            <span className="ic" aria-hidden>
               {item.icon}
             </span>
             {item.label}

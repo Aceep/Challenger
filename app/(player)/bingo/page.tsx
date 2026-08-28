@@ -1,19 +1,26 @@
 import { prisma } from "@/lib/db";
-import { Flash } from "@/components/Flash";
 import { getCurrentPlayer } from "@/lib/dal";
 import { canEditBook } from "@/lib/scoring/books";
 import { getTeamBoard } from "@/lib/services/bingo";
-import { BingoBoard } from "./BingoBoard";
+import { BingoView } from "./BingoView";
+import { placeBookAction, removeBookAction } from "./actions";
 
 export default async function BingoPage({ searchParams }: PageProps<"/bingo">) {
   const params = await searchParams;
   const { user, team } = await getCurrentPlayer();
   if (!team) {
     return (
-      <main className="flex flex-1 flex-col gap-4 p-5">
-        <h1 className="text-2xl font-bold">Bingo</h1>
-        <p className="text-slate-500">Rejoins une équipe pour jouer au bingo.</p>
-      </main>
+      <BingoView
+        grid={null}
+        total={0}
+        history={[]}
+        books={[]}
+        bonus={{ line: 0, full: 0 }}
+        hasTeam={false}
+        params={params}
+        placeBookAction={placeBookAction}
+        removeBookAction={removeBookAction}
+      />
     );
   }
 
@@ -31,36 +38,16 @@ export default async function BingoPage({ searchParams }: PageProps<"/bingo">) {
     .map((b) => ({ id: b.id, title: b.title, type: b.type, owner: b.user.name ?? "?", placedOn: b.bingoFill?.cellId ?? null }));
 
   return (
-    <main className="flex flex-1 flex-col gap-6 p-5">
-      <header>
-        <h1 className="text-2xl font-bold">Bingo d&apos;équipe</h1>
-        {board.total > 0 && (
-          <p className="text-sm text-slate-500">
-            {board.grid ? `Grille ${board.grid.order} sur ${board.total}` : `Les ${board.total} grilles sont terminées 🏆`}
-          </p>
-        )}
-      </header>
-      <Flash params={params} />
-      {board.grid ? (
-        <BingoBoard title={board.grid.title} size={board.grid.size} cells={board.grid.cells} books={books} completedLines={board.grid.completedLines.length} />
-      ) : board.total === 0 ? (
-        <p className="text-slate-500">La première grille n&apos;est pas encore prête.</p>
-      ) : null}
-      {board.history.length > 0 && (
-        <section className="text-sm text-slate-500">
-          <h2 className="mb-1 font-semibold uppercase">Grilles terminées</h2>
-          <ul>
-            {board.history.map((h) => (
-              <li key={h.id}>
-                ✅ Grille {h.grid.order} — {h.grid.title}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-      <p className="text-xs text-slate-500">
-        Un roman valide une case ; deux graphiques (d&apos;un ou deux membres de l&apos;équipe) aussi. Une case avec une seule moitié est « en attente » et ne rapporte rien. Ligne, colonne ou diagonale complète : {team.challenge.bingoLineBonus} pts ; grille entière : {team.challenge.bingoFullBonus} pts, puis la grille suivante s&apos;ouvre.
-      </p>
-    </main>
+    <BingoView
+      grid={board.grid ? { ...board.grid, completedLines: board.grid.completedLines.length } : null}
+      total={board.total}
+      history={board.history.map((h) => ({ id: h.id, order: h.grid.order, title: h.grid.title, completedAt: h.completedAt }))}
+      books={books}
+      bonus={{ line: team.challenge.bingoLineBonus, full: team.challenge.bingoFullBonus }}
+      hasTeam
+      params={params}
+      placeBookAction={placeBookAction}
+      removeBookAction={removeBookAction}
+    />
   );
 }
