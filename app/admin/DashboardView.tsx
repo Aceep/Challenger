@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Card, Eyebrow, KyleEmpty, Pill } from "@/components/ui";
+import { DataTable } from "@/components/ui/DataTable";
 import { fmtDelta, fmtPoints } from "@/lib/format";
 
 export type DashboardViewProps = {
@@ -90,6 +91,7 @@ export function DashboardView({ challenge, kpis, todo, leaderboard, bot, recentB
 
         <Card className="flex flex-col gap-2.5">
           <Eyebrow>Classement en direct</Eyebrow>
+          {/* Deux colonnes : la table tient sur un téléphone, pas besoin de l'empiler. */}
           <table className="data-table">
             <tbody>
               {leaderboard.map((r) => (
@@ -113,32 +115,20 @@ export function DashboardView({ challenge, kpis, todo, leaderboard, bot, recentB
 
       <Card>
         <Eyebrow>Dernières lectures</Eyebrow>
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Quand</th>
-              <th>Qui</th>
-              <th>Lecture</th>
-              <th>Type</th>
-              <th className="text-right">Points</th>
-              <th>Liens</th>
+        <DataTable head={["Quand", "Qui", "Lecture", "Type", { label: "Points", className: "text-right" }, "Liens"]}>
+          {recentBooks.map((b) => (
+            <tr key={b.id}>
+              <td className="num">{b.when}</td>
+              <td>{b.who}</td>
+              <td>{b.deleted ? <s>{b.title}</s> : b.title}</td>
+              <td>{b.type && <Pill tone="type">{b.type === "ROMAN" ? "roman" : "graphique"}</Pill>}</td>
+              <td className="num text-right font-extrabold" style={b.deleted ? { color: "var(--brick)" } : undefined}>
+                {fmtPoints(b.points)}
+              </td>
+              <td>{b.links || "—"}</td>
             </tr>
-          </thead>
-          <tbody>
-            {recentBooks.map((b) => (
-              <tr key={b.id}>
-                <td className="num">{b.when}</td>
-                <td>{b.who}</td>
-                <td>{b.deleted ? <s>{b.title}</s> : b.title}</td>
-                <td>{b.type && <Pill tone="type">{b.type === "ROMAN" ? "roman" : "graphique"}</Pill>}</td>
-                <td className="num text-right font-extrabold" style={b.deleted ? { color: "var(--brick)" } : undefined}>
-                  {fmtPoints(b.points)}
-                </td>
-                <td>{b.links || "—"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+          ))}
+        </DataTable>
       </Card>
     </>
   );

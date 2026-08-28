@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Card, KyleEmpty, Pill } from "@/components/ui";
+import { DataTable } from "@/components/ui/DataTable";
 import { Flash } from "@/components/Flash";
 import { teamDiscordReady } from "@/lib/discord/permissions";
 import { fmtPoints } from "@/lib/format";
@@ -66,49 +67,46 @@ export function TeamsView({
       ) : (
         <>
           <Card data-tour="teams-table">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Équipe</th>
-                  <th>Membres</th>
-                  <th>Capitaine</th>
-                  <th>Adjoint·e</th>
-                  <th>Discord</th>
-                  <th>Grille</th>
-                  <th className="text-right">Points</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {teams.map((t) => (
-                  <tr key={t.id}>
-                    <td>
-                      <span className="dot" style={{ background: t.color }} />
-                      <strong>{t.name}</strong>
-                    </td>
-                    <td className="num">{t.members.length}</td>
-                    <td>{t.captain ?? <Pill tone="no">à nommer</Pill>}</td>
-                    <td>{t.deputy ?? <Pill tone="no">à nommer</Pill>}</td>
-                    <td>
-                      {teamDiscordReady({ discordRoleId: t.discordRole, discordChannelId: t.adventureChannel, discordLibraryChannelId: t.libraryChannel }) ? (
-                        <Pill tone="ok">rôle et salons ✓</Pill>
-                      ) : (
-                        <Link href={demo ? "/demo/admin/challenge" : "/admin/challenge"} className="underline">
-                          <Pill tone="no">à configurer</Pill>
-                        </Link>
-                      )}
-                    </td>
-                    <td className="num">{t.gridLabel}</td>
-                    <td className="num text-right font-extrabold">{fmtPoints(t.points)}</td>
-                    <td>
-                      <Link href={`${base}?edit=${t.id}`} className="underline">
-                        Modifier
+            <DataTable
+              head={[
+                "Équipe",
+                "Membres",
+                "Capitaine",
+                "Adjoint·e",
+                "Discord",
+                "Grille",
+                { label: "Points", className: "text-right" },
+                "",
+              ]}
+            >
+              {teams.map((t) => (
+                <tr key={t.id}>
+                  <td>
+                    <span className="dot" style={{ background: t.color }} />
+                    <strong>{t.name}</strong>
+                  </td>
+                  <td className="num">{t.members.length}</td>
+                  <td>{t.captain ?? <Pill tone="no">à nommer</Pill>}</td>
+                  <td>{t.deputy ?? <Pill tone="no">à nommer</Pill>}</td>
+                  <td>
+                    {teamDiscordReady({ discordRoleId: t.discordRole, discordChannelId: t.adventureChannel, discordLibraryChannelId: t.libraryChannel }) ? (
+                      <Pill tone="ok">rôle et salons ✓</Pill>
+                    ) : (
+                      <Link href={demo ? "/demo/admin/challenge" : "/admin/challenge"} className="underline">
+                        <Pill tone="no">à configurer</Pill>
                       </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    )}
+                  </td>
+                  <td className="num">{t.gridLabel}</td>
+                  <td className="num text-right font-extrabold">{fmtPoints(t.points)}</td>
+                  <td>
+                    <Link href={`${base}?edit=${t.id}`} className="underline">
+                      Modifier
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </DataTable>
           </Card>
 
           <TeamForm action={createTeamAction} />

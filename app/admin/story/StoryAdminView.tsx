@@ -1,4 +1,5 @@
 import { Card, Eyebrow, KyleEmpty, Pill } from "@/components/ui";
+import { DataTable } from "@/components/ui/DataTable";
 import { Flash } from "@/components/Flash";
 import { NodeList, StoryForm, type EditorStory, type StoryActions } from "./StoryEditor";
 
@@ -55,30 +56,28 @@ export function StoryAdminView({ story, quests, teams, hasChallenge, params, act
 
         <Card>
           <Eyebrow>Où en sont les équipes</Eyebrow>
-          <table className="data-table">
-            <tbody>
-              {teams.map((t) => (
-                <tr key={t.teamId}>
-                  <td>
-                    <span className="dot" style={{ background: t.color }} />
-                    {t.name}
-                  </td>
-                  <td>{t.chapter}</td>
-                  <td>
-                    <Pill tone={t.status.tone}>{t.status.label}</Pill>
-                  </td>
-                  <td>
-                    {t.hasState && resetTeamStoryAction && (
-                      <form action={resetTeamStoryAction}>
-                        <input type="hidden" name="teamId" value={t.teamId} />
-                        <button className="text-xs text-[color:var(--brick)] underline">Remettre au début</button>
-                      </form>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <DataTable headless head={["Équipe", "Chapitre", "Statut", ""]}>
+            {teams.map((t) => (
+              <tr key={t.teamId}>
+                <td>
+                  <span className="dot" style={{ background: t.color }} />
+                  {t.name}
+                </td>
+                <td>{t.chapter}</td>
+                <td>
+                  <Pill tone={t.status.tone}>{t.status.label}</Pill>
+                </td>
+                <td>
+                  {t.hasState && resetTeamStoryAction && (
+                    <form action={resetTeamStoryAction}>
+                      <input type="hidden" name="teamId" value={t.teamId} />
+                      <button className="text-xs text-[color:var(--brick)] underline">Remettre au début</button>
+                    </form>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </DataTable>
         </Card>
       </div>
     </>
