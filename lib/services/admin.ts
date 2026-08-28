@@ -1,3 +1,4 @@
+import { GameError } from "@/lib/errors";
 import "server-only";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
@@ -99,7 +100,7 @@ export async function assignUserToTeam(userId: string, teamId: string | null) {
 export async function setCaptain(teamId: string, userId: string | null) {
   if (userId) {
     const member = await prisma.teamMember.findUnique({ where: { userId } });
-    if (member?.teamId !== teamId) throw new Error("Ce joueur n'est pas dans l'équipe");
+    if (member?.teamId !== teamId) throw new GameError("Ce joueur n'est pas dans l'équipe");
   }
   return prisma.team.update({ where: { id: teamId }, data: { captainId: userId } });
 }

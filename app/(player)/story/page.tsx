@@ -1,13 +1,15 @@
 import { after } from "next/server";
 import { LiveRefresh } from "@/components/LiveRefresh";
 import { syncVoteMessage } from "@/lib/discord/events";
+import { Flash } from "@/components/Flash";
 import { getCurrentPlayer } from "@/lib/dal";
 import { getTeamStoryView } from "@/lib/services/story";
 import { breakTieAction, chooseTargetAction, confirmTieAction, voteAction } from "./actions";
 
 const dateFmt = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
 
-export default async function StoryPage() {
+export default async function StoryPage({ searchParams }: PageProps<"/story">) {
+  const params = await searchParams;
   const { user, team } = await getCurrentPlayer();
   const view = team ? await getTeamStoryView(team.id, user.id) : null;
 
@@ -26,6 +28,7 @@ export default async function StoryPage() {
   return (
     <main className="flex flex-1 flex-col gap-6 p-5">
       <LiveRefresh seconds={15} />
+      <Flash params={params} />
       <header>
         <p className="text-sm text-slate-500">{view.story.title} · {team.name}</p>
         <h1 className="text-2xl font-bold">{node.title}</h1>

@@ -1,5 +1,6 @@
 "use server";
 
+import { userMessage } from "@/lib/errors";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/dal";
 import { parseForm, type ActionState } from "@/lib/forms";
@@ -11,7 +12,11 @@ export async function saveChallengeAction(_prev: ActionState, formData: FormData
   formData.delete("id");
   const parsed = parseForm(challengeSchema, formData);
   if ("error" in parsed) return { error: parsed.error };
-  await upsertChallenge(id, parsed.data);
+  try {
+    await upsertChallenge(id, parsed.data);
+  } catch (e) {
+    return { error: userMessage(e) };
+  }
   revalidatePath("/admin", "layout");
   revalidatePath("/", "layout");
   return { success: "Défi enregistré." };

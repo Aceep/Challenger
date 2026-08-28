@@ -1,15 +1,18 @@
+import { Flash } from "@/components/Flash";
 import { getActiveChallenge } from "@/lib/dal";
 import { listGridsAdmin } from "@/lib/services/bingo";
 import { GridForm } from "./GridForm";
 import { GridList } from "./GridList";
 
-export default async function AdminBingoPage() {
+export default async function AdminBingoPage({ searchParams }: PageProps<"/admin/bingo">) {
+  const params = await searchParams;
   const challenge = await getActiveChallenge();
   const grids = challenge ? await listGridsAdmin(challenge.id) : [];
 
   return (
     <main className="flex flex-col gap-6">
       <h1 className="text-2xl font-bold">Bingo</h1>
+      <Flash params={params} />
       {!challenge ? (
         <p className="text-slate-500">Active un défi pour configurer les grilles.</p>
       ) : (

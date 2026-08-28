@@ -1,3 +1,4 @@
+import { GameError } from "@/lib/errors";
 import "server-only";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
@@ -135,14 +136,14 @@ export type QuestAttachResult = {
 /** Attaches a reading to a quest for its team (moves it if attached elsewhere) and updates completion. */
 export async function attachBookToQuest(tx: Tx, book: BookRef, teamId: string, questId: string, actorId: string): Promise<QuestAttachResult> {
   const quest = await tx.quest.findUniqueOrThrow({ where: { id: questId } });
-  if (!isQuestOpen(quest)) throw new Error(`La quête #${quest.number} n'est pas ouverte`);
-  if (quest.targetTeamId && quest.targetTeamId !== teamId) throw new Error(`La quête #${quest.number} ne concerne pas ton équipe`);
+  if (!isQuestOpen(quest)) throw new GameError(`La quête #${quest.number} n'est pas ouverte`);
+  if (quest.targetTeamId && quest.targetTeamId !== teamId) throw new GameError(`La quête #${quest.number} ne concerne pas ton équipe`);
   const others = await tx.questBook.findMany({
     where: { questId, teamId, bookId: { not: book.id }, book: { deletedAt: null } },
     include: { book: { select: { id: true, title: true, type: true, user: { select: { name: true } } } } },
   });
-  if (isComplete(others.map((b) => bookWeight(b.book.type)))) throw new Error(`La quête #${quest.number} est déjà validée`);
-  if (others.length >= MAX_BOOKS_PER_SLOT) throw new Error(`La quête #${quest.number} a déjà ${MAX_BOOKS_PER_SLOT} lectures`);
+  if (isComplete(others.map((b) => bookWeight(b.book.type)))) throw new GameError(`La quête #${quest.number} est déjà validée`);
+  if (others.length >= MAX_BOOKS_PER_SLOT) throw new GameError(`La quête #${quest.number} a déjà ${MAX_BOOKS_PER_SLOT} lectures`);
 
   // A roman completes the quest alone: the pending half goes back to "en attente" (unlinked).
   let freed: QuestAttachResult["freed"] = null;

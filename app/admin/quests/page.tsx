@@ -1,3 +1,4 @@
+import { Flash } from "@/components/Flash";
 import { prisma } from "@/lib/db";
 import { getActiveChallenge } from "@/lib/dal";
 import { listQuestsAdmin } from "@/lib/services/quests";
@@ -6,7 +7,8 @@ import { QuestList } from "./QuestList";
 
 const toLocalInput = (d: Date | null) => (d ? new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16) : "");
 
-export default async function AdminQuestsPage() {
+export default async function AdminQuestsPage({ searchParams }: PageProps<"/admin/quests">) {
+  const params = await searchParams;
   const challenge = await getActiveChallenge();
   const [quests, teams] = challenge
     ? await Promise.all([
@@ -18,6 +20,7 @@ export default async function AdminQuestsPage() {
   return (
     <main className="flex flex-col gap-6">
       <h1 className="text-2xl font-bold">Quêtes</h1>
+      <Flash params={params} />
       {!challenge ? (
         <p className="text-slate-500">Active un défi pour créer des quêtes.</p>
       ) : (

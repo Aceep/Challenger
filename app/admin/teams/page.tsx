@@ -1,3 +1,4 @@
+import { Flash } from "@/components/Flash";
 import { getActiveChallenge } from "@/lib/dal";
 import { listTeamsWithMembers } from "@/lib/services/admin";
 import { TeamForm } from "./TeamForm";
@@ -6,13 +7,15 @@ import { deleteTeamAction, setCaptainAction, setDeputyAction, updateTeamAction }
 const field =
   "rounded-lg border border-slate-300 bg-white px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-900";
 
-export default async function AdminTeamsPage() {
+export default async function AdminTeamsPage({ searchParams }: PageProps<"/admin/teams">) {
+  const params = await searchParams;
   const challenge = await getActiveChallenge();
   const teams = challenge ? await listTeamsWithMembers(challenge.id) : [];
 
   return (
     <main className="flex flex-col gap-6">
       <h1 className="text-2xl font-bold">Équipes</h1>
+      <Flash params={params} />
       {!challenge ? (
         <p className="text-slate-500">Active un défi pour créer des équipes.</p>
       ) : (

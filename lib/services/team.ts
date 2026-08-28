@@ -1,3 +1,4 @@
+import { GameError } from "@/lib/errors";
 import "server-only";
 import { prisma } from "@/lib/db";
 import { round1 } from "@/lib/scoring/reading";
@@ -52,8 +53,8 @@ export async function getTeamStats(teamId: string) {
 /** The captain (or an admin) names the team's adjoint among its members. */
 export async function setDeputy(teamId: string, userId: string | null, actor: { id: string; role: "ADMIN" | "PLAYER" }) {
   const team = await prisma.team.findUniqueOrThrow({ where: { id: teamId }, include: { members: { select: { userId: true } } } });
-  if (actor.role !== "ADMIN" && team.captainId !== actor.id) throw new Error("Seul·e le·la capitaine peut nommer l'adjoint·e");
-  if (userId && !team.members.some((m) => m.userId === userId)) throw new Error("Ce joueur n'est pas dans l'équipe");
-  if (userId && userId === team.captainId) throw new Error("Le·la capitaine ne peut pas être son·sa propre adjoint·e");
+  if (actor.role !== "ADMIN" && team.captainId !== actor.id) throw new GameError("Seul·e le·la capitaine peut nommer l'adjoint·e");
+  if (userId && !team.members.some((m) => m.userId === userId)) throw new GameError("Ce joueur n'est pas dans l'équipe");
+  if (userId && userId === team.captainId) throw new GameError("Le·la capitaine ne peut pas être son·sa propre adjoint·e");
   return prisma.team.update({ where: { id: teamId }, data: { deputyId: userId } });
 }

@@ -1,10 +1,12 @@
 import { prisma } from "@/lib/db";
+import { Flash } from "@/components/Flash";
 import { getCurrentPlayer } from "@/lib/dal";
 import { canEditBook } from "@/lib/scoring/books";
 import { getTeamBoard } from "@/lib/services/bingo";
 import { BingoBoard } from "./BingoBoard";
 
-export default async function BingoPage() {
+export default async function BingoPage({ searchParams }: PageProps<"/bingo">) {
+  const params = await searchParams;
   const { user, team } = await getCurrentPlayer();
   if (!team) {
     return (
@@ -38,6 +40,7 @@ export default async function BingoPage() {
           </p>
         )}
       </header>
+      <Flash params={params} />
       {board.grid ? (
         <BingoBoard title={board.grid.title} size={board.grid.size} cells={board.grid.cells} books={books} completedLines={board.grid.completedLines.length} />
       ) : board.total === 0 ? (

@@ -76,6 +76,9 @@ export default async function HomePage() {
       >
         + J&apos;ai fini une lecture
       </Link>
+      <Link href="/help" className="text-center text-sm text-slate-500 underline">
+        Aide et règles du défi
+      </Link>
     </main>
   );
 }

@@ -1,3 +1,4 @@
+import { GameError } from "@/lib/errors";
 import "server-only";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
@@ -29,7 +30,7 @@ export type GridInput = z.infer<typeof gridSchema>;
 function checkPrompts(input: GridInput) {
   const expected = input.size * input.size;
   const prompts = input.prompts.filter((p) => p.length > 0);
-  if (prompts.length !== expected) throw new Error(`Il faut exactement ${expected} consignes (une par ligne), ${prompts.length} reçues.`);
+  if (prompts.length !== expected) throw new GameError(`Il faut exactement ${expected} consignes (une par ligne), ${prompts.length} reçues.`);
   return prompts;
 }
 
@@ -219,11 +220,11 @@ export type CellAttachResult = {
 export async function attachBookToCell(tx: Tx, book: BookRef, teamId: string, cellId: string, actorId: string): Promise<CellAttachResult> {
   const active = await activeGridForTeam(tx, teamId);
   const cell = await tx.bingoCell.findUniqueOrThrow({ where: { id: cellId }, include: { grid: true, fills: fillsOf(teamId) } });
-  if (!active || cell.gridId !== active.id) throw new Error("Cette case n'est pas sur la grille en cours de ton équipe");
+  if (!active || cell.gridId !== active.id) throw new GameError("Cette case n'est pas sur la grille en cours de ton équipe");
   const label = cellLabel(cell.row, cell.col);
   const others = cell.fills.filter((f) => f.book.id !== book.id);
-  if (isComplete(others.map((f) => bookWeight(f.book.type)))) throw new Error(`La case ${label} est déjà validée`);
-  if (others.length >= MAX_BOOKS_PER_SLOT) throw new Error(`La case ${label} est pleine`);
+  if (isComplete(others.map((f) => bookWeight(f.book.type)))) throw new GameError(`La case ${label} est déjà validée`);
+  if (others.length >= MAX_BOOKS_PER_SLOT) throw new GameError(`La case ${label} est pleine`);
 
   const before = await completePositions(tx, cell.gridId, teamId);
   // A roman validates the cell alone: the pending half goes back to "en attente".

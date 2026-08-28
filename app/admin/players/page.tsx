@@ -1,3 +1,4 @@
+import { Flash } from "@/components/Flash";
 import { getActiveChallenge, requireAdmin } from "@/lib/dal";
 import { listInvites, listTeamsWithMembers, listUsersWithTeams } from "@/lib/services/admin";
 import { InviteForm } from "./InviteForm";
@@ -6,7 +7,8 @@ import { assignTeamAction, deleteInviteAction, setRoleAction } from "./actions";
 const field =
   "rounded-lg border border-slate-300 bg-white px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-900";
 
-export default async function AdminPlayersPage() {
+export default async function AdminPlayersPage({ searchParams }: PageProps<"/admin/players">) {
+  const params = await searchParams;
   const admin = await requireAdmin();
   const challenge = await getActiveChallenge();
   const [users, teams, invites] = await Promise.all([
@@ -20,6 +22,7 @@ export default async function AdminPlayersPage() {
     <main className="flex flex-col gap-8">
       <section className="flex flex-col gap-3">
         <h1 className="text-2xl font-bold">Invitations</h1>
+      <Flash params={params} />
         {!challenge ? (
           <p className="text-slate-500">Active un défi pour inviter des joueurs.</p>
         ) : (

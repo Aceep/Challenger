@@ -44,6 +44,7 @@ const commands = [
   { name: "score", description: "Afficher le classement des équipes" },
   { name: "quete", description: "Lister les quêtes ouvertes et leur avancement" },
   { name: "histoire", description: "Voir le chapitre en cours de ton équipe" },
+  { name: "help", description: "Les commandes et les règles du défi" },
 ];
 
 const res = await fetch(`https://discord.com/api/v10/applications/${appId}/guilds/${guildId}/commands`, {

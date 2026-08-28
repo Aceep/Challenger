@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Flash } from "@/components/Flash";
 import { getCurrentPlayer } from "@/lib/dal";
 import { fmtDelta } from "@/lib/format";
 import { cellLabel } from "@/lib/services/bingo";
@@ -10,11 +11,10 @@ const timeFmt = new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-d
 
 export default async function BooksPage({ searchParams }: PageProps<"/books">) {
   const { user, team } = await getCurrentPlayer();
-  const { added, error } = await searchParams;
+  const params = await searchParams;
   const actor = { id: user.id, role: user.role, teamId: team?.id ?? null, isCaptain: team?.captainId === user.id };
   const [books, teamBooks] = await Promise.all([listBooks(user.id, actor), actor.isCaptain && team ? listTeamBooks(team.id, user.id, actor) : []]);
   const now = new Date();
-  const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
   const Row = ({ b, showOwner }: { b: (typeof books)[number]; showOwner?: boolean }) => (
     <li className="rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900">
@@ -68,10 +68,7 @@ export default async function BooksPage({ searchParams }: PageProps<"/books">) {
         </Link>
       </header>
 
-      {added !== undefined && (
-        <p className="rounded-md bg-green-100 p-3 text-sm text-green-800 dark:bg-green-950 dark:text-green-200">{first(added)} 🎉</p>
-      )}
-      {error !== undefined && <p className="rounded-md bg-red-100 p-3 text-sm text-red-800 dark:bg-red-950 dark:text-red-200">{first(error)}</p>}
+      <Flash params={params} />
 
       {books.length === 0 ? (
         <p className="text-slate-500">Aucune lecture pour l&apos;instant. Termine-en une et reviens !</p>
