@@ -1,5 +1,5 @@
-import Link from "next/link";
-import { Eyebrow, KyleEmpty, Ledger, MemberRow, Stat } from "@/components/ui";
+import { KyleEmpty, Ledger, Meta, MemberRow, PageTitle, SectionHeading, Stat } from "@/components/ui";
+import { BoltIcon, RibbonIcon, StarIcon } from "@/components/ui/icons";
 import { Flash } from "@/components/Flash";
 import { fmtPoints } from "@/lib/format";
 import { DeputyForm } from "./DeputyForm";
@@ -36,29 +36,40 @@ export function TeamView({
   canNameDeputy,
   currentDeputyId,
   params,
-  demo,
   setDeputyAction,
 }: TeamViewProps) {
   if (!team) {
     return (
-      <main className="flex flex-1 flex-col gap-4 p-5">
-        <h1>Mon équipe</h1>
-        <KyleEmpty>Tu n&apos;as pas encore d&apos;équipe.</KyleEmpty>
+      <main className="flex flex-1 flex-col gap-5 p-5">
+        <PageTitle>Mon équipe</PageTitle>
+        <KyleEmpty>Tu n’as pas encore d’équipe.</KyleEmpty>
       </main>
     );
   }
 
   return (
-    <main className="flex flex-1 flex-col gap-5 p-5">
-      <header>
-        <Link href={demo ? "/demo" : "/home"} className="text-[13px] text-[color:var(--muted)]">
-          ← Accueil
-        </Link>
-        <h1 style={{ color: team.color }}>{team.name}</h1>
-        <p className="text-[13px] text-[color:var(--muted)]">
-          {fmtPoints(total)} pts · ⭐ capitaine : {captain ?? "—"} · 🎖️ adjoint·e : {deputy ?? "—"}
-        </p>
-      </header>
+    <main className="flex flex-1 flex-col gap-6 p-5">
+      <PageTitle
+        stack
+        style={{ color: team.color }}
+        action={
+          <p className="meta row">
+            <span>
+              <strong>{fmtPoints(total)} pts</strong>
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <StarIcon className="ico-sm" />
+              capitaine : {captain ?? "—"}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <RibbonIcon className="ico-sm" />
+              adjoint·e : {deputy ?? "—"}
+            </span>
+          </p>
+        }
+      >
+        {team.name}
+      </PageTitle>
       <Flash params={params} />
 
       <section className="stat2">
@@ -71,7 +82,10 @@ export function TeamView({
 
       {modifiers.map((m) => (
         <p key={m.id} className="flash warn">
-          ⚡ {m.label} : points ×{fmtPoints(m.multiplier)} jusqu&apos;au {dateFmt.format(m.endAt)}
+          <BoltIcon />
+          <span>
+            {m.label} : points ×{fmtPoints(m.multiplier)} jusqu’au {dateFmt.format(m.endAt)}
+          </span>
         </p>
       ))}
 
@@ -84,8 +98,8 @@ export function TeamView({
         />
       )}
 
-      <section className="flex flex-col gap-2.5">
-        <Eyebrow>Membres</Eyebrow>
+      <section className="section">
+        <SectionHeading>Membres</SectionHeading>
         <ul className="list">
           {members.map((m) => (
             <MemberRow
@@ -93,17 +107,18 @@ export function TeamView({
               name={m.name}
               color={team.color}
               points={m.points}
-              badge={m.isCaptain ? "⭐" : m.isDeputy ? "🎖️" : undefined}
+              badge={m.isCaptain ? "capitaine" : m.isDeputy ? "adjoint·e" : undefined}
+              badgeIcon={m.isCaptain ? <StarIcon className="ico-sm" /> : m.isDeputy ? <RibbonIcon className="ico-sm" /> : undefined}
               sub={`${m.books} roman${m.books > 1 ? "s" : ""} · ${m.graphics} graphique${m.graphics > 1 ? "s" : ""} · ${m.pages} pages`}
             />
           ))}
         </ul>
       </section>
 
-      <section className="flex flex-col gap-2.5">
-        <Eyebrow>Derniers points</Eyebrow>
+      <section className="section">
+        <SectionHeading>Derniers points</SectionHeading>
         {recent.length === 0 ? (
-          <p className="text-sm text-[color:var(--muted)]">Rien pour l&apos;instant.</p>
+          <Meta>Rien pour l’instant.</Meta>
         ) : (
           <Ledger
             entries={recent.map((e) => ({
@@ -112,7 +127,7 @@ export function TeamView({
               label: (
                 <>
                   {e.label}
-                  {e.who && <span className="text-[color:var(--muted)]"> · {e.who}</span>}
+                  {e.who && <span className="meta-xs"> · {e.who}</span>}
                 </>
               ),
             }))}

@@ -1,12 +1,13 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useSyncExternalStore, type ReactNode } from "react";
+import { MoonIcon, SunIcon } from "./icons";
 
 type Theme = "auto" | "light" | "dark";
-const OPTIONS: { value: Theme; label: string }[] = [
+const OPTIONS: { value: Theme; label: string; icon?: ReactNode }[] = [
   { value: "auto", label: "Auto" },
-  { value: "light", label: "☀️ Clair" },
-  { value: "dark", label: "🌙 Sombre" },
+  { value: "light", label: "Clair", icon: <SunIcon className="ico-sm" /> },
+  { value: "dark", label: "Sombre", icon: <MoonIcon className="ico-sm" /> },
 ];
 
 // The <html data-theme> attribute is the source of truth: the anti-flash script
@@ -40,21 +41,10 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
   const theme = useSyncExternalStore<Theme>(subscribe, read, () => "auto");
 
   return (
-    <div
-      role="group"
-      aria-label="Thème"
-      className={`inline-flex rounded-full border border-[color:var(--line)] bg-[color:var(--surface-2)] p-[3px] ${className}`}
-    >
+    <div role="group" aria-label="Thème" className={`segmented ${className}`.trim()}>
       {OPTIONS.map((o) => (
-        <button
-          key={o.value}
-          type="button"
-          aria-pressed={theme === o.value}
-          onClick={() => write(o.value)}
-          className={`rounded-full px-3.5 py-1.5 text-[13px] font-bold ${
-            theme === o.value ? "bg-[color:var(--btn)] text-[color:var(--btn-ink)]" : "text-[color:var(--muted)]"
-          }`}
-        >
+        <button key={o.value} type="button" aria-pressed={theme === o.value} onClick={() => write(o.value)}>
+          {o.icon}
           {o.label}
         </button>
       ))}

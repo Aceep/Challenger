@@ -1,3 +1,5 @@
+import { Card } from "@/components/ui";
+
 export function DeputyForm({
   teamId,
   members,
@@ -10,20 +12,22 @@ export function DeputyForm({
   action: (formData: FormData) => Promise<void>;
 }) {
   return (
-    <form action={action} className="flex flex-wrap items-end gap-2">
-      <input type="hidden" name="teamId" value={teamId} />
-      <label className="field flex-1">
-        Nommer l&apos;adjoint·e
-        <select name="userId" defaultValue={current}>
-          <option value="">— personne —</option>
-          {members.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <button className="btn small">OK</button>
-    </form>
+    <Card tier="raised">
+      <form action={action} className="flex flex-wrap items-end gap-3">
+        <input type="hidden" name="teamId" value={teamId} />
+        <label className="field flex-1">
+          Nommer l’adjoint·e
+          <select name="userId" defaultValue={current}>
+            <option value="">— personne —</option>
+            {members.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button className="btn sm">OK</button>
+      </form>
+    </Card>
   );
 }
