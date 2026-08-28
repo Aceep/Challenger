@@ -11,6 +11,7 @@ export default async function DemoAdminQuestsPage({ searchParams }: PageProps<"/
 
   // Only Les Renards have a detailed progress in the fixtures.
   const selected = DEMO_TEAMS.find((t) => t.id === one(params.team)) ?? DEMO_TEAM;
+  void selected;
   const isDemoTeam = selected.id === DEMO_TEAM.id;
   const teamProgress: TeamQuestProgress = {
     teamId: selected.id,
@@ -41,8 +42,11 @@ export default async function DemoAdminQuestsPage({ searchParams }: PageProps<"/
       teams={DEMO_ADMIN_QUEST_TEAMS}
       hasChallenge
       editingId={edit || null}
+      creating={one(params.new) === "1"}
+      nextNumber={DEMO_ADMIN_QUESTS.reduce((n, q) => Math.max(n, q.number), 0) + 1}
       params={params}
       teamProgress={teamProgress}
+      selectedQuestId={one(params.quest) || null}
       demo
       saveQuestAction={demoStateAction}
       deleteQuestAction={action}

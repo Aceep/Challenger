@@ -727,9 +727,9 @@ export const DEMO_ADMIN_QUESTS: AdminQuestRow[] = [
     target: "toutes",
     fromStory: false,
     progress: [
-      { team: "Les Hérissons", state: "done" },
-      { team: "Les Loutres", state: "done" },
-      { team: "Les Renards", state: "half" },
+      { teamId: "demo-team-herissons", team: "Les Hérissons", state: "done" },
+      { teamId: "demo-team-loutres", team: "Les Loutres", state: "done" },
+      { teamId: "demo-team-renards", team: "Les Renards", state: "half" },
     ],
   },
   {
@@ -759,8 +759,8 @@ export const DEMO_ADMIN_QUESTS: AdminQuestRow[] = [
     target: "toutes",
     fromStory: false,
     progress: [
-      { team: "Les Renards", state: "done" },
-      { team: "Les Hiboux", state: "done" },
+      { teamId: "demo-team-renards", team: "Les Renards", state: "done" },
+      { teamId: "demo-team-hiboux", team: "Les Hiboux", state: "done" },
     ],
   },
   {
@@ -775,7 +775,7 @@ export const DEMO_ADMIN_QUESTS: AdminQuestRow[] = [
     window: "→ 30 sept.",
     target: "toutes",
     fromStory: false,
-    progress: [{ team: "Les Hérissons", state: "done" }],
+    progress: [{ teamId: "demo-team-herissons", team: "Les Hérissons", state: "done" }],
   },
   {
     id: "demo-quest-6",

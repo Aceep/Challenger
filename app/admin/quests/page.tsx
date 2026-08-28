@@ -7,6 +7,14 @@ import { attachQuestBookAction, deleteQuestAction, detachQuestBookAction, saveQu
 
 const dateFmt = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
+/** Keep the focused team + quest when coming back from an attach/detach. */
+const selected_return = (p: Record<string, string | string[] | undefined>) => {
+  const q = new URLSearchParams();
+  if (one(p.team)) q.set("team", one(p.team));
+  if (one(p.quest)) q.set("quest", one(p.quest));
+  const qs = q.toString();
+  return qs ? `/admin/quests?${qs}` : "/admin/quests";
+};
 const toLocalInput = (d: Date | null) => (d ? new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16) : "");
 
 export default async function AdminQuestsPage({ searchParams }: PageProps<"/admin/quests">) {
@@ -20,8 +28,11 @@ export default async function AdminQuestsPage({ searchParams }: PageProps<"/admi
         teams={[]}
         hasChallenge={false}
         editingId={null}
+        creating={false}
+        nextNumber={1}
         params={params}
         teamProgress={null}
+        selectedQuestId={null}
         saveQuestAction={saveQuestAction}
         deleteQuestAction={deleteQuestAction}
         attachQuestBookAction={attachQuestBookAction.bind(null, "")}
@@ -47,9 +58,10 @@ export default async function AdminQuestsPage({ searchParams }: PageProps<"/admi
     weights.set(key, [...(weights.get(key) ?? []), bookWeight(l.book.type)]);
   }
   const edit = one(params.edit);
+  const returnTo = selected_return(params);
 
   // Progress of one team (`?team=`), with the readings still free of any quest.
-  const selected = teams.find((t) => t.id === one(params.team)) ?? teams[0] ?? null;
+  const selected = teams.find((t) => t.id === one(params.team)) ?? null;
   let teamProgress: TeamQuestProgress | null = null;
   if (selected) {
     const [teamQuests, freeBooks] = await Promise.all([
@@ -95,21 +107,24 @@ export default async function AdminQuestsPage({ searchParams }: PageProps<"/admi
           .map((t) => {
             const done = completions.some((c) => c.questId === q.id && c.teamId === t.id);
             const w = weights.get(`${q.id}:${t.id}`) ?? [];
-            if (done || isComplete(w)) return { team: t.name, state: "done" as const };
-            if (w.length > 0) return { team: t.name, state: "half" as const };
+            if (done || isComplete(w)) return { teamId: t.id, team: t.name, state: "done" as const };
+            if (w.length > 0) return { teamId: t.id, team: t.name, state: "half" as const };
             return null;
           })
-          .filter((x): x is { team: string; state: "done" | "half" } => x !== null),
+          .filter((x): x is { teamId: string; team: string; state: "done" | "half" } => x !== null),
       }))}
       teams={teams.map((t) => ({ id: t.id, name: teamName.get(t.id) ?? t.name }))}
       hasChallenge
       editingId={edit || null}
+      creating={one(params.new) === "1"}
+      nextNumber={quests.reduce((n, q) => Math.max(n, q.number), 0) + 1}
       params={params}
       teamProgress={teamProgress}
+      selectedQuestId={one(params.quest) || null}
       saveQuestAction={saveQuestAction}
       deleteQuestAction={deleteQuestAction}
-      attachQuestBookAction={attachQuestBookAction.bind(null, selected?.id ?? "")}
-      detachQuestBookAction={detachQuestBookAction.bind(null, selected?.id ?? "")}
+      attachQuestBookAction={attachQuestBookAction.bind(null, returnTo)}
+      detachQuestBookAction={detachQuestBookAction.bind(null, returnTo)}
     />
   );
 }
