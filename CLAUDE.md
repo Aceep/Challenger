@@ -38,7 +38,7 @@ npm run db:seed      # tsx prisma/seed.ts
   - Use `after()` from `next/server` for fire-and-forget side effects (Discord posts).
   - Cache Components (`cacheComponents`) are NOT enabled; pages are dynamic by default when they read the session.
 - Prisma 7: config in `prisma.config.ts` (loads `.env` via dotenv), client uses the Neon driver adapter (`lib/db.ts`). No `url` in `schema.prisma`.
-- Auth.js v5 (`auth.ts`): Discord-only OAuth, JWT sessions. Sign-in is refused unless an unused `Invite` matches the Discord id (or the user already exists); `events.createUser` consumes the invite (sets `discordId`, `role`, team membership).
+- Auth.js v5 (`auth.ts`): Discord-only OAuth, JWT sessions. Sign-in is refused unless an unused `Invite` matches the Discord id (or the user already exists). The JWT carries only `id`, `discordId` and `isSuperAdmin` — **never a role**. `events.linkAccount` (first login) and `events.signIn` (every login) both call `consumePendingInvites`, which is idempotent: an invitation created after the first connection takes effect on the next one.
 
 ## Rulebook
 
@@ -46,9 +46,22 @@ npm run db:seed      # tsx prisma/seed.ts
 
 Time-driven work (window announcements, Sunday 20 h leaderboard post with catch-up, vote expiry, tie cascade, dormant reminders) lives in `lib/services/tick.ts` (`runTick`, idempotent via `BotEvent`). It is triggered by `/api/cron/tick` (Vercel crons in `vercel.json` — the Hobby plan only allows daily, imprecise crons) and on activity (`tickOnActivity`, throttled, from the player layout and the Discord endpoint). For minute-precision, point an external scheduler at `GET /api/cron/tick?secret=$CRON_SECRET` hourly.
 
+## Multi-tenant
+
+Several challenges coexist, isolated: each has its own organisers, teams, Discord server and rulebook. `Challenge` is the tenant root.
+
+- A role only exists **inside** a challenge: `ChallengeMember { challengeId, userId, role: ORGANIZER | PLAYER }`. There is no global `User.role`; the only platform-wide flag is `User.isSuperAdmin` (organiser of every edition, sees every challenge in the editions list).
+- `TeamMember` is keyed `(userId, challengeId)`: at most one team per person **per edition**, so the same person plays several challenges.
+- The "current challenge" of a web request: the `challenge` cookie when the person belongs to it, otherwise their ACTIVE edition, otherwise the latest one (`lib/tenancy/select.ts`, pure and tested; I/O in `lib/services/membership.ts`). The cookie is only read for now — step 2 writes it from a challenge picker.
+- A Discord interaction resolves its tenant from `guild_id` (`resolveDiscordActor`): the ACTIVE challenge of that server, else its latest edition. A community reuses its server every edition, so `discordGuildId` is indexed but not unique — the invariant "at most one ACTIVE challenge per guild" is enforced in `upsertChallenge`.
+- Every service function takes the challenge it acts in; a team, an invitation, a question or a rival from another edition is refused.
+
 ## Architecture rules
 
-- **Authorization lives in `lib/dal.ts`** (`requireUser`, `requireAdmin`, `getCurrentPlayer`), called inside every page, Server Action and Route Handler. Never rely on layouts or the proxy for security.
+- **Authorization lives in `lib/dal.ts`**, called inside every page, Server Action and Route Handler. Never rely on layouts or the proxy for security.
+  - `requireUser()` — session only.
+  - `getCurrentPlayer()` → `{ user, challenge, role, team }`, all null-able but `user`.
+  - `requireOrganizer(challengeId?)` → `{ user, challenge }`; redirects to `/home` unless the person is ORGANIZER of that challenge (a super-admin always passes). Defaults to the current challenge.
 - **Scores are an append-only ledger** (`PointEvent`). Never store a mutable team total; team score = sum of `amount` within the challenge window. Multipliers (`Modifier`) are resolved when the event is written (`baseAmount`, `multiplier`, `amount` all stored). Undo = negative event.
 - Pure game logic (points, bingo lines, vote resolution, story effects) goes in `lib/scoring/*` and `lib/story/*` with no I/O, and is unit-tested. Server Actions and Discord slash commands must call the same service functions (`lib/services/*`) — no duplicated business logic.
 - Mobile-first UI (Tailwind 4), French copy with proper typography (apostrophes, accents).

@@ -1,5 +1,6 @@
 /**
- * Seed: first admin invite + a sample challenge with teams.
+ * Seed: a sample challenge with its teams, plus the first organiser (invitation
+ * and, when the account already exists, membership + platform super-admin).
  * Usage: ADMIN_DISCORD_ID=<your discord id> npm run db:seed (loads .env.local)
  */
 import "dotenv/config";
@@ -19,14 +20,17 @@ async function main() {
   const end = new Date(now);
   end.setMonth(end.getMonth() + 3);
 
+  // Several challenges coexist: find this one by name rather than "the active one".
+  const name = "Book Challenge — édition test";
   const challenge =
-    (await prisma.challenge.findFirst({ where: { status: "ACTIVE" } })) ??
+    (await prisma.challenge.findFirst({ where: { name } })) ??
     (await prisma.challenge.create({
       data: {
-        name: "Book Challenge — édition test",
+        name,
         startAt: now,
         endAt: end,
         status: "ACTIVE",
+        discordGuildId: process.env.DISCORD_GUILD_ID || null,
       },
     }));
 
@@ -44,13 +48,22 @@ async function main() {
 
   await prisma.invite.upsert({
     where: { challengeId_discordId: { challengeId: challenge.id, discordId: adminDiscordId } },
-    create: { challengeId: challenge.id, discordId: adminDiscordId, role: "ADMIN" },
-    update: { role: "ADMIN" },
+    create: { challengeId: challenge.id, discordId: adminDiscordId, role: "ORGANIZER" },
+    update: { role: "ORGANIZER" },
   });
-  // Existing account (re-seed): make sure it is admin.
-  await prisma.user.updateMany({ where: { discordId: adminDiscordId }, data: { role: "ADMIN" } });
 
-  console.log(`Seeded challenge "${challenge.name}" with 3 teams; admin invite for ${adminDiscordId}.`);
+  // Existing account (re-seed): platform super-admin and organiser of this edition.
+  const admin = await prisma.user.findUnique({ where: { discordId: adminDiscordId }, select: { id: true } });
+  if (admin) {
+    await prisma.user.update({ where: { id: admin.id }, data: { isSuperAdmin: true } });
+    await prisma.challengeMember.upsert({
+      where: { challengeId_userId: { challengeId: challenge.id, userId: admin.id } },
+      create: { challengeId: challenge.id, userId: admin.id, role: "ORGANIZER" },
+      update: { role: "ORGANIZER" },
+    });
+  }
+
+  console.log(`Seeded challenge "${challenge.name}" with 3 teams; organiser invite for ${adminDiscordId}.`);
 }
 
 main()
