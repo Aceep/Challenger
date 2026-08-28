@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getActiveChallenge, requireAdmin } from "@/lib/dal";
 import { parseForm, type ActionState } from "@/lib/forms";
 import { createTeam, deleteTeam, setCaptain, teamSchema, updateTeam } from "@/lib/services/admin";
+import { setDeputy } from "@/lib/services/team";
 
 function refresh() {
   revalidatePath("/admin", "layout");
@@ -46,5 +47,13 @@ export async function setCaptainAction(formData: FormData) {
   const teamId = String(formData.get("teamId") ?? "");
   const userId = String(formData.get("userId") ?? "") || null;
   if (teamId) await setCaptain(teamId, userId);
+  refresh();
+}
+
+export async function setDeputyAction(formData: FormData) {
+  const admin = await requireAdmin();
+  const teamId = String(formData.get("teamId") ?? "");
+  const userId = String(formData.get("userId") ?? "") || null;
+  if (teamId) await setDeputy(teamId, userId, { id: admin.id, role: "ADMIN" });
   refresh();
 }

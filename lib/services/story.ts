@@ -2,7 +2,7 @@ import "server-only";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { completedLines } from "@/lib/scoring/bingo";
-import { bookWeight, isComplete } from "@/lib/scoring/reading";
+import { activeGridForTeam, completePositions } from "@/lib/services/bingo";
 import { awardPoints } from "@/lib/services/points";
 import { getTeamScore } from "@/lib/services/leaderboard";
 import { describeEffect, needsTargetTeam, parseEffects, effectsSchema, type Effect } from "@/lib/story/effects";
@@ -113,20 +113,14 @@ export async function resetTeamStory(teamId: string) {
 // ---------------------------------------------------------------------------
 
 async function teamProgress(tx: Tx, teamId: string, challengeId: string) {
+  void challengeId;
   const [completions, grid, points] = await Promise.all([
     tx.questCompletion.findMany({ where: { teamId }, select: { questId: true } }),
-    tx.bingoGrid.findUnique({
-      where: { challengeId_scope: { challengeId, scope: "TEAM" } },
-      include: { cells: { include: { fills: { where: { teamId }, include: { book: { select: { isGraphic: true } } } } } } },
-    }),
+    activeGridForTeam(tx, teamId),
     getTeamScore(teamId),
   ]);
-  const bingoLines = grid
-    ? completedLines(
-        grid.cells.filter((c) => isComplete(c.fills.map((f) => bookWeight(f.book.isGraphic)))).map((c) => ({ row: c.row, col: c.col })),
-        grid.size,
-      ).length
-    : 0;
+  // Lines are counted on the team's active grid.
+  const bingoLines = grid ? completedLines(await completePositions(tx, grid.id, teamId), grid.size).length : 0;
   return { completedQuestIds: completions.map((c) => c.questId), bingoLines, points };
 }
 
@@ -368,7 +362,7 @@ async function applyResolution(voteId: string, choiceId: string, targetTeamId: s
                 challengeId: vote.team.challengeId,
                 title: e.title,
                 description: e.description,
-                type: e.questType,
+                number: ((await tx.quest.aggregate({ where: { challengeId: vote.team.challengeId }, _max: { number: true } }))._max.number ?? 0) + 1,
                 points: e.points,
                 targetTeamId: t.id,
                 origin: "STORY",

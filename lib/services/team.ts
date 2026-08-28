@@ -1,5 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/db";
+import { round1 } from "@/lib/scoring/reading";
+import { num } from "@/lib/services/points";
 
 export async function getTeamStats(teamId: string) {
   const team = await prisma.team.findUniqueOrThrow({
@@ -7,7 +9,9 @@ export async function getTeamStats(teamId: string) {
     include: {
       challenge: true,
       captain: { select: { id: true, name: true } },
-      members: { include: { user: { select: { id: true, name: true, image: true, books: { select: { pages: true, isGraphic: true } } } } } },
+      deputy: { select: { id: true, name: true } },
+      members: { include: { user: { select: { id: true, name: true, image: true } } } },
+      books: { where: { deletedAt: null }, select: { userId: true, pages: true, type: true } },
       modifiers: { where: { endAt: { gt: new Date() } }, orderBy: { endAt: "asc" } },
     },
   });
@@ -17,26 +21,39 @@ export async function getTeamStats(teamId: string) {
     prisma.pointEvent.findMany({ where: { teamId, createdAt: window }, orderBy: { createdAt: "desc" }, take: 25, select: { id: true, amount: true, label: true, source: true, createdAt: true, userId: true } }),
     prisma.pointEvent.groupBy({ by: ["source"], where: { teamId, createdAt: window }, _sum: { amount: true } }),
   ]);
-  const pointsByUser = new Map(perUser.map((p) => [p.userId, p._sum.amount ?? 0]));
+  const pointsByUser = new Map(perUser.map((p) => [p.userId, round1(num(p._sum.amount))]));
   const names = new Map(team.members.map((m) => [m.user.id, m.user.name ?? "?"]));
 
   return {
     team,
     members: team.members
-      .map((m) => ({
-        id: m.user.id,
-        name: m.user.name ?? "?",
-        image: m.user.image,
-        books: m.user.books.filter((b) => !b.isGraphic).length,
-        graphics: m.user.books.filter((b) => b.isGraphic).length,
-        pages: m.user.books.reduce((n, b) => n + b.pages, 0),
-        points: pointsByUser.get(m.user.id) ?? 0,
-        isCaptain: team.captainId === m.user.id,
-      }))
+      .map((m) => {
+        const books = team.books.filter((b) => b.userId === m.user.id);
+        return {
+          id: m.user.id,
+          name: m.user.name ?? "?",
+          image: m.user.image,
+          books: books.filter((b) => b.type === "ROMAN").length,
+          graphics: books.filter((b) => b.type === "GRAPHIQUE").length,
+          pages: books.reduce((n, b) => n + b.pages, 0),
+          points: pointsByUser.get(m.user.id) ?? 0,
+          isCaptain: team.captainId === m.user.id,
+          isDeputy: team.deputyId === m.user.id,
+        };
+      })
       .sort((a, b) => b.points - a.points),
-    total: bySource.reduce((n, s) => n + (s._sum.amount ?? 0), 0),
-    bySource: Object.fromEntries(bySource.map((s) => [s.source, s._sum.amount ?? 0])) as Record<string, number>,
-    recent: recent.map((e) => ({ ...e, who: e.userId ? (names.get(e.userId) ?? null) : null })),
+    total: round1(bySource.reduce((n, s) => n + num(s._sum.amount), 0)),
+    bySource: Object.fromEntries(bySource.map((s) => [s.source, round1(num(s._sum.amount))])) as Record<string, number>,
+    recent: recent.map((e) => ({ ...e, amount: num(e.amount), who: e.userId ? (names.get(e.userId) ?? null) : null })),
     modifiers: team.modifiers,
   };
+}
+
+/** The captain (or an admin) names the team's adjoint among its members. */
+export async function setDeputy(teamId: string, userId: string | null, actor: { id: string; role: "ADMIN" | "PLAYER" }) {
+  const team = await prisma.team.findUniqueOrThrow({ where: { id: teamId }, include: { members: { select: { userId: true } } } });
+  if (actor.role !== "ADMIN" && team.captainId !== actor.id) throw new Error("Seul·e le·la capitaine peut nommer l'adjoint·e");
+  if (userId && !team.members.some((m) => m.userId === userId)) throw new Error("Ce joueur n'est pas dans l'équipe");
+  if (userId && userId === team.captainId) throw new Error("Le·la capitaine ne peut pas être son·sa propre adjoint·e");
+  return prisma.team.update({ where: { id: teamId }, data: { deputyId: userId } });
 }

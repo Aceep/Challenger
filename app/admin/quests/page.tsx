@@ -24,6 +24,7 @@ export default async function AdminQuestsPage() {
         <>
           <section>
             <h2 className="mb-2 font-semibold">Nouvelle quête</h2>
+            <p className="mb-2 text-sm text-slate-500">Les quêtes sont collectives : une équipe valide une quête en y rattachant un roman, ou deux graphiques.</p>
             <QuestForm teams={teams} />
           </section>
           <section>
@@ -35,10 +36,9 @@ export default async function AdminQuestsPage() {
                 teams={teams}
                 quests={quests.map((q) => ({
                   id: q.id,
+                  number: q.number,
                   title: q.title,
                   description: q.description,
-                  type: q.type,
-                  kind: q.kind,
                   points: q.points,
                   openAt: toLocalInput(q.openAt),
                   closeAt: toLocalInput(q.closeAt),

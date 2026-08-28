@@ -7,7 +7,7 @@ export type BoardCell = {
   id: string;
   label: string;
   prompt: string;
-  books: { id: string; title: string; isGraphic: boolean; owner: string }[];
+  books: { id: string; title: string; type: "ROMAN" | "GRAPHIQUE"; owner: string }[];
   weight: number;
   complete: boolean;
 };
@@ -17,7 +17,7 @@ type Props = {
   size: number;
   cells: BoardCell[];
   /** Books the current user may place/move (own within 1 h, or whole team for the captain). */
-  books: { id: string; title: string; isGraphic: boolean; owner: string; placedOn: string | null }[];
+  books: { id: string; title: string; type: "ROMAN" | "GRAPHIQUE"; owner: string; placedOn: string | null }[];
   completedLines: number;
 };
 
@@ -52,6 +52,7 @@ export function BingoBoard({ title, size, cells, books, completedLines }: Props)
             title={`${c.label} — ${c.prompt}`}
           >
             <span className={`line-clamp-2 ${c.books.length ? "opacity-70" : ""}`}>{c.prompt}</span>
+            {!c.complete && c.weight > 0 && <span className="mt-0.5 italic opacity-80">en attente ½</span>}
             {c.books.map((b) => (
               <span key={b.id} className="mt-0.5 line-clamp-1 font-semibold">
                 {b.owner} — {b.title}
@@ -71,7 +72,7 @@ export function BingoBoard({ title, size, cells, books, completedLines }: Props)
                 <li key={b.id} className="flex items-center justify-between gap-2">
                   <span>
                     {b.owner} — <strong>{b.title}</strong>
-                    {b.isGraphic && <span className="ml-1 text-xs text-slate-500">(graphique, ½)</span>}
+                    {b.type === "GRAPHIQUE" && <span className="ml-1 text-xs text-slate-500">(graphique, ½)</span>}
                   </span>
                   {editableIds.has(b.id) && (
                     <form action={removeBookAction}>
@@ -86,13 +87,13 @@ export function BingoBoard({ title, size, cells, books, completedLines }: Props)
             </ul>
           )}
           {selected.complete ? (
-            <p className="text-sm text-green-700">Case complétée ✅</p>
+            <p className="text-sm text-green-700">Case validée ✅</p>
           ) : (
             <form action={placeBookAction} className="flex flex-col gap-2">
               <input type="hidden" name="cellId" value={selected.id} />
               <select name="bookId" required defaultValue="" className="rounded-lg border border-slate-300 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900">
                 <option value="" disabled>
-                  {selected.weight > 0 ? "Ajouter un second livre (½ manquant)…" : "Choisir un livre…"}
+                  {selected.weight > 0 ? "Ajouter la seconde moitié (ou un roman)…" : "Choisir une lecture…"}
                 </option>
                 {books
                   .filter((b) => b.placedOn !== selected.id)
@@ -100,7 +101,7 @@ export function BingoBoard({ title, size, cells, books, completedLines }: Props)
                     <option key={b.id} value={b.id}>
                       {b.placedOn ? "✓ " : ""}
                       {b.owner} — {b.title}
-                      {b.isGraphic ? " (½)" : ""}
+                      {b.type === "GRAPHIQUE" ? " (½)" : ""}
                     </option>
                   ))}
               </select>
@@ -113,7 +114,7 @@ export function BingoBoard({ title, size, cells, books, completedLines }: Props)
                 </button>
               </div>
               <p className="text-xs text-slate-500">
-                Un livre = case complète ; un graphique = ½ case. ✓ = déjà placé ailleurs (il sera déplacé). Tu peux placer tes livres pendant 1 h après leur ajout ; ensuite c&apos;est le·la capitaine.
+                Un roman valide la case (un ½ déjà posé revient en attente) ; un graphique = ½ case. ✓ = déjà placé ailleurs (il sera déplacé). Tu peux placer tes lectures pendant 1 h après leur ajout ; ensuite c&apos;est le·la capitaine.
               </p>
             </form>
           )}

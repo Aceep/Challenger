@@ -26,7 +26,6 @@ export const effectSchema = z.discriminatedUnion("type", [
     target,
     title: z.string().min(1).max(120),
     description: z.string().max(2000).default(""),
-    questType: z.enum(["TEAM", "INDIVIDUAL"]).default("TEAM"),
     points: z.number().int().min(0),
     days: z.number().positive().max(60).optional(),
   }),

@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { getCurrentPlayer } from "@/lib/dal";
+import { fmtDelta, fmtPoints } from "@/lib/format";
 import { getTeamStats } from "@/lib/services/team";
+import { DeputyForm } from "./DeputyForm";
 
 const dateFmt = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 const SOURCE_LABEL: Record<string, string> = { READING: "Lecture", BINGO: "Bingo", QUEST: "Quêtes", STORY: "Histoire", ADMIN: "Ajustements" };
 
 export default async function TeamPage() {
-  const { team } = await getCurrentPlayer();
+  const { user, team } = await getCurrentPlayer();
   if (!team) {
     return (
       <main className="flex flex-1 flex-col gap-4 p-5">
@@ -26,7 +28,7 @@ export default async function TeamPage() {
         <h1 className="text-2xl font-bold" style={{ color: team.color }}>
           {team.name}
         </h1>
-        <p className="text-sm text-slate-500">{stats.total} pts au total</p>
+        <p className="text-sm text-slate-500">{fmtPoints(stats.total)} pts au total</p>
       </header>
 
       <section className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -34,7 +36,7 @@ export default async function TeamPage() {
           stats.bySource[k] !== undefined ? (
             <div key={k} className="rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900">
               <p className="text-xs text-slate-500">{label}</p>
-              <p className="text-xl font-bold">{stats.bySource[k]}</p>
+              <p className="text-xl font-bold">{fmtPoints(stats.bySource[k])}</p>
             </div>
           ) : null,
         )}
@@ -50,6 +52,11 @@ export default async function TeamPage() {
         </section>
       )}
 
+      <section className="text-sm text-slate-500">
+        ⭐ capitaine : {stats.team.captain?.name ?? "—"} · 🎖️ adjoint·e : {stats.team.deputy?.name ?? "—"}
+        {(team.captainId === user.id || user.role === "ADMIN") && <DeputyForm teamId={team.id} members={stats.members.filter((m) => !m.isCaptain).map((m) => ({ id: m.id, name: m.name }))} current={team.deputyId ?? ""} />}
+      </section>
+
       <section>
         <h2 className="mb-2 font-semibold">Membres</h2>
         <ul className="flex flex-col gap-2">
@@ -58,13 +65,14 @@ export default async function TeamPage() {
               <div className="min-w-0 flex-1">
                 <p className="truncate font-semibold">
                   {m.isCaptain && "⭐ "}
+                  {m.isDeputy && "🎖️ "}
                   {m.name}
                 </p>
                 <p className="text-xs text-slate-500">
-                  {m.books} livre{m.books > 1 ? "s" : ""} · {m.graphics} graphique{m.graphics > 1 ? "s" : ""} · {m.pages} pages
+                  {m.books} roman{m.books > 1 ? "s" : ""} · {m.graphics} graphique{m.graphics > 1 ? "s" : ""} · {m.pages} pages
                 </p>
               </div>
-              <span className="font-bold">{m.points} pts</span>
+              <span className="font-bold">{fmtPoints(m.points)} pts</span>
             </li>
           ))}
         </ul>
@@ -82,10 +90,7 @@ export default async function TeamPage() {
                   {e.label}
                   {e.who && <span className="text-slate-500"> · {e.who}</span>}
                 </span>
-                <span className={`shrink-0 font-semibold ${e.amount < 0 ? "text-red-600" : "text-green-700"}`}>
-                  {e.amount > 0 ? "+" : ""}
-                  {e.amount}
-                </span>
+                <span className={`shrink-0 font-semibold ${e.amount < 0 ? "text-red-600" : "text-green-700"}`}>{fmtDelta(e.amount)}</span>
               </li>
             ))}
           </ul>

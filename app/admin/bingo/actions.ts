@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getActiveChallenge, requireAdmin } from "@/lib/dal";
 import { parseForm, type ActionState } from "@/lib/forms";
-import { deleteGrid, gridSchema, upsertGrid } from "@/lib/services/bingo";
+import { createGrid, deleteGrid, gridSchema, moveGrid, updateGrid } from "@/lib/services/bingo";
 
 function refresh() {
   revalidatePath("/admin/bingo");
@@ -14,10 +14,13 @@ export async function saveGridAction(_prev: ActionState, formData: FormData): Pr
   await requireAdmin();
   const challenge = await getActiveChallenge();
   if (!challenge) return { error: "Aucun défi actif." };
+  const gridId = String(formData.get("gridId") ?? "") || null;
+  formData.delete("gridId");
   const parsed = parseForm(gridSchema, formData);
   if ("error" in parsed) return { error: parsed.error };
   try {
-    await upsertGrid(challenge.id, parsed.data);
+    if (gridId) await updateGrid(gridId, parsed.data);
+    else await createGrid(challenge.id, parsed.data);
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Erreur inconnue" };
   }
@@ -25,9 +28,17 @@ export async function saveGridAction(_prev: ActionState, formData: FormData): Pr
   return { success: "Grille enregistrée." };
 }
 
-export async function deleteGridAction() {
+export async function moveGridAction(formData: FormData) {
   await requireAdmin();
-  const challenge = await getActiveChallenge();
-  if (challenge) await deleteGrid(challenge.id);
+  const gridId = String(formData.get("gridId") ?? "");
+  const direction = formData.get("direction") === "up" ? "up" : "down";
+  if (gridId) await moveGrid(gridId, direction);
+  refresh();
+}
+
+export async function deleteGridAction(formData: FormData) {
+  await requireAdmin();
+  const gridId = String(formData.get("gridId") ?? "");
+  if (gridId) await deleteGrid(gridId);
   refresh();
 }

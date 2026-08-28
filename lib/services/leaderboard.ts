@@ -1,5 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/db";
+import { num } from "@/lib/services/points";
+import { round1 } from "@/lib/scoring/reading";
 
 export type LeaderboardRow = {
   teamId: string;
@@ -19,7 +21,7 @@ export async function getLeaderboard(challengeId: string): Promise<LeaderboardRo
     where: { challengeId },
     include: {
       _count: { select: { members: true } },
-      members: { select: { user: { select: { books: { select: { isGraphic: true } } } } } },
+      books: { where: { deletedAt: null }, select: { type: true } },
     },
   });
   const sums = await prisma.pointEvent.groupBy({
@@ -30,7 +32,7 @@ export async function getLeaderboard(challengeId: string): Promise<LeaderboardRo
     },
     _sum: { amount: true },
   });
-  const byTeam = new Map(sums.map((s) => [s.teamId, s._sum.amount ?? 0]));
+  const byTeam = new Map(sums.map((s) => [s.teamId, round1(num(s._sum.amount))]));
 
   const rows: LeaderboardRow[] = teams
     .map((t) => ({
@@ -39,8 +41,8 @@ export async function getLeaderboard(challengeId: string): Promise<LeaderboardRo
       color: t.color,
       points: byTeam.get(t.id) ?? 0,
       members: t._count.members,
-      books: t.members.reduce((n, m) => n + m.user.books.filter((b) => !b.isGraphic).length, 0),
-      graphics: t.members.reduce((n, m) => n + m.user.books.filter((b) => b.isGraphic).length, 0),
+      books: t.books.filter((b) => b.type === "ROMAN").length,
+      graphics: t.books.filter((b) => b.type === "GRAPHIQUE").length,
       rank: 0,
     }))
     .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));
@@ -64,7 +66,7 @@ export async function getTeamScore(teamId: string): Promise<number> {
     },
     _sum: { amount: true },
   });
-  return r._sum.amount ?? 0;
+  return round1(num(r._sum.amount));
 }
 
 /** Runs `fn`, then reports the leader before/after so callers can announce a change. */

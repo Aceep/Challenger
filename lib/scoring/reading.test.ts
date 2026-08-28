@@ -3,35 +3,48 @@ import {
   applyMultiplier,
   bookWeight,
   effectiveMultiplier,
+  effectiveType,
   isComplete,
   isWithinChallenge,
   readingPoints,
+  round1,
 } from "./reading";
 
 describe("readingPoints", () => {
-  it("gives 1 point per 10 pages by default rate, rounded down", () => {
-    expect(readingPoints(412, 0.1)).toBe(41);
-    expect(readingPoints(150, 0.1)).toBe(15);
-    expect(readingPoints(159, 0.1)).toBe(15);
+  it("gives pages/10 from 150 pages, one decimal", () => {
+    expect(readingPoints(412)).toBe(41.2);
+    expect(readingPoints(150)).toBe(15);
+    expect(readingPoints(151)).toBe(15.1);
+    expect(readingPoints(159)).toBe(15.9);
   });
-  it("halves pages under 150", () => {
-    expect(readingPoints(149, 0.1)).toBe(7);
-    expect(readingPoints(120, 0.1)).toBe(6);
-    expect(readingPoints(10, 0.1)).toBe(0);
-    expect(readingPoints(20, 0.1)).toBe(1);
+  it("halves pages under 150 with commercial rounding to 0,1", () => {
+    expect(readingPoints(149)).toBe(7.5);
+    expect(readingPoints(120)).toBe(6);
+    expect(readingPoints(10)).toBe(0.5);
+    expect(readingPoints(1)).toBe(0.1);
+    expect(readingPoints(21)).toBe(1.1);
   });
   it("returns 0 for invalid inputs", () => {
-    expect(readingPoints(0, 0.1)).toBe(0);
-    expect(readingPoints(-5, 0.1)).toBe(0);
+    expect(readingPoints(0)).toBe(0);
+    expect(readingPoints(-5)).toBe(0);
     expect(readingPoints(100, 0)).toBe(0);
-    expect(readingPoints(NaN, 0.1)).toBe(0);
+    expect(readingPoints(NaN)).toBe(0);
+  });
+});
+
+describe("effectiveType", () => {
+  it("is graphique when declared or under 150 pages", () => {
+    expect(effectiveType(140, false)).toBe("GRAPHIQUE");
+    expect(effectiveType(149, false)).toBe("GRAPHIQUE");
+    expect(effectiveType(150, false)).toBe("ROMAN");
+    expect(effectiveType(300, true)).toBe("GRAPHIQUE");
   });
 });
 
 describe("bookWeight / isComplete", () => {
   it("a graphique counts half", () => {
-    expect(bookWeight(false)).toBe(1);
-    expect(bookWeight(true)).toBe(0.5);
+    expect(bookWeight("ROMAN")).toBe(1);
+    expect(bookWeight("GRAPHIQUE")).toBe(0.5);
   });
   it("needs one full book equivalent", () => {
     expect(isComplete([])).toBe(false);
@@ -39,6 +52,14 @@ describe("bookWeight / isComplete", () => {
     expect(isComplete([0.5, 0.5])).toBe(true);
     expect(isComplete([1])).toBe(true);
     expect(isComplete([1, 0.5])).toBe(true);
+  });
+});
+
+describe("round1", () => {
+  it("rounds half up", () => {
+    expect(round1(7.45)).toBe(7.5);
+    expect(round1(2.25)).toBe(2.3);
+    expect(round1(1.04)).toBe(1);
   });
 });
 
@@ -65,8 +86,8 @@ describe("effectiveMultiplier", () => {
 
 describe("applyMultiplier", () => {
   it("rounds to nearest integer", () => {
-    expect(applyMultiplier(41, 0.8)).toBe(33);
-    expect(applyMultiplier(41, 1.5)).toBe(62);
+    expect(applyMultiplier(41, 0.8)).toBe(32.8);
+    expect(applyMultiplier(41, 1.5)).toBe(61.5);
   });
 });
 

@@ -10,40 +10,39 @@ if (!appId || !token || !guildId) throw new Error("AUTH_DISCORD_ID, DISCORD_BOT_
 const STRING = 3;
 const INTEGER = 4;
 const BOOLEAN = 5;
+const TYPE_CHOICES = [
+  { name: "roman", value: "ROMAN" },
+  { name: "graphique", value: "GRAPHIQUE" },
+];
 const commands = [
   {
     name: "ajouter-un-livre",
-    description: "Enregistrer un livre terminé (dans le salon de ton équipe)",
+    description: "Enregistrer une lecture terminée (dans la librairie de ton équipe)",
     options: [
-      { type: STRING, name: "titre", description: "Titre du livre", required: true },
+      { type: STRING, name: "titre", description: "Titre", required: true },
       { type: STRING, name: "auteur", description: "Auteur·ice", required: true },
-      { type: INTEGER, name: "pages", description: "Nombre de pages", required: true, min_value: 1, max_value: 5000 },
-      { type: BOOLEAN, name: "graphique", description: "BD / manga / roman graphique : compte pour ½ livre (quêtes, bingo)", required: false },
-      { type: STRING, name: "quete", description: "Quête de lecture validée par ce livre", required: false, autocomplete: true },
-      { type: STRING, name: "case", description: "Case du bingo d'équipe remplie par ce livre", required: false, autocomplete: true },
+      { type: INTEGER, name: "pages", description: "Nombre de pages (édition la plus avantageuse ; < 150 = graphique)", required: true, min_value: 1, max_value: 5000 },
+      { type: STRING, name: "type", description: "Roman (défaut) ou graphique (BD, manga…) : ½ quête et ½ case", required: false, choices: TYPE_CHOICES },
+      { type: STRING, name: "quete", description: "Quête validée par cette lecture (commencée après la parution de la grille)", required: false, autocomplete: true },
+      { type: STRING, name: "case", description: "Case du bingo validée par cette lecture (même règle d'antériorité)", required: false, autocomplete: true },
     ],
   },
   {
     name: "modifier-un-livre",
-    description: "Modifier ou supprimer un livre (1 h après l'ajout, puis capitaine)",
+    description: "Modifier ou supprimer une lecture (1 h après l'ajout, puis capitaine)",
     options: [
-      { type: STRING, name: "livre", description: "Livre à modifier", required: true, autocomplete: true },
+      { type: STRING, name: "livre", description: "Lecture à modifier", required: true, autocomplete: true },
       { type: STRING, name: "titre", description: "Nouveau titre", required: false },
       { type: STRING, name: "auteur", description: "Nouvel·le auteur·ice", required: false },
       { type: INTEGER, name: "pages", description: "Nouveau nombre de pages", required: false, min_value: 1, max_value: 5000 },
-      { type: BOOLEAN, name: "graphique", description: "Graphique ?", required: false },
-      { type: STRING, name: "quete", description: "Rattacher à une quête de lecture", required: false, autocomplete: true },
+      { type: STRING, name: "type", description: "Roman ou graphique", required: false, choices: TYPE_CHOICES },
+      { type: STRING, name: "quete", description: "Rattacher à une quête", required: false, autocomplete: true },
       { type: STRING, name: "case", description: "Placer sur une case du bingo", required: false, autocomplete: true },
-      { type: BOOLEAN, name: "supprimer", description: "Supprimer ce livre", required: false },
+      { type: BOOLEAN, name: "supprimer", description: "Supprimer cette lecture", required: false },
     ],
   },
   { name: "score", description: "Afficher le classement des équipes" },
-  { name: "quete", description: "Lister les quêtes ouvertes" },
-  {
-    name: "quete-fait",
-    description: "Valider une quête",
-    options: [{ type: STRING, name: "id", description: "Identifiant court (voir /quete)", required: true }],
-  },
+  { name: "quete", description: "Lister les quêtes ouvertes et leur avancement" },
   { name: "histoire", description: "Voir le chapitre en cours de ton équipe" },
 ];
 

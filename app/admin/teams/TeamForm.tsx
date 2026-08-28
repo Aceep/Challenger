@@ -19,7 +19,7 @@ export function TeamForm() {
         <input name="color" type="color" defaultValue="#6366f1" className="h-10 w-16 cursor-pointer rounded" />
       </label>
       <label className="flex flex-col gap-1 text-sm font-medium">
-        Salon histoire/votes (id)
+        Salon aventure (id)
         <input name="discordChannelId" className={field} />
       </label>
       <label className="flex flex-col gap-1 text-sm font-medium">

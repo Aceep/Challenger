@@ -1,17 +1,22 @@
 import "server-only";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { bookWeight, isComplete, MAX_BOOKS_PER_SLOT } from "@/lib/scoring/reading";
-import { awardPoints } from "@/lib/services/points";
+import { bookWeight, isComplete, MAX_BOOKS_PER_SLOT, type BookType } from "@/lib/scoring/reading";
+import { awardPoints, reverseByRef } from "@/lib/services/points";
+
+/**
+ * Quests are team-level reading prompts: a team validates quest #n by attaching
+ * readings whose weights (roman 1, graphique ½) reach 1. Completion is derived
+ * from the attached readings; QuestCompletion records it for the ledger.
+ */
 
 type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
 
 export const questSchema = z
   .object({
+    number: z.coerce.number().int().min(1).optional(),
     title: z.string().trim().min(1, "Titre requis").max(120),
     description: z.string().trim().max(2000).default(""),
-    type: z.enum(["TEAM", "INDIVIDUAL"]),
-    kind: z.enum(["ACTION", "LECTURE"]).default("ACTION"),
     points: z.coerce.number().int().min(0).max(10000),
     openAt: z
       .string()
@@ -26,12 +31,20 @@ export const questSchema = z
   .refine((q) => !q.openAt || !q.closeAt || q.closeAt > q.openAt, { message: "La fin doit être après le début", path: ["closeAt"] });
 export type QuestInput = z.infer<typeof questSchema>;
 
+async function nextNumber(tx: Tx, challengeId: string) {
+  const last = await tx.quest.aggregate({ where: { challengeId }, _max: { number: true } });
+  return (last._max.number ?? 0) + 1;
+}
+
 export function createQuest(challengeId: string, input: QuestInput) {
-  return prisma.quest.create({ data: { challengeId, ...input } });
+  return prisma.$transaction(async (tx) => {
+    const number = input.number ?? (await nextNumber(tx, challengeId));
+    return tx.quest.create({ data: { challengeId, ...input, number } });
+  });
 }
 
 export function updateQuest(id: string, input: QuestInput) {
-  return prisma.quest.update({ where: { id }, data: input });
+  return prisma.quest.update({ where: { id }, data: { ...input, ...(input.number === undefined && { number: undefined }) } });
 }
 
 export function deleteQuest(id: string) {
@@ -42,28 +55,37 @@ export function isQuestOpen(q: { openAt: Date | null; closeAt: Date | null }, at
   return (!q.openAt || q.openAt <= at) && (!q.closeAt || at <= q.closeAt);
 }
 
-/** Quests visible to a player: challenge-wide ones plus those targeted at their team. */
-export async function listQuestsForPlayer(challengeId: string, userId: string, teamId: string | null) {
+export const questLabel = (q: { number: number; title: string }) => `#${q.number} — ${q.title}`;
+
+/** Quests visible to a team with its progress: challenge-wide ones plus those targeted at it. */
+export async function listQuestsForTeam(challengeId: string, teamId: string | null) {
   const quests = await prisma.quest.findMany({
     where: { challengeId, OR: [{ targetTeamId: null }, ...(teamId ? [{ targetTeamId: teamId }] : [])] },
-    orderBy: [{ closeAt: "asc" }, { createdAt: "desc" }],
+    orderBy: { number: "asc" },
     include: {
-      completions: { where: { OR: [{ userId }, ...(teamId ? [{ teamId }] : [])] } },
+      completions: { where: { teamId: teamId ?? "" } },
       books: {
-        where: { OR: [{ userId }, ...(teamId ? [{ teamId }] : [])] },
-        include: { book: { select: { id: true, title: true, isGraphic: true, userId: true, user: { select: { name: true } } } } },
+        where: { teamId: teamId ?? "", book: { deletedAt: null } },
+        orderBy: { createdAt: "asc" },
+        include: { book: { select: { id: true, title: true, type: true, userId: true, user: { select: { name: true } } } } },
       },
-      _count: { select: { completions: true } },
     },
   });
   return quests.map((q) => {
-    const mine = q.books.filter((b) => (q.type === "INDIVIDUAL" ? b.userId === userId : b.teamId === teamId));
-    const weight = mine.reduce((n, b) => n + bookWeight(b.book.isGraphic), 0);
+    const books = q.books;
+    const weight = books.reduce((n, b) => n + bookWeight(b.book.type), 0);
     return {
-      ...q,
+      id: q.id,
+      number: q.number,
+      title: q.title,
+      description: q.description,
+      points: q.points,
+      openAt: q.openAt,
+      closeAt: q.closeAt,
+      targetTeamId: q.targetTeamId,
       open: isQuestOpen(q),
-      done: q.type === "INDIVIDUAL" ? q.completions.some((c) => c.userId === userId) : q.completions.some((c) => c.teamId === teamId),
-      linkedBooks: mine.map((b) => ({ id: b.book.id, title: b.book.title, isGraphic: b.book.isGraphic, owner: b.book.user.name ?? "?" })),
+      done: q.completions.length > 0,
+      linkedBooks: books.map((b) => ({ id: b.book.id, title: b.book.title, type: b.book.type, owner: b.book.user.name ?? "?" })),
       progress: Math.min(weight, 1),
     };
   });
@@ -72,110 +94,82 @@ export async function listQuestsForPlayer(challengeId: string, userId: string, t
 export function listQuestsAdmin(challengeId: string) {
   return prisma.quest.findMany({
     where: { challengeId },
-    orderBy: { createdAt: "desc" },
+    orderBy: { number: "asc" },
     include: { targetTeam: { select: { name: true } }, _count: { select: { completions: true } } },
   });
 }
 
-type Actor = { id: string; role: "ADMIN" | "PLAYER"; teamId: string | null; isCaptain: boolean };
+// ---------------------------------------------------------------------------
+// Completion derived from attached readings (called inside the book transaction)
+// ---------------------------------------------------------------------------
 
-function completionRef(quest: { id: string; type: "TEAM" | "INDIVIDUAL" }, owner: { userId?: string; teamId?: string }) {
-  return `quest:${quest.id}:${quest.type === "INDIVIDUAL" ? `user:${owner.userId}` : `team:${owner.teamId}`}`;
-}
+const completionRef = (questId: string, teamId: string) => `quest:${questId}:team:${teamId}`;
 
-/** Records a completion and credits the team. Idempotent per owner. */
-async function grantCompletion(tx: Tx, quest: { id: string; type: "TEAM" | "INDIVIDUAL"; title: string; points: number }, owner: { userId?: string; teamId?: string }, teamId: string, actorId: string) {
-  const existing = await tx.questCompletion.findFirst({ where: { questId: quest.id, ...owner } });
-  if (existing) return { points: 0, already: true };
-  await tx.questCompletion.create({ data: { questId: quest.id, ...owner, completedById: actorId } });
-  const event = await awardPoints(tx, { teamId, userId: actorId, source: "QUEST", baseAmount: quest.points, label: `Quête : ${quest.title}`, refId: completionRef(quest, owner) });
-  return { points: event?.amount ?? 0, already: false };
-}
-
-/** Removes a completion and reverses its points (no-op when absent). */
-async function revokeCompletion(tx: Tx, quest: { id: string; type: "TEAM" | "INDIVIDUAL"; title: string }, owner: { userId?: string; teamId?: string }, actorId: string) {
-  const existing = await tx.questCompletion.findFirst({ where: { questId: quest.id, ...owner } });
-  if (!existing) return;
-  await tx.questCompletion.delete({ where: { id: existing.id } });
-  const refId = completionRef(quest, owner);
-  const original = await tx.pointEvent.findFirst({ where: { refId, amount: { gt: 0 } }, orderBy: { createdAt: "desc" } });
-  if (original) {
-    await awardPoints(tx, { teamId: original.teamId, userId: actorId, source: "QUEST", baseAmount: -original.baseAmount, rawAmount: -original.amount, label: `Annulation quête : ${quest.title}`, refId: `${refId}:undo` });
+async function syncCompletion(tx: Tx, quest: { id: string; number: number; title: string; points: number }, teamId: string, actorId: string) {
+  const books = await tx.questBook.findMany({ where: { questId: quest.id, teamId, book: { deletedAt: null } }, include: { book: { select: { type: true } } } });
+  const complete = isComplete(books.map((b) => bookWeight(b.book.type)));
+  const existing = await tx.questCompletion.findUnique({ where: { questId_teamId: { questId: quest.id, teamId } } });
+  if (complete && !existing) {
+    await tx.questCompletion.create({ data: { questId: quest.id, teamId, completedById: actorId } });
+    const ev = await awardPoints(tx, { teamId, userId: actorId, source: "QUEST", baseAmount: quest.points, label: `Quête #${quest.number} : ${quest.title}`, refId: completionRef(quest.id, teamId) });
+    return { complete: true, points: ev?.amount ?? 0 };
   }
+  if (!complete && existing) {
+    await tx.questCompletion.delete({ where: { id: existing.id } });
+    await reverseByRef(tx, completionRef(quest.id, teamId), actorId, `Annulation quête : ${quest.title}`);
+  }
+  return { complete, points: 0 };
 }
 
-/** ACTION quests: marks done for the actor (individual) or their team (team quest). */
-export async function completeQuest(questId: string, actor: Actor) {
-  return prisma.$transaction(async (tx) => {
-    const quest = await tx.quest.findUniqueOrThrow({ where: { id: questId }, include: { challenge: true } });
-    if (quest.challenge.endAt < new Date()) throw new Error("Le défi est terminé");
-    if (quest.kind === "LECTURE") throw new Error("Cette quête se valide en y rattachant un livre");
-    if (!isQuestOpen(quest)) throw new Error("Cette quête n'est pas ouverte");
-    if (!actor.teamId) throw new Error("Tu n'as pas d'équipe");
-    if (quest.targetTeamId && quest.targetTeamId !== actor.teamId) throw new Error("Cette quête ne concerne pas ton équipe");
-    if (quest.type === "TEAM" && !actor.isCaptain && actor.role !== "ADMIN") throw new Error("Seul·e le·la capitaine peut valider une quête d'équipe");
-    const owner = quest.type === "INDIVIDUAL" ? { userId: actor.id } : { teamId: actor.teamId };
-    return grantCompletion(tx, quest, owner, actor.teamId, actor.id);
-  });
-}
+type BookRef = { id: string; type: BookType; userId: string };
 
-/** ACTION quests: reverts a completion (own individual one, or team one for captain/admin). */
-export async function uncompleteQuest(questId: string, actor: Actor) {
-  return prisma.$transaction(async (tx) => {
-    const quest = await tx.quest.findUniqueOrThrow({ where: { id: questId } });
-    if (quest.kind === "LECTURE") throw new Error("Retire plutôt le livre rattaché à cette quête");
-    if (!actor.teamId) throw new Error("Tu n'as pas d'équipe");
-    if (quest.type === "TEAM" && !actor.isCaptain && actor.role !== "ADMIN") throw new Error("Seul·e le·la capitaine peut annuler une quête d'équipe");
-    const owner = quest.type === "INDIVIDUAL" ? { userId: actor.id } : { teamId: actor.teamId };
-    await revokeCompletion(tx, quest, owner, actor.id);
-  });
-}
+export type QuestAttachResult = {
+  number: number;
+  title: string;
+  complete: boolean;
+  points: number;
+  /** A pending half freed by a roman completing the quest alone. */
+  freed: { title: string; owner: string } | null;
+};
 
-// ---------------------------------------------------------------------------
-// LECTURE quests: completion derived from attached books
-// ---------------------------------------------------------------------------
-
-type BookRef = { id: string; isGraphic: boolean; userId: string };
-
-async function syncLectureCompletion(tx: Tx, questId: string, userId: string, teamId: string, actorId: string) {
+/** Attaches a reading to a quest for its team (moves it if attached elsewhere) and updates completion. */
+export async function attachBookToQuest(tx: Tx, book: BookRef, teamId: string, questId: string, actorId: string): Promise<QuestAttachResult> {
   const quest = await tx.quest.findUniqueOrThrow({ where: { id: questId } });
-  const owner = quest.type === "INDIVIDUAL" ? { userId } : { teamId };
-  const books = await tx.questBook.findMany({ where: { questId, ...owner }, include: { book: { select: { isGraphic: true } } } });
-  const complete = isComplete(books.map((b) => bookWeight(b.book.isGraphic)));
-  if (complete) return grantCompletion(tx, quest, owner, teamId, actorId);
-  await revokeCompletion(tx, quest, owner, actorId);
-  return { points: 0, already: false, complete: false };
-}
+  if (!isQuestOpen(quest)) throw new Error(`La quête #${quest.number} n'est pas ouverte`);
+  if (quest.targetTeamId && quest.targetTeamId !== teamId) throw new Error(`La quête #${quest.number} ne concerne pas ton équipe`);
+  const others = await tx.questBook.findMany({
+    where: { questId, teamId, bookId: { not: book.id }, book: { deletedAt: null } },
+    include: { book: { select: { id: true, title: true, type: true, user: { select: { name: true } } } } },
+  });
+  if (isComplete(others.map((b) => bookWeight(b.book.type)))) throw new Error(`La quête #${quest.number} est déjà validée`);
+  if (others.length >= MAX_BOOKS_PER_SLOT) throw new Error(`La quête #${quest.number} a déjà ${MAX_BOOKS_PER_SLOT} lectures`);
 
-/** Attaches a book to a LECTURE quest (moves it if attached elsewhere) and updates completion. */
-export async function attachBookToQuest(tx: Tx, book: BookRef, teamId: string, questId: string, actorId: string) {
-  const quest = await tx.quest.findUniqueOrThrow({ where: { id: questId }, include: { challenge: true } });
-  if (quest.kind !== "LECTURE") throw new Error("Cette quête ne se valide pas avec un livre");
-  if (!isQuestOpen(quest)) throw new Error("Cette quête n'est pas ouverte");
-  if (quest.targetTeamId && quest.targetTeamId !== teamId) throw new Error("Cette quête ne concerne pas ton équipe");
-  const owner = quest.type === "INDIVIDUAL" ? { userId: book.userId } : { teamId };
-  const others = await tx.questBook.findMany({ where: { questId, ...owner, bookId: { not: book.id } }, include: { book: { select: { isGraphic: true } } } });
-  if (isComplete(others.map((b) => bookWeight(b.book.isGraphic)))) throw new Error(`La quête « ${quest.title} » est déjà validée`);
-  if (others.length >= MAX_BOOKS_PER_SLOT) throw new Error(`La quête « ${quest.title} » a déjà ${MAX_BOOKS_PER_SLOT} livres`);
+  // A roman completes the quest alone: the pending half goes back to "en attente" (unlinked).
+  let freed: QuestAttachResult["freed"] = null;
+  if (book.type === "ROMAN" && others.length) {
+    const half = others[0];
+    await tx.questBook.delete({ where: { bookId: half.bookId } });
+    freed = { title: half.book.title, owner: half.book.user.name ?? "?" };
+  }
 
-  const previous = await tx.questBook.findUnique({ where: { bookId: book.id } });
+  const previous = await tx.questBook.findUnique({ where: { bookId: book.id }, include: { quest: true } });
   await tx.questBook.upsert({ where: { bookId: book.id }, create: { bookId: book.id, questId, userId: book.userId, teamId }, update: { questId, userId: book.userId, teamId } });
-  if (previous && previous.questId !== questId) await syncLectureCompletion(tx, previous.questId, previous.userId, previous.teamId, actorId);
-  const r = await syncLectureCompletion(tx, questId, book.userId, teamId, actorId);
-  return { title: quest.title, complete: "complete" in r ? false : true, points: r.points };
+  if (previous && previous.questId !== questId) await syncCompletion(tx, previous.quest, previous.teamId, actorId);
+  const r = await syncCompletion(tx, quest, teamId, actorId);
+  return { number: quest.number, title: quest.title, complete: r.complete, points: r.points, freed };
 }
 
-/** Detaches a book from its quest (no-op when none) and updates completion. */
+/** Detaches a reading from its quest (no-op when none) and updates completion. */
 export async function detachBookFromQuest(tx: Tx, bookId: string, actorId: string) {
-  const link = await tx.questBook.findUnique({ where: { bookId } });
+  const link = await tx.questBook.findUnique({ where: { bookId }, include: { quest: true } });
   if (!link) return null;
   await tx.questBook.delete({ where: { bookId } });
-  await syncLectureCompletion(tx, link.questId, link.userId, link.teamId, actorId);
+  await syncCompletion(tx, link.quest, link.teamId, actorId);
   return link.questId;
 }
 
-/** Re-evaluates a quest after a book's weight changed while attached. */
+/** Re-evaluates a quest after a reading's type changed while attached. */
 export async function resyncBookQuest(tx: Tx, bookId: string, actorId: string) {
-  const link = await tx.questBook.findUnique({ where: { bookId } });
-  if (link) await syncLectureCompletion(tx, link.questId, link.userId, link.teamId, actorId);
+  const link = await tx.questBook.findUnique({ where: { bookId }, include: { quest: true } });
+  if (link) await syncCompletion(tx, link.quest, link.teamId, actorId);
 }
