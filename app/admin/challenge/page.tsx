@@ -1,3 +1,4 @@
+import { requireAdmin } from "@/lib/dal";
 import { prisma } from "@/lib/db";
 import { ChallengeView } from "./ChallengeView";
 import { saveChallengeAction } from "./actions";
@@ -5,6 +6,7 @@ import { saveChallengeAction } from "./actions";
 const dateFmt = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric" });
 
 export default async function AdminChallengePage() {
+  await requireAdmin();
   const challenges = await prisma.challenge.findMany({ orderBy: { startAt: "desc" } });
   const current = challenges.find((c) => c.status === "ACTIVE") ?? challenges[0] ?? null;
 

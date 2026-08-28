@@ -1,4 +1,4 @@
-import { getActiveChallenge } from "@/lib/dal";
+import { getActiveChallenge, requireAdmin } from "@/lib/dal";
 import { prisma } from "@/lib/db";
 import { cellLabel } from "@/lib/services/bingo";
 import { getLeaderboard } from "@/lib/services/leaderboard";
@@ -26,6 +26,7 @@ function inWords(target: Date, now: Date) {
 }
 
 export default async function AdminHome() {
+  await requireAdmin();
   const now = new Date();
   const challenge = await getActiveChallenge();
   const since = new Date(now.getTime() - WEEK);

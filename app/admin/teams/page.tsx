@@ -1,4 +1,4 @@
-import { getActiveChallenge } from "@/lib/dal";
+import { getActiveChallenge, requireAdmin } from "@/lib/dal";
 import { prisma } from "@/lib/db";
 import { listTeamsWithMembers } from "@/lib/services/admin";
 import { getLeaderboard } from "@/lib/services/leaderboard";
@@ -6,6 +6,7 @@ import { TeamsView } from "./TeamsView";
 import { createTeamAction, deleteTeamAction, setCaptainAction, setDeputyAction, updateTeamAction } from "./actions";
 
 export default async function AdminTeamsPage({ searchParams }: PageProps<"/admin/teams">) {
+  await requireAdmin();
   const params = await searchParams;
   const challenge = await getActiveChallenge();
   const actions = { createTeamAction, updateTeamAction, deleteTeamAction, setCaptainAction, setDeputyAction };
