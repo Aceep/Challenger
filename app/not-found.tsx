@@ -1,11 +1,13 @@
 import Link from "next/link";
+import { Kyle } from "@/components/ui/Kyle";
 
 export default function NotFound() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-lg flex-col items-center justify-center gap-4 p-5 text-center">
-      <p className="text-4xl">🔍</p>
-      <h1 className="text-xl font-bold">Page introuvable</h1>
-      <Link href="/" className="rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white">
+      <Kyle width={90} />
+      <h1>Page introuvable</h1>
+      <p className="text-sm text-[color:var(--muted)]">Kyle a cherché partout : cette page n&apos;existe pas (ou plus).</p>
+      <Link href="/" className="btn">
         Retour à l&apos;accueil
       </Link>
     </main>
