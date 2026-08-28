@@ -51,6 +51,9 @@ function toPayload(m: OutgoingMessage) {
   return { content: m.content, embeds: m.embeds, components: rows, allowed_mentions: toAllowedMentions(m.allowedMentions) };
 }
 
+/** Marker returned by `listMessages` when the channel/thread no longer exists (404). */
+export const GONE = Symbol("discord-gone");
+
 /**
  * One REST call. Retries once on 429 (rate limit) after `retry_after`.
  * A 204 resolves to an empty object.
@@ -202,12 +205,19 @@ export type DiscordMessage = {
   author?: { id: string; username?: string; global_name?: string | null; bot?: boolean };
 };
 
-/** Up to 100 messages of a channel/thread, optionally only those after a message id. */
-export async function listMessages(channelId: string, after?: string | null): Promise<DiscordMessage[]> {
+/** Up to 100 messages of a channel/thread, optionally only those after a message id; `GONE` when the thread was deleted. */
+export async function listMessages(channelId: string, after?: string | null): Promise<DiscordMessage[] | typeof GONE> {
   const q = new URLSearchParams({ limit: "100" });
   if (after) q.set("after", after);
   const r = await request<DiscordMessage[]>(`/channels/${channelId}/messages?${q}`, "GET");
+  if (!r.ok && r.status === 404) return GONE;
   return r.ok ? r.data : [];
+}
+
+/** Deletes a channel or thread (already-deleted is treated as success). */
+export async function deleteChannel(channelId: string): Promise<boolean> {
+  const r = await request(`/channels/${channelId}`, "DELETE");
+  return r.ok || r.status === 404;
 }
 
 /** Updates a thread: tags, archive, lock. */

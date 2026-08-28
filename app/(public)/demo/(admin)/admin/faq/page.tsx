@@ -18,6 +18,7 @@ export default async function DemoAdminFaqPage({ searchParams }: PageProps<"/dem
         createdAt: q.createdAt,
         messages: q.messages,
         discordUrl: q.discordUrl,
+        discordDeleted: q.discordDeleted,
       }))}
       hasChallenge
       params={params}
@@ -26,6 +27,7 @@ export default async function DemoAdminFaqPage({ searchParams }: PageProps<"/dem
       syncAction={action}
       resolveAction={action}
       pinAction={action}
+      deleteAction={action}
     />
   );
 }

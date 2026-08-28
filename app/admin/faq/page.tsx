@@ -1,10 +1,10 @@
 import { getActiveChallenge, requireAdmin } from "@/lib/dal";
 import { getFaqSetup, listQuestions } from "@/lib/services/questions";
 import { FaqAdminView } from "./FaqAdminView";
-import { pinQuestionAction, resolveQuestionAction, setupFaqAction, syncFaqAction } from "./actions";
+import { deleteQuestionAction, pinQuestionAction, resolveQuestionAction, setupFaqAction, syncFaqAction } from "./actions";
 
 const EMPTY = { guildId: null, channelId: null, roleId: null, tags: null, channelUrl: null, adminsWithDiscord: 0, lastSyncAt: null, inviteUrl: null };
-const actions = { setupAction: setupFaqAction, syncAction: syncFaqAction, resolveAction: resolveQuestionAction, pinAction: pinQuestionAction };
+const actions = { setupAction: setupFaqAction, syncAction: syncFaqAction, resolveAction: resolveQuestionAction, pinAction: pinQuestionAction, deleteAction: deleteQuestionAction };
 
 export default async function AdminFaqPage({ searchParams }: PageProps<"/admin/faq">) {
   await requireAdmin();
@@ -26,6 +26,7 @@ export default async function AdminFaqPage({ searchParams }: PageProps<"/admin/f
         createdAt: q.createdAt,
         messages: q.messages,
         discordUrl: q.discordUrl,
+        discordDeleted: q.discordDeleted,
       }))}
       hasChallenge
       params={params}

@@ -21,7 +21,7 @@ import {
   type QuestionStatus,
 } from "@/lib/discord/faq";
 import { hexToInt } from "@/lib/discord/permissions";
-import { addMemberRole, createForumChannel, createForumPost, createRole, listMessages, patchThread, postMessage } from "@/lib/discord/rest";
+import { addMemberRole, createForumChannel, createForumPost, createRole, deleteChannel, GONE, listMessages, patchThread, postMessage } from "@/lib/discord/rest";
 import { assertWritable } from "@/lib/scoring/books";
 
 /**
@@ -103,6 +103,7 @@ export async function listQuestions(challengeId: string) {
         messages: q._count.messages,
         lastAnswer: answer ? { author: answer.author?.name ?? answer.discordUserName ?? "Organisation", body: answer.body } : null,
         discordUrl: threadUrl(challenge?.discordGuildId, q.discordThreadId),
+        discordDeleted: !!q.discordDeletedAt,
       };
     })
     .sort((a, b) => rank(a) - rank(b) || b.createdAt.getTime() - a.createdAt.getTime());
@@ -132,6 +133,7 @@ export async function getQuestion(id: string, viewer: { id: string; role: "ADMIN
     isMine: q.authorId === viewer.id,
     createdAt: q.createdAt,
     discordUrl: threadUrl(q.challenge.discordGuildId, q.discordThreadId),
+    discordDeleted: !!q.discordDeletedAt,
     messages: q.messages.map((m) => ({
       id: m.id,
       author: m.author?.name ?? m.discordUserName ?? "Discord",
@@ -143,6 +145,7 @@ export async function getQuestion(id: string, viewer: { id: string; role: "ADMIN
     canReply: q.status !== "RESOLVED",
     canResolve: q.status !== "RESOLVED" && (isAdmin || q.authorId === viewer.id),
     canPin: isAdmin,
+    canDelete: isAdmin,
   };
 }
 
@@ -235,6 +238,17 @@ export async function resolveQuestion({ userId, questionId }: { userId: string; 
   return { alreadyResolved: false };
 }
 
+/** Admin only: deletes the question, its messages and the Discord thread (if still there). */
+export async function deleteQuestion({ userId, questionId }: { userId: string; questionId: string }) {
+  const user = await actorOf(userId);
+  if (user.role !== "ADMIN") throw new GameError("Réservé à l'organisation.");
+  const question = await prisma.question.findUnique({ where: { id: questionId } });
+  if (!question) throw new GameError("Question introuvable.");
+  const threadDeleted = question.discordThreadId ? await deleteChannel(question.discordThreadId) : false;
+  await prisma.question.delete({ where: { id: question.id } });
+  return { title: question.title, threadDeleted };
+}
+
 /** Admin only: highlights the question in the « Questions fréquentes » section. */
 export async function pinQuestion({ userId, questionId, pinned }: { userId: string; questionId: string; pinned: boolean }) {
   const user = await actorOf(userId);
@@ -256,7 +270,7 @@ export async function pinQuestion({ userId, questionId, pinned }: { userId: stri
  * unless `force` (admin button), so it is safe to call on every page render.
  */
 export async function syncQuestions(challengeId: string, { force = false }: { force?: boolean } = {}) {
-  const empty = { threads: 0, imported: 0, skipped: true };
+  const empty = { threads: 0, imported: 0, detached: 0, skipped: true };
   const challenge = await prisma.challenge.findUnique({ where: { id: challengeId } });
   if (!challenge?.discordFaqChannelId) return empty;
   if (!force && challenge.faqSyncedAt && Date.now() - challenge.faqSyncedAt.getTime() < SYNC_THROTTLE_MS) return empty;
@@ -270,9 +284,16 @@ export async function syncQuestions(challengeId: string, { force = false }: { fo
   const knownUsers = new Map(users.map((u) => [u.discordId!, { id: u.id, role: u.role }]));
   const tags = parseFaqTags(challenge.discordFaqTags);
   let imported = 0;
+  let detached = 0;
 
   for (const q of questions) {
     const raw = await listMessages(q.discordThreadId!, q.lastDiscordMessageId);
+    if (raw === GONE) {
+      // Thread deleted on Discord: keep the question on the site, stop polling and pushing.
+      await prisma.question.update({ where: { id: q.id }, data: { discordThreadId: null, discordDeletedAt: new Date() } });
+      detached++;
+      continue;
+    }
     const { messages, lastMessageId } = mapDiscordMessages(raw, { botAppId: botAppId(), knownUsers });
     if (messages.length) {
       const created = await prisma.questionMessage.createMany({
@@ -295,7 +316,7 @@ export async function syncQuestions(challengeId: string, { force = false }: { fo
     }
     if (status !== q.status) await patchThread(q.discordThreadId!, { applied_tags: tagsFor(status, tags) });
   }
-  return { threads: questions.length, imported, skipped: false };
+  return { threads: questions.length, imported, detached, skipped: false };
 }
 
 // ---------------------------------------------------------------------------

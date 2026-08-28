@@ -9,5 +9,5 @@ export default async function DemoQuestionPage({ params, searchParams }: PagePro
   if (!question) notFound();
   const action = demoAction.bind(null, `/demo/faq/${id}`);
 
-  return <QuestionView question={question} params={sp} demo replyAction={action} resolveAction={action} pinAction={action} />;
+  return <QuestionView question={question} params={sp} demo replyAction={action} resolveAction={action} pinAction={action} deleteAction={action} />;
 }

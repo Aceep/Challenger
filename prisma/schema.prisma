@@ -575,6 +575,8 @@ model Question {
   discordThreadId      String?        @unique
   /// Cursor of the incremental REST poll of that thread
   lastDiscordMessageId String?
+  /// Set when the forum thread was found deleted on Discord (site-only from then on)
+  discordDeletedAt     DateTime?
   createdAt            DateTime       @default(now())
   resolvedAt           DateTime?
   updatedAt            DateTime       @default(now()) @updatedAt
