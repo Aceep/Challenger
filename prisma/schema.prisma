@@ -87,6 +87,8 @@ model Challenge {
   startAt                 DateTime
   endAt                   DateTime
   status                  ChallengeStatus @default(DRAFT)
+  /// Accent colour of the edition (banner, edition cards)
+  color                   String          @default("#2E4A7D")
   /// Points granted per page read (e.g. 0.1 = 1 point per 10 pages)
   pointsPerPage           Float           @default(0.1)
   bingoLineBonus          Int             @default(25)

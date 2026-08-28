@@ -977,6 +977,19 @@
   }
 }
 
+@media (max-width: 767px) {
+  .rail {
+    flex-direction: row;
+    flex-wrap: wrap;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .rail .foot,
+  .rail .group {
+    display: none;
+  }
+}
+
 @media (max-width: 980px) {
   .kpis {
     grid-template-columns: 1fr 1fr;

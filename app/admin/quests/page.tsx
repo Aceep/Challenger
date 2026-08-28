@@ -1,60 +1,66 @@
-import { Flash } from "@/components/Flash";
-import { prisma } from "@/lib/db";
 import { getActiveChallenge } from "@/lib/dal";
+import { prisma } from "@/lib/db";
+import { bookWeight, isComplete } from "@/lib/scoring/reading";
 import { listQuestsAdmin } from "@/lib/services/quests";
-import { QuestForm } from "./QuestForm";
-import { QuestList } from "./QuestList";
+import { QuestsAdminView } from "./QuestsAdminView";
+import { deleteQuestAction, saveQuestAction } from "./actions";
 
+const dateFmt = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 const toLocalInput = (d: Date | null) => (d ? new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16) : "");
 
 export default async function AdminQuestsPage({ searchParams }: PageProps<"/admin/quests">) {
   const params = await searchParams;
   const challenge = await getActiveChallenge();
-  const [quests, teams] = challenge
-    ? await Promise.all([
-        listQuestsAdmin(challenge.id),
-        prisma.team.findMany({ where: { challengeId: challenge.id }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
-      ])
-    : [[], []];
+  const actions = { saveQuestAction, deleteQuestAction };
+  if (!challenge) return <QuestsAdminView quests={[]} teams={[]} hasChallenge={false} editingId={null} params={params} {...actions} />;
+
+  const [quests, teams, links, completions] = await Promise.all([
+    listQuestsAdmin(challenge.id),
+    prisma.team.findMany({ where: { challengeId: challenge.id }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    prisma.questBook.findMany({
+      where: { quest: { challengeId: challenge.id }, book: { deletedAt: null } },
+      select: { questId: true, teamId: true, book: { select: { type: true } } },
+    }),
+    prisma.questCompletion.findMany({ where: { quest: { challengeId: challenge.id } }, select: { questId: true, teamId: true } }),
+  ]);
+
+  const teamName = new Map(teams.map((t) => [t.id, t.name]));
+  const weights = new Map<string, number[]>();
+  for (const l of links) {
+    const key = `${l.questId}:${l.teamId}`;
+    weights.set(key, [...(weights.get(key) ?? []), bookWeight(l.book.type)]);
+  }
+  const edit = Array.isArray(params.edit) ? params.edit[0] : params.edit;
 
   return (
-    <main className="flex flex-col gap-6">
-      <h1 className="text-2xl font-bold">Quêtes</h1>
-      <Flash params={params} />
-      {!challenge ? (
-        <p className="text-slate-500">Active un défi pour créer des quêtes.</p>
-      ) : (
-        <>
-          <section>
-            <h2 className="mb-2 font-semibold">Nouvelle quête</h2>
-            <p className="mb-2 text-sm text-slate-500">Les quêtes sont collectives : une équipe valide une quête en y rattachant un roman, ou deux graphiques.</p>
-            <QuestForm teams={teams} />
-          </section>
-          <section>
-            <h2 className="mb-2 font-semibold">Quêtes ({quests.length})</h2>
-            {quests.length === 0 ? (
-              <p className="text-sm text-slate-500">Aucune quête.</p>
-            ) : (
-              <QuestList
-                teams={teams}
-                quests={quests.map((q) => ({
-                  id: q.id,
-                  number: q.number,
-                  title: q.title,
-                  description: q.description,
-                  points: q.points,
-                  openAt: toLocalInput(q.openAt),
-                  closeAt: toLocalInput(q.closeAt),
-                  targetTeamId: q.targetTeamId ?? "",
-                  targetTeamName: q.targetTeam?.name ?? null,
-                  completions: q._count.completions,
-                  origin: q.origin,
-                }))}
-              />
-            )}
-          </section>
-        </>
-      )}
-    </main>
+    <QuestsAdminView
+      quests={quests.map((q) => ({
+        id: q.id,
+        number: q.number,
+        title: q.title,
+        description: q.description ?? "",
+        points: q.points,
+        openAt: toLocalInput(q.openAt),
+        closeAt: toLocalInput(q.closeAt),
+        targetTeamId: q.targetTeamId ?? "",
+        window: [q.openAt ? `ouvre le ${dateFmt.format(q.openAt)}` : "", q.closeAt ? `→ ${dateFmt.format(q.closeAt)}` : ""].filter(Boolean).join(" · ") || "—",
+        target: q.targetTeam?.name ?? "toutes",
+        fromStory: q.origin === "STORY",
+        progress: teams
+          .map((t) => {
+            const done = completions.some((c) => c.questId === q.id && c.teamId === t.id);
+            const w = weights.get(`${q.id}:${t.id}`) ?? [];
+            if (done || isComplete(w)) return { team: t.name, state: "done" as const };
+            if (w.length > 0) return { team: t.name, state: "half" as const };
+            return null;
+          })
+          .filter((x): x is { team: string; state: "done" | "half" } => x !== null),
+      }))}
+      teams={teams.map((t) => ({ id: t.id, name: teamName.get(t.id) ?? t.name }))}
+      hasChallenge
+      editingId={edit ?? null}
+      params={params}
+      {...actions}
+    />
   );
 }

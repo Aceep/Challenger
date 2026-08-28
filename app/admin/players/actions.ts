@@ -16,7 +16,7 @@ import {
 const REVALIDATE = ["/admin", "/"];
 function refresh() {
   revalidatePath("/admin", "layout");
-  revalidatePath("/", "layout");
+  revalidatePath("/home", "layout");
 }
 
 export async function createInviteAction(_prev: ActionState, formData: FormData): Promise<ActionState> {

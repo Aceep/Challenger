@@ -1,89 +1,94 @@
 "use client";
 
 import { useActionState } from "react";
-import { saveChallengeAction } from "./actions";
+import type { ActionState } from "@/lib/forms";
 
-type Props = {
-  challenge: {
-    id: string;
-    name: string;
-    startAt: string;
-    endAt: string;
-    pointsPerPage: number;
-    bingoLineBonus: number;
-    bingoFullBonus: number;
-    status: "DRAFT" | "ACTIVE" | "FINISHED";
-    discordGuildId: string | null;
-    discordGeneralChannelId: string | null;
-  } | null;
+export type ChallengeValues = {
+  id: string;
+  name: string;
+  startAt: string;
+  endAt: string;
+  color: string;
+  pointsPerPage: number;
+  bingoLineBonus: number;
+  bingoFullBonus: number;
+  status: "DRAFT" | "ACTIVE" | "FINISHED";
+  discordGuildId: string | null;
+  discordGeneralChannelId: string | null;
 };
 
-const field =
-  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900";
-
-export function ChallengeForm({ challenge }: Props) {
-  const [state, action, pending] = useActionState(saveChallengeAction, null);
+export function ChallengeForm({
+  challenge,
+  action,
+}: {
+  challenge: ChallengeValues | null;
+  action: (prev: ActionState, formData: FormData) => Promise<ActionState>;
+}) {
+  const [state, formAction, pending] = useActionState(action, null);
   const c = challenge;
 
   return (
-    <form action={action} className="grid max-w-2xl gap-4 sm:grid-cols-2">
+    <form action={formAction} className="card form-grid">
       {c && <input type="hidden" name="id" value={c.id} />}
-      <label className="flex flex-col gap-1 text-sm font-medium sm:col-span-2">
-        Nom du défi
-        <input name="name" required defaultValue={c?.name ?? ""} className={field} />
+      <label className="field wide">
+        Nom de l&apos;édition
+        <input name="name" required defaultValue={c?.name ?? ""} placeholder="ex. Automne des Pages 2026" />
       </label>
-      <label className="flex flex-col gap-1 text-sm font-medium">
+      <label className="field">
         Début
-        <input name="startAt" type="date" required defaultValue={c?.startAt ?? ""} className={field} />
+        <input name="startAt" type="date" required defaultValue={c?.startAt ?? ""} />
       </label>
-      <label className="flex flex-col gap-1 text-sm font-medium">
+      <label className="field">
         Fin
-        <input name="endAt" type="date" required defaultValue={c?.endAt ?? ""} className={field} />
+        <input name="endAt" type="date" required defaultValue={c?.endAt ?? ""} />
       </label>
-      <label className="flex flex-col gap-1 text-sm font-medium">
+      <label className="field">
+        Couleur de l&apos;édition
+        <input name="color" type="color" defaultValue={c?.color ?? "#2E4A7D"} />
+        <span className="hint">Bannière d&apos;édition et cartes du site public.</span>
+      </label>
+      <label className="field">
         Points par page
-        <input name="pointsPerPage" type="number" step="0.01" min="0.01" defaultValue={c?.pointsPerPage ?? 0.1} className={field} />
-        <span className="text-xs font-normal text-slate-500">0,1 = 1 point pour 10 pages</span>
+        <input name="pointsPerPage" type="number" step="0.01" min="0.01" defaultValue={c?.pointsPerPage ?? 0.1} />
+        <span className="hint">pages ÷ 10 · sous 150 pages, ÷ 2</span>
       </label>
-      <label className="flex flex-col gap-1 text-sm font-medium">
+      <label className="field">
+        Bonus ligne de bingo
+        <input name="bingoLineBonus" type="number" min="0" defaultValue={c?.bingoLineBonus ?? 25} />
+      </label>
+      <label className="field">
+        Bonus grille complète
+        <input name="bingoFullBonus" type="number" min="0" defaultValue={c?.bingoFullBonus ?? 100} />
+      </label>
+      <label className="field">
+        Serveur Discord (id)
+        <input name="discordGuildId" defaultValue={c?.discordGuildId ?? ""} />
+      </label>
+      <label className="field">
+        Salon général (id)
+        <input name="discordGeneralChannelId" defaultValue={c?.discordGeneralChannelId ?? ""} />
+        <span className="hint">Bot + admins seulement : classement du dimanche, fenêtre de vérification, changements de leader.</span>
+      </label>
+      <label className="field">
         Statut
-        <select name="status" defaultValue={c?.status ?? "DRAFT"} className={field}>
+        <select name="status" defaultValue={c?.status ?? "DRAFT"}>
           <option value="DRAFT">Brouillon</option>
           <option value="ACTIVE">Actif</option>
           <option value="FINISHED">Terminé</option>
         </select>
       </label>
-      <label className="flex flex-col gap-1 text-sm font-medium">
-        Bonus ligne de bingo
-        <input name="bingoLineBonus" type="number" min="0" defaultValue={c?.bingoLineBonus ?? 25} className={field} />
-      </label>
-      <label className="flex flex-col gap-1 text-sm font-medium">
-        Bonus bingo complet
-        <input name="bingoFullBonus" type="number" min="0" defaultValue={c?.bingoFullBonus ?? 100} className={field} />
-      </label>
-      <label className="flex flex-col gap-1 text-sm font-medium">
-        Discord — id du serveur
-        <input name="discordGuildId" defaultValue={c?.discordGuildId ?? ""} className={field} />
-      </label>
-      <label className="flex flex-col gap-1 text-sm font-medium">
-        Discord — id du salon général
-        <input name="discordGeneralChannelId" defaultValue={c?.discordGeneralChannelId ?? ""} className={field} />
-      </label>
 
-      {state?.error && (
-        <p className="rounded-md bg-red-100 p-3 text-sm text-red-800 sm:col-span-2 dark:bg-red-950 dark:text-red-200">{state.error}</p>
-      )}
-      {state?.success && (
-        <p className="rounded-md bg-green-100 p-3 text-sm text-green-800 sm:col-span-2 dark:bg-green-950 dark:text-green-200">{state.success}</p>
-      )}
+      {state?.error && <p className="flash err wide">⚠️ {state.error}</p>}
+      {state?.success && <p className="flash ok wide">{state.success}</p>}
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white disabled:opacity-60 sm:col-span-2"
-      >
-        {pending ? "Enregistrement…" : c ? "Mettre à jour" : "Créer le défi"}
-      </button>
+      <div className="wide flex flex-wrap items-center gap-3">
+        <button type="submit" disabled={pending} className="btn">
+          {pending ? "Enregistrement…" : c ? "Enregistrer" : "Créer l'édition"}
+        </button>
+        <span className="text-[13px] text-[color:var(--muted)]">
+          Le calendrier hebdomadaire (dim. 19 h – 21 h, classement 20 h, Europe/Paris) est fixé par le règlement.
+        </span>
+      </div>
     </form>
   );
 }

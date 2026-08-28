@@ -18,6 +18,6 @@ export async function saveChallengeAction(_prev: ActionState, formData: FormData
     return { error: userMessage(e) };
   }
   revalidatePath("/admin", "layout");
-  revalidatePath("/", "layout");
+  revalidatePath("/home", "layout");
   return { success: "Défi enregistré." };
 }
