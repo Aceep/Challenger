@@ -22,7 +22,8 @@ import {
 } from "@/lib/discord/faq";
 import { hexToInt } from "@/lib/discord/permissions";
 import { addMemberRole, createForumChannel, createForumPost, createRole, deleteChannel, GONE, listMessages, patchThread, postMessage } from "@/lib/discord/rest";
-import { assertWritable } from "@/lib/scoring/books";
+import { organizersWithDiscord, roleIn } from "@/lib/services/membership";
+import { assertWritable, type ActorRole } from "@/lib/scoring/books";
 
 /**
  * FAQ questions. One implementation shared by the web Server Actions and the
@@ -50,21 +51,18 @@ export const replySchema = z.object({
 
 const botAppId = () => process.env.AUTH_DISCORD_ID ?? null;
 
-async function actorOf(userId: string) {
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, name: true, role: true, discordId: true } });
+/** Who is acting, and with which role inside that challenge. */
+async function actorOf(userId: string, challengeId: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, name: true, discordId: true } });
   if (!user) throw new GameError("Utilisateur inconnu.");
-  return user;
+  const role = await roleIn(userId, challengeId);
+  if (!role) throw new GameError("Tu n'es pas inscrit·e à ce défi.");
+  return { ...user, role };
 }
 
 async function challengeOf(challengeId: string) {
   const challenge = await prisma.challenge.findUnique({ where: { id: challengeId } });
-  if (!challenge) throw new GameError("Aucun défi actif.");
-  return challenge;
-}
-
-async function activeChallenge() {
-  const challenge = await prisma.challenge.findFirst({ where: { status: "ACTIVE" }, orderBy: { startAt: "desc" } });
-  if (!challenge) throw new GameError("Aucun défi actif : impossible de poser une question.");
+  if (!challenge) throw new GameError("Défi introuvable.");
   return challenge;
 }
 
@@ -112,7 +110,7 @@ export async function listQuestions(challengeId: string) {
 export type QuestionRow = Awaited<ReturnType<typeof listQuestions>>[number];
 
 /** One question with its thread and what the viewer may do with it. */
-export async function getQuestion(id: string, viewer: { id: string; role: "ADMIN" | "PLAYER" }) {
+export async function getQuestion(id: string, viewer: { id: string; challengeId: string | null; role: ActorRole | null }) {
   const q = await prisma.question.findUnique({
     where: { id },
     include: {
@@ -121,8 +119,9 @@ export async function getQuestion(id: string, viewer: { id: string; role: "ADMIN
       messages: { orderBy: { createdAt: "asc" }, include: { author: { select: { name: true } } } },
     },
   });
-  if (!q) return null;
-  const isAdmin = viewer.role === "ADMIN";
+  // A question never leaves its challenge, whoever asks for it.
+  if (!q || q.challengeId !== viewer.challengeId) return null;
+  const isAdmin = viewer.role === "ORGANIZER";
   return {
     id: q.id,
     title: q.title,
@@ -161,11 +160,11 @@ export function openQuestionsCount(challengeId: string) {
 // ---------------------------------------------------------------------------
 
 /** Creates the question and opens its forum thread (site-only when no forum yet). */
-export async function askQuestion({ userId, title, detail }: { userId: string; title: string; detail?: string }) {
-  const user = await actorOf(userId);
+export async function askQuestion({ userId, challengeId, title, detail }: { userId: string; challengeId: string; title: string; detail?: string }) {
+  const user = await actorOf(userId, challengeId);
   assertWritable(user.role);
   const input = askSchema.parse({ title, detail });
-  const challenge = await activeChallenge();
+  const challenge = await challengeOf(challengeId);
 
   const question = await prisma.question.create({ data: { challengeId: challenge.id, authorId: user.id, title: input.title, body: input.detail } });
 
@@ -187,14 +186,14 @@ export async function askQuestion({ userId, title, detail }: { userId: string; t
 
 /** Adds a reply on both sides and moves the status when the organisation answers. */
 export async function replyToQuestion({ userId, questionId, body }: { userId: string; questionId: string; body: string }) {
-  const user = await actorOf(userId);
-  assertWritable(user.role);
   const text = replySchema.parse({ body }).body;
   const question = await prisma.question.findUnique({ where: { id: questionId }, include: { challenge: true, author: { select: { id: true, name: true, discordId: true } } } });
   if (!question) throw new GameError("Question introuvable.");
+  const user = await actorOf(userId, question.challengeId);
+  assertWritable(user.role);
   if (question.status === "RESOLVED") throw new GameError("Cette question est résolue : rouvre un nouveau sujet si besoin.");
 
-  const isAdmin = user.role === "ADMIN";
+  const isAdmin = user.role === "ORGANIZER";
   await prisma.questionMessage.create({
     data: { questionId: question.id, authorId: user.id, discordUserId: user.discordId, discordUserName: user.name, body: text, isAdmin },
   });
@@ -218,10 +217,10 @@ export async function replyToQuestion({ userId, questionId, body }: { userId: st
 
 /** Admin or author: closes the question and archives the thread. */
 export async function resolveQuestion({ userId, questionId }: { userId: string; questionId: string }) {
-  const user = await actorOf(userId);
   const question = await prisma.question.findUnique({ where: { id: questionId }, include: { challenge: true } });
   if (!question) throw new GameError("Question introuvable.");
-  if (user.role !== "ADMIN" && question.authorId !== user.id) throw new GameError("Seul·e l'auteur·rice ou un·e admin peut clore la question.");
+  const user = await actorOf(userId, question.challengeId);
+  if (user.role !== "ORGANIZER" && question.authorId !== user.id) throw new GameError("Seul·e l'auteur·rice ou l'organisation peut clore la question.");
   if (question.status === "RESOLVED") return { alreadyResolved: true };
   assertWritable(user.role);
 
@@ -240,10 +239,10 @@ export async function resolveQuestion({ userId, questionId }: { userId: string; 
 
 /** Admin only: deletes the question, its messages and the Discord thread (if still there). */
 export async function deleteQuestion({ userId, questionId }: { userId: string; questionId: string }) {
-  const user = await actorOf(userId);
-  if (user.role !== "ADMIN") throw new GameError("Réservé à l'organisation.");
   const question = await prisma.question.findUnique({ where: { id: questionId } });
   if (!question) throw new GameError("Question introuvable.");
+  const user = await actorOf(userId, question.challengeId);
+  if (user.role !== "ORGANIZER") throw new GameError("Réservé à l'organisation.");
   const threadDeleted = question.discordThreadId ? await deleteChannel(question.discordThreadId) : false;
   await prisma.question.delete({ where: { id: question.id } });
   return { title: question.title, threadDeleted };
@@ -251,10 +250,10 @@ export async function deleteQuestion({ userId, questionId }: { userId: string; q
 
 /** Admin only: highlights the question in the « Questions fréquentes » section. */
 export async function pinQuestion({ userId, questionId, pinned }: { userId: string; questionId: string; pinned: boolean }) {
-  const user = await actorOf(userId);
-  if (user.role !== "ADMIN") throw new GameError("Réservé à l'organisation.");
   const question = await prisma.question.findUnique({ where: { id: questionId } });
   if (!question) throw new GameError("Question introuvable.");
+  const user = await actorOf(userId, question.challengeId);
+  if (user.role !== "ORGANIZER") throw new GameError("Réservé à l'organisation.");
   await prisma.question.update({ where: { id: question.id }, data: { pinned } });
   if (question.discordThreadId && question.pinned !== pinned) await postMessage(question.discordThreadId, { content: pinnedContent(pinned) });
   return { pinned };
@@ -279,9 +278,12 @@ export async function syncQuestions(challengeId: string, { force = false }: { fo
 
   const [questions, users] = await Promise.all([
     prisma.question.findMany({ where: { challengeId, status: { not: "RESOLVED" }, discordThreadId: { not: null } } }),
-    prisma.user.findMany({ where: { discordId: { not: null } }, select: { id: true, discordId: true, role: true } }),
+    prisma.challengeMember.findMany({
+      where: { challengeId, user: { discordId: { not: null } } },
+      select: { role: true, user: { select: { id: true, discordId: true } } },
+    }),
   ]);
-  const knownUsers = new Map(users.map((u) => [u.discordId!, { id: u.id, role: u.role }]));
+  const knownUsers = new Map(users.map((u) => [u.user.discordId!, { id: u.user.id, role: u.role }]));
   const tags = parseFaqTags(challenge.discordFaqTags);
   let imported = 0;
   let detached = 0;
@@ -367,7 +369,7 @@ export async function setupFaq(challengeId: string): Promise<FaqSetupResult> {
     if (!roleId) problems.push("le rôle « Organisateurs » n'a pas pu être créé — le bot a-t-il la permission « Gérer les rôles » ?");
   }
 
-  const admins = await prisma.user.findMany({ where: { role: "ADMIN", discordId: { not: null } }, select: { discordId: true } });
+  const admins = await organizersWithDiscord(challengeId);
   let assigned = 0;
   if (roleId) {
     for (const a of admins) if ((await addMemberRole(guildId, a.discordId!, roleId)).ok) assigned++;
@@ -384,7 +386,7 @@ export async function setupFaq(challengeId: string): Promise<FaqSetupResult> {
 /** Everything the admin screen shows about the forum wiring. */
 export async function getFaqSetup(challengeId: string) {
   const challenge = await challengeOf(challengeId);
-  const admins = await prisma.user.count({ where: { role: "ADMIN", discordId: { not: null } } });
+  const admins = (await organizersWithDiscord(challengeId)).length;
   return {
     guildId: challenge.discordGuildId,
     channelId: challenge.discordFaqChannelId,

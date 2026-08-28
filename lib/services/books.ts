@@ -3,7 +3,7 @@ import "server-only";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { fmtDelta } from "@/lib/format";
-import { assertWritable, canEditBook, editDeadline } from "@/lib/scoring/books";
+import { assertWritable, canEditBook, editDeadline, type ActorRole } from "@/lib/scoring/books";
 import { effectiveType, readingPoints, type BookType } from "@/lib/scoring/reading";
 import { attachBookToCell, detachBookFromCell, resettleCell, snapshotCellPositions, type CellAttachResult } from "@/lib/services/bingo";
 import { awardPoints, num } from "@/lib/services/points";
@@ -31,7 +31,8 @@ export type BookInput = z.infer<typeof bookSchema>;
 export const bookPatchSchema = bookSchema.partial();
 export type BookPatch = z.infer<typeof bookPatchSchema>;
 
-export type BookActor = { id: string; role: "ADMIN" | "PLAYER"; teamId: string | null; isCaptain: boolean };
+/** Who is writing, in which challenge. `challengeId` is null when they belong to none. */
+export type BookActor = { id: string; role: ActorRole; challengeId: string | null; teamId: string | null; isCaptain: boolean };
 
 export type BookResult = {
   book: { id: string; title: string; pages: number; type: BookType; points: number };
@@ -41,8 +42,9 @@ export type BookResult = {
   cell: CellAttachResult | null;
 };
 
-async function playerTeam(tx: Tx, userId: string) {
-  return tx.teamMember.findUnique({ where: { userId }, include: { team: { include: { challenge: true } } } });
+async function playerTeam(tx: Tx, userId: string, challengeId: string | null) {
+  if (!challengeId) return null;
+  return tx.teamMember.findUnique({ where: { userId_challengeId: { userId, challengeId } }, include: { team: { include: { challenge: true } } } });
 }
 
 async function creditReading(tx: Tx, book: { id: string; title: string; points: { toString(): string } | number }, userId: string, teamId: string) {
@@ -63,7 +65,7 @@ async function reverseReading(tx: Tx, bookId: string, title: string, actorId: st
 export async function logBook(actor: BookActor, input: BookInput): Promise<BookResult> {
   assertWritable(actor.role);
   return prisma.$transaction(async (tx) => {
-    const membership = await playerTeam(tx, actor.id);
+    const membership = await playerTeam(tx, actor.id, actor.challengeId);
     if (membership && membership.team.challenge.endAt < new Date()) throw new GameError("Le défi est terminé");
     if ((input.questId || input.cellId) && !membership) throw new GameError("Rejoins une équipe pour valider une quête ou une case");
 

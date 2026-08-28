@@ -16,9 +16,9 @@ describe("canEditBook", () => {
   it("never lets another player edit", () => {
     expect(canEditBook(book, player("u2"), at(1))).toBe(false);
   });
-  it("lets the captain of the owner's team and admins edit anytime", () => {
+  it("lets the captain of the owner's team and the organisers edit anytime", () => {
     expect(canEditBook(book, { ...player("cap"), isCaptainOfOwner: true }, at(600))).toBe(true);
-    expect(canEditBook(book, { id: "adm", role: "ADMIN", isCaptainOfOwner: false }, at(600))).toBe(true);
+    expect(canEditBook(book, { id: "org", role: "ORGANIZER", isCaptainOfOwner: false }, at(600))).toBe(true);
   });
   it("computes the deadline", () => {
     expect(editDeadline(book)).toEqual(at(60));

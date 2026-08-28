@@ -2,6 +2,12 @@ import { GameError } from "@/lib/errors";
 import "server-only";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { ensureMember } from "@/lib/services/membership";
+
+/**
+ * Organiser-side writes. Every function is scoped to one challenge: a team, an
+ * invitation or a membership always belongs to the edition it is managed from.
+ */
 
 export const challengeSchema = z
   .object({
@@ -19,23 +25,28 @@ export const challengeSchema = z
   .refine((c) => c.endAt > c.startAt, { message: "La fin doit être après le début", path: ["endAt"] });
 export type ChallengeInput = z.infer<typeof challengeSchema>;
 
-export async function upsertChallenge(id: string | null, input: ChallengeInput) {
+/**
+ * Creates or edits an edition. Several challenges live side by side; the only
+ * exclusivity left is per Discord server, since the bot resolves a guild to the
+ * challenge being played there. The creator becomes its first organiser.
+ */
+export async function upsertChallenge(id: string | null, input: ChallengeInput, actorUserId: string) {
   const data = {
     ...input,
     discordGuildId: input.discordGuildId || null,
     discordGeneralChannelId: input.discordGeneralChannelId || null,
   };
   return prisma.$transaction(async (tx) => {
-    if (data.status === "ACTIVE") {
-      // Only one active challenge at a time.
-      await tx.challenge.updateMany({
-        where: { status: "ACTIVE", ...(id ? { id: { not: id } } : {}) },
-        data: { status: "FINISHED" },
+    if (data.status === "ACTIVE" && data.discordGuildId) {
+      const clash = await tx.challenge.findFirst({
+        where: { status: "ACTIVE", discordGuildId: data.discordGuildId, ...(id ? { id: { not: id } } : {}) },
       });
+      if (clash) throw new GameError("Un défi actif utilise déjà ce serveur Discord");
     }
-    return id
-      ? tx.challenge.update({ where: { id }, data })
-      : tx.challenge.create({ data });
+    if (id) return tx.challenge.update({ where: { id }, data });
+    const challenge = await tx.challenge.create({ data: { ...data, createdById: actorUserId } });
+    await ensureMember(tx, challenge.id, actorUserId, "ORGANIZER");
+    return challenge;
   });
 }
 
@@ -46,30 +57,39 @@ export const teamSchema = z.object({
   discordLibraryChannelId: z.string().trim().optional(),
 });
 
+/** Refuses to touch a team of another edition. */
+async function assertTeamOf(challengeId: string, teamId: string) {
+  const team = await prisma.team.findUnique({ where: { id: teamId }, select: { challengeId: true } });
+  if (!team || team.challengeId !== challengeId) throw new GameError("Cette équipe n'appartient pas à ce défi");
+}
+
 export function createTeam(challengeId: string, input: z.infer<typeof teamSchema>) {
   return prisma.team.create({
     data: { challengeId, name: input.name, color: input.color, discordChannelId: input.discordChannelId || null, discordLibraryChannelId: input.discordLibraryChannelId || null },
   });
 }
 
-export function updateTeam(id: string, input: z.infer<typeof teamSchema>) {
+export async function updateTeam(challengeId: string, id: string, input: z.infer<typeof teamSchema>) {
+  await assertTeamOf(challengeId, id);
   return prisma.team.update({
     where: { id },
     data: { name: input.name, color: input.color, discordChannelId: input.discordChannelId || null, discordLibraryChannelId: input.discordLibraryChannelId || null },
   });
 }
 
-export function deleteTeam(id: string) {
+export async function deleteTeam(challengeId: string, id: string) {
+  await assertTeamOf(challengeId, id);
   return prisma.team.delete({ where: { id } });
 }
 
 export const inviteSchema = z.object({
   discordId: z.string().trim().regex(/^\d{15,22}$/, "Identifiant Discord (nombre) attendu"),
   teamId: z.string().optional(),
-  role: z.enum(["ADMIN", "PLAYER"]).default("PLAYER"),
+  role: z.enum(["ORGANIZER", "PLAYER"]).default("PLAYER"),
 });
 
-export function createInvite(challengeId: string, input: z.infer<typeof inviteSchema>) {
+export async function createInvite(challengeId: string, input: z.infer<typeof inviteSchema>) {
+  if (input.teamId) await assertTeamOf(challengeId, input.teamId);
   return prisma.invite.upsert({
     where: { challengeId_discordId: { challengeId, discordId: input.discordId } },
     create: { challengeId, discordId: input.discordId, teamId: input.teamId || null, role: input.role },
@@ -81,40 +101,57 @@ export function deleteInvite(id: string) {
   return prisma.invite.delete({ where: { id } });
 }
 
-/** Moves a user to a team (or removes them when teamId is empty). */
-export async function assignUserToTeam(userId: string, teamId: string | null) {
-  if (!teamId) {
-    await prisma.teamMember.deleteMany({ where: { userId } });
-    await prisma.team.updateMany({ where: { captainId: userId }, data: { captainId: null } });
-    return;
-  }
-  await prisma.$transaction([
-    prisma.team.updateMany({ where: { captainId: userId, id: { not: teamId } }, data: { captainId: null } }),
-    prisma.teamMember.upsert({
-      where: { userId },
-      create: { userId, teamId },
+/** Moves someone to a team of this challenge (or out of any team, when teamId is empty). */
+export async function assignUserToTeam(challengeId: string, userId: string, teamId: string | null) {
+  if (teamId) await assertTeamOf(challengeId, teamId);
+  await prisma.$transaction(async (tx) => {
+    // Leaving a team of this edition drops the captain/deputy hats that came with it.
+    const left = { challengeId, ...(teamId ? { id: { not: teamId } } : {}) };
+    await tx.team.updateMany({ where: { ...left, captainId: userId }, data: { captainId: null } });
+    await tx.team.updateMany({ where: { ...left, deputyId: userId }, data: { deputyId: null } });
+    if (!teamId) {
+      await tx.teamMember.deleteMany({ where: { userId, challengeId } });
+      return;
+    }
+    await tx.teamMember.upsert({
+      where: { userId_challengeId: { userId, challengeId } },
+      create: { userId, challengeId, teamId },
       update: { teamId },
-    }),
-  ]);
+    });
+    await ensureMember(tx, challengeId, userId);
+  });
 }
 
-export async function setCaptain(teamId: string, userId: string | null) {
+export async function setCaptain(challengeId: string, teamId: string, userId: string | null) {
+  await assertTeamOf(challengeId, teamId);
   if (userId) {
-    const member = await prisma.teamMember.findUnique({ where: { userId } });
-    if (member?.teamId !== teamId) throw new GameError("Ce joueur n'est pas dans l'équipe");
+    const member = await prisma.teamMember.findFirst({ where: { userId, teamId } });
+    if (!member) throw new GameError("Ce joueur n'est pas dans l'équipe");
   }
   return prisma.team.update({ where: { id: teamId }, data: { captainId: userId } });
 }
 
-export function setUserRole(userId: string, role: "ADMIN" | "PLAYER") {
-  return prisma.user.update({ where: { id: userId }, data: { role } });
-}
-
-export function listUsersWithTeams() {
-  return prisma.user.findMany({
-    orderBy: { createdAt: "asc" },
-    include: { membership: { include: { team: true } }, _count: { select: { books: true } } },
-  });
+/** Members of the challenge, with their team and their readings inside it. */
+export async function listUsersWithTeams(challengeId: string) {
+  const [members, teamMembers, books] = await Promise.all([
+    prisma.challengeMember.findMany({
+      where: { challengeId },
+      orderBy: { createdAt: "asc" },
+      include: { user: { select: { id: true, name: true, discordId: true } } },
+    }),
+    prisma.teamMember.findMany({ where: { challengeId }, include: { team: { select: { id: true, name: true } } } }),
+    prisma.book.groupBy({ by: ["userId"], where: { deletedAt: null, team: { challengeId } }, _count: { _all: true } }),
+  ]);
+  const teamOf = new Map(teamMembers.map((m) => [m.userId, m.team]));
+  const booksOf = new Map(books.map((b) => [b.userId, b._count._all]));
+  return members.map((m) => ({
+    id: m.user.id,
+    name: m.user.name,
+    discordId: m.user.discordId,
+    role: m.role,
+    team: teamOf.get(m.userId) ?? null,
+    books: booksOf.get(m.userId) ?? 0,
+  }));
 }
 
 export function listTeamsWithMembers(challengeId: string) {

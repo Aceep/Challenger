@@ -15,7 +15,7 @@ import {
 const TAGS = { open: "t-open", answered: "t-answered", resolved: "t-resolved" };
 const BOT = "app-1";
 const users = new Map([
-  ["d-admin", { id: "u-admin", role: "ADMIN" as const }],
+  ["d-admin", { id: "u-orga", role: "ORGANIZER" as const }],
   ["d-lea", { id: "u-lea", role: "PLAYER" as const }],
 ]);
 const msg = (id: string, authorId: string, content: string, extra: Partial<RawDiscordMessage["author"]> & { type?: number } = {}): RawDiscordMessage => ({
@@ -87,7 +87,7 @@ describe("mapDiscordMessages", () => {
 
   it("marque les réponses des admins et rattache les comptes connus", () => {
     const { messages } = mapDiscordMessages([msg("1", "d-admin", "Oui, ça compte."), msg("2", "d-lea", "Merci !")], { botAppId: BOT, knownUsers: users });
-    expect(messages[0]).toMatchObject({ authorId: "u-admin", isAdmin: true, discordUserId: "d-admin" });
+    expect(messages[0]).toMatchObject({ authorId: "u-orga", isAdmin: true, discordUserId: "d-admin" });
     expect(messages[1]).toMatchObject({ authorId: "u-lea", isAdmin: false });
   });
 
