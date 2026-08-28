@@ -1,22 +1,27 @@
 "use client";
 
 import { useActionState } from "react";
-import { createInviteAction } from "./actions";
+import type { ActionState } from "@/lib/forms";
 
-const field =
-  "rounded-lg border border-slate-300 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900";
-
-export function InviteForm({ teams }: { teams: { id: string; name: string }[] }) {
-  const [state, action, pending] = useActionState(createInviteAction, null);
+export function InviteForm({
+  teams,
+  action,
+}: {
+  teams: { id: string; name: string }[];
+  action: (prev: ActionState, formData: FormData) => Promise<ActionState>;
+}) {
+  const [state, formAction, pending] = useActionState(action, null);
   return (
-    <form action={action} className="flex flex-wrap items-end gap-3 rounded-xl bg-white p-4 shadow-sm dark:bg-slate-900">
-      <label className="flex flex-col gap-1 text-sm font-medium">
+    <form action={formAction} className="card flex flex-col gap-3">
+      <p className="eyebrow">Inviter</p>
+      <label className="field">
         Identifiant Discord
-        <input name="discordId" required inputMode="numeric" placeholder="123456789012345678" className={field} />
+        <input name="discordId" required inputMode="numeric" placeholder="ex. 402911870034211187" />
+        <span className="hint">Le joueur se connecte ensuite avec Discord ; l&apos;invitation fixe son équipe et son rôle.</span>
       </label>
-      <label className="flex flex-col gap-1 text-sm font-medium">
+      <label className="field">
         Équipe
-        <select name="teamId" className={field} defaultValue="">
+        <select name="teamId" defaultValue="">
           <option value="">— plus tard —</option>
           {teams.map((t) => (
             <option key={t.id} value={t.id}>
@@ -25,19 +30,19 @@ export function InviteForm({ teams }: { teams: { id: string; name: string }[] })
           ))}
         </select>
       </label>
-      <label className="flex flex-col gap-1 text-sm font-medium">
+      <label className="field">
         Rôle
-        <select name="role" className={field} defaultValue="PLAYER">
+        <select name="role" defaultValue="PLAYER">
           <option value="PLAYER">Joueur·euse</option>
           <option value="ADMIN">Admin</option>
         </select>
       </label>
-      <button type="submit" disabled={pending} className="rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white disabled:opacity-60">
-        {pending ? "…" : "Inviter"}
+      {state?.error && <p className="flash err">⚠️ {state.error}</p>}
+      {state?.success && <p className="flash ok">{state.success}</p>}
+      <button type="submit" disabled={pending} className="btn">
+        {pending ? "…" : "Créer l'invitation"}
       </button>
-      {state?.error && <p className="w-full text-sm text-red-700">{state.error}</p>}
-      {state?.success && <p className="w-full text-sm text-green-700">{state.success}</p>}
-      <p className="w-full text-xs text-slate-500">
+      <p className="text-xs text-[color:var(--muted)]">
         Pour trouver un identifiant : Discord → Paramètres → Avancés → Mode développeur, puis clic droit sur le membre → « Copier l&apos;identifiant ».
       </p>
     </form>

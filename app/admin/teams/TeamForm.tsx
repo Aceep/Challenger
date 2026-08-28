@@ -1,36 +1,37 @@
 "use client";
 
 import { useActionState } from "react";
-import { createTeamAction } from "./actions";
+import type { ActionState } from "@/lib/forms";
 
-const field =
-  "rounded-lg border border-slate-300 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900";
-
-export function TeamForm() {
-  const [state, action, pending] = useActionState(createTeamAction, null);
+export function TeamForm({ action }: { action: (prev: ActionState, formData: FormData) => Promise<ActionState> }) {
+  const [state, formAction, pending] = useActionState(action, null);
   return (
-    <form action={action} className="flex flex-wrap items-end gap-3 rounded-xl bg-white p-4 shadow-sm dark:bg-slate-900">
-      <label className="flex flex-col gap-1 text-sm font-medium">
+    <form action={formAction} className="card form-grid">
+      <p className="eyebrow wide">Créer une équipe</p>
+      <label className="field">
         Nom
-        <input name="name" required className={field} />
+        <input name="name" required placeholder="ex. Les Renards" />
       </label>
-      <label className="flex flex-col gap-1 text-sm font-medium">
+      <label className="field">
         Couleur
-        <input name="color" type="color" defaultValue="#6366f1" className="h-10 w-16 cursor-pointer rounded" />
+        <input name="color" type="color" defaultValue="#2E4A7D" />
       </label>
-      <label className="flex flex-col gap-1 text-sm font-medium">
+      <label className="field">
         Salon aventure (id)
-        <input name="discordChannelId" className={field} />
+        <input name="discordChannelId" />
       </label>
-      <label className="flex flex-col gap-1 text-sm font-medium">
+      <label className="field">
         Salon librairie (id)
-        <input name="discordLibraryChannelId" className={field} />
+        <input name="discordLibraryChannelId" />
+        <span className="hint">Sans ce salon, /ajouter-un-livre est refusé pour cette équipe.</span>
       </label>
-      <button type="submit" disabled={pending} className="rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white disabled:opacity-60">
-        {pending ? "…" : "Créer l'équipe"}
-      </button>
-      {state?.error && <p className="w-full text-sm text-red-700">{state.error}</p>}
-      {state?.success && <p className="w-full text-sm text-green-700">{state.success}</p>}
+      {state?.error && <p className="flash err wide">⚠️ {state.error}</p>}
+      {state?.success && <p className="flash ok wide">{state.success}</p>}
+      <div className="wide">
+        <button type="submit" disabled={pending} className="btn">
+          {pending ? "…" : "Créer l'équipe"}
+        </button>
+      </div>
     </form>
   );
 }

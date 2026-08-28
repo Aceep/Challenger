@@ -1,29 +1,40 @@
 import { prisma } from "@/lib/db";
-import { ChallengeForm } from "./ChallengeForm";
+import { ChallengeView } from "./ChallengeView";
+import { saveChallengeAction } from "./actions";
+
+const dateFmt = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric" });
 
 export default async function AdminChallengePage() {
   const challenges = await prisma.challenge.findMany({ orderBy: { startAt: "desc" } });
   const current = challenges.find((c) => c.status === "ACTIVE") ?? challenges[0] ?? null;
 
   return (
-    <main className="flex flex-col gap-6">
-      <h1 className="text-2xl font-bold">Défi</h1>
-      <ChallengeForm
-        challenge={
-          current
-            ? {
-                ...current,
-                startAt: current.startAt.toISOString().slice(0, 10),
-                endAt: current.endAt.toISOString().slice(0, 10),
-              }
-            : null
-        }
-      />
-      {challenges.length > 1 && (
-        <section className="text-sm text-slate-500">
-          Autres éditions : {challenges.filter((c) => c.id !== current?.id).map((c) => c.name).join(", ")}
-        </section>
-      )}
-    </main>
+    <ChallengeView
+      challenge={
+        current
+          ? {
+              id: current.id,
+              name: current.name,
+              startAt: current.startAt.toISOString().slice(0, 10),
+              endAt: current.endAt.toISOString().slice(0, 10),
+              color: current.color,
+              pointsPerPage: current.pointsPerPage,
+              bingoLineBonus: current.bingoLineBonus,
+              bingoFullBonus: current.bingoFullBonus,
+              status: current.status,
+              discordGuildId: current.discordGuildId,
+              discordGeneralChannelId: current.discordGeneralChannelId,
+            }
+          : null
+      }
+      editions={challenges.map((c) => ({
+        id: c.id,
+        name: c.name,
+        color: c.color,
+        period: `${dateFmt.format(c.startAt)} → ${dateFmt.format(c.endAt)}`,
+        status: c.status,
+      }))}
+      saveChallengeAction={saveChallengeAction}
+    />
   );
 }

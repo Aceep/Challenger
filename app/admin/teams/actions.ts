@@ -8,10 +8,10 @@ import { parseForm, type ActionState } from "@/lib/forms";
 import { createTeam, deleteTeam, setCaptain, teamSchema, updateTeam } from "@/lib/services/admin";
 import { setDeputy } from "@/lib/services/team";
 
-const REVALIDATE = ["/admin", "/"];
+const REVALIDATE = ["/admin", "/home"];
 function refresh() {
   revalidatePath("/admin", "layout");
-  revalidatePath("/", "layout");
+  revalidatePath("/home", "layout");
 }
 
 export async function createTeamAction(_prev: ActionState, formData: FormData): Promise<ActionState> {

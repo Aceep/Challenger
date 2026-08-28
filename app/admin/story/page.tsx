@@ -1,27 +1,57 @@
-import { Flash } from "@/components/Flash";
-import { prisma } from "@/lib/db";
 import { getActiveChallenge } from "@/lib/dal";
-import { getStoryAdmin } from "@/lib/services/story";
-import { NodeForm, NodeList, StoryForm, type EditorStory } from "./StoryEditor";
-import { resetTeamStoryAction } from "./actions";
+import { prisma } from "@/lib/db";
+import { describeEffect, parseEffects } from "@/lib/story/effects";
+import { QUORUM } from "@/lib/story/vote";
+import { dormantTeams, getStoryAdmin, tiedVotes } from "@/lib/services/story";
+import { StoryAdminView, type TeamStoryRow } from "./StoryAdminView";
+import { deleteChoiceAction, deleteNodeAction, resetTeamStoryAction, saveChoiceAction, saveNodeAction, saveStoryAction, setStartNodeAction } from "./actions";
+import type { EditorStory } from "./StoryEditor";
+
+const actions = { saveStoryAction, saveNodeAction, saveChoiceAction, deleteNodeAction, deleteChoiceAction, setStartNodeAction };
 
 export default async function AdminStoryPage({ searchParams }: PageProps<"/admin/story">) {
   const params = await searchParams;
   const challenge = await getActiveChallenge();
-  if (!challenge) {
-    return (
-      <main className="flex flex-col gap-4">
-        <h1 className="text-2xl font-bold">Histoire</h1>
-        <p className="text-slate-500">Active un défi pour écrire l&apos;histoire.</p>
-      </main>
-    );
-  }
+  if (!challenge) return <StoryAdminView story={null} quests={[]} teams={[]} hasChallenge={false} params={params} actions={actions} />;
 
-  const [story, quests, teams] = await Promise.all([
+  const now = new Date();
+  const [story, quests, teams, votes, ties, dormant] = await Promise.all([
     getStoryAdmin(challenge.id),
     prisma.quest.findMany({ where: { challengeId: challenge.id, origin: "ADMIN" }, orderBy: { title: "asc" }, select: { id: true, title: true } }),
-    prisma.team.findMany({ where: { challengeId: challenge.id }, orderBy: { name: "asc" }, include: { storyState: { include: { currentNode: { select: { title: true } } } } } }),
+    prisma.team.findMany({
+      where: { challengeId: challenge.id },
+      orderBy: { name: "asc" },
+      include: { storyState: { include: { currentNode: { select: { id: true, title: true } } } } },
+    }),
+    prisma.vote.findMany({ where: { status: { not: "RESOLVED" }, team: { challengeId: challenge.id } }, include: { _count: { select: { ballots: true } } } }),
+    tiedVotes(now),
+    dormantTeams(7, now),
   ]);
+
+  const questTitle = new Map(quests.map((q) => [q.id, q.title]));
+
+  const rows: TeamStoryRow[] = teams.map((t) => {
+    const vote = votes.find((v) => v.teamId === t.id);
+    const tie = ties.find((x) => x.teamId === t.id);
+    const asleep = dormant.find((d) => d.teamId === t.id);
+    const status: TeamStoryRow["status"] = tie
+      ? { tone: "wait", label: "égalité" }
+      : vote?.status === "AWAITING_TARGET"
+        ? { tone: "type", label: "action" }
+        : asleep
+          ? { tone: "no", label: "dormant" }
+          : vote
+            ? { tone: "ok", label: `vote · ${vote._count.ballots}/${QUORUM}` }
+            : { tone: "type", label: t.storyState ? "en cours" : "pas commencé" };
+    return {
+      teamId: t.id,
+      name: t.name,
+      color: t.color,
+      chapter: t.storyState?.currentNode.title ?? "pas encore commencé",
+      status,
+      hasState: !!t.storyState,
+    };
+  });
 
   const editorStory: EditorStory | null = story
     ? {
@@ -40,57 +70,48 @@ export default async function AdminStoryPage({ searchParams }: PageProps<"/admin
           voteHours: n.voteHours,
           defaultChoiceId: n.defaultChoiceId,
           teamsHere: n._count.teamStates,
+          alerts: [
+            ...ties
+              .filter((t) => teams.find((x) => x.id === t.teamId)?.storyState?.currentNodeId === n.id)
+              .map((t) => ({
+                id: `tie-${t.id}`,
+                tone: "wait" as const,
+                icon: "⚖️",
+                text: `${t.teamName} : égalité, cascade au stade ${t.stage === "CAPTAIN" ? "capitaine" : t.stage === "DEPUTY" ? "adjoint·e" : "tous les membres"}${t.pending ? " (un choix attend confirmation)" : ""}. À trancher depuis la page Histoire de l'équipe.`,
+              })),
+            ...dormant
+              .filter((d) => d.nodeId === n.id)
+              .map((d) => ({
+                id: `dormant-${d.teamId}`,
+                tone: "no" as const,
+                icon: "📖",
+                text: `${teams.find((t) => t.id === d.teamId)?.name ?? "Une équipe"} est bloquée ici depuis 7 jours${d.reason ? ` — ${d.reason}` : ""}.`,
+              })),
+          ],
           choices: n.choices.map((c) => ({
             id: c.id,
             label: c.label,
             targetNodeId: c.targetNodeId,
             targetTitle: c.target?.title ?? null,
             lockedByQuestId: c.lockedByQuestId,
+            lockedByQuestTitle: c.lockedByQuestId ? (questTitle.get(c.lockedByQuestId) ?? null) : null,
             sortOrder: c.sortOrder,
             effects: JSON.stringify(c.effects),
+            effectLabels: parseEffects(c.effects).map((e) => describeEffect(e, { self: "l'équipe" })),
           })),
         })),
       }
     : null;
 
   return (
-    <main className="flex flex-col gap-6">
-      <h1 className="text-2xl font-bold">Histoire</h1>
-      <Flash params={params} />
-      <StoryForm story={editorStory} />
-
-      {editorStory && (
-        <>
-          <section className="flex flex-col gap-3">
-            <h2 className="font-semibold">Nouveau chapitre</h2>
-            <NodeForm storyId={editorStory.id} quests={quests} />
-          </section>
-
-          <section className="flex flex-col gap-3">
-            <h2 className="font-semibold">Chapitres ({editorStory.nodes.length})</h2>
-            {editorStory.nodes.length === 0 ? <p className="text-sm text-slate-500">Aucun chapitre. Le premier créé devient le début.</p> : <NodeList story={editorStory} quests={quests} />}
-          </section>
-
-          <section className="flex flex-col gap-2">
-            <h2 className="font-semibold">Progression des équipes</h2>
-            <ul className="flex flex-col gap-1 text-sm">
-              {teams.map((t) => (
-                <li key={t.id} className="flex items-center justify-between rounded-lg bg-white px-3 py-2 shadow-sm dark:bg-slate-900">
-                  <span>
-                    <strong>{t.name}</strong> — {t.storyState?.currentNode.title ?? "pas encore commencé"}
-                  </span>
-                  {t.storyState && (
-                    <form action={resetTeamStoryAction}>
-                      <input type="hidden" name="teamId" value={t.id} />
-                      <button className="text-red-600 underline">Remettre au début</button>
-                    </form>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </section>
-        </>
-      )}
-    </main>
+    <StoryAdminView
+      story={editorStory}
+      quests={quests}
+      teams={rows}
+      hasChallenge
+      params={params}
+      actions={actions}
+      resetTeamStoryAction={resetTeamStoryAction}
+    />
   );
 }

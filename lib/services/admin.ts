@@ -12,6 +12,7 @@ export const challengeSchema = z
     bingoLineBonus: z.coerce.number().int().min(0),
     bingoFullBonus: z.coerce.number().int().min(0),
     status: z.enum(["DRAFT", "ACTIVE", "FINISHED"]),
+    color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Couleur hex attendue").default("#2E4A7D"),
     discordGuildId: z.string().trim().optional(),
     discordGeneralChannelId: z.string().trim().optional(),
   })

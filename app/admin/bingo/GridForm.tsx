@@ -1,40 +1,55 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useState } from "react";
-import { saveGridAction } from "./actions";
+import type { ActionState } from "@/lib/forms";
 
 export type GridValues = { id?: string; title: string; size: number; prompts: string[] };
 
-const field =
-  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900";
-
-export function GridForm({ grid, onDone }: { grid: GridValues | null; onDone?: () => void }) {
-  const [state, action, pending] = useActionState(saveGridAction, null);
+export function GridForm({
+  grid,
+  action,
+  number,
+  closeHref,
+}: {
+  grid: GridValues | null;
+  action: (prev: ActionState, formData: FormData) => Promise<ActionState>;
+  number: number;
+  closeHref?: string;
+}) {
+  const [state, formAction, pending] = useActionState(action, null);
   const [size, setSize] = useState(grid?.size ?? 5);
   const [text, setText] = useState(grid?.prompts.join("\n") ?? "");
   const count = text.split("\n").filter((l) => l.trim()).length;
   const expected = size * size;
 
   return (
-    <form action={action} className="flex flex-col gap-3 rounded-xl bg-white p-4 shadow-sm dark:bg-slate-900">
+    <form action={formAction} className="card form-grid">
       {grid?.id && <input type="hidden" name="gridId" value={grid.id} />}
-      <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          Titre
-          <input name="title" required defaultValue={grid?.title ?? ""} placeholder="Grille de septembre" className={field} />
-        </label>
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          Taille
-          <select name="size" value={size} onChange={(e) => setSize(Number(e.target.value))} className={field}>
-            {[3, 4, 5, 6].map((n) => (
-              <option key={n} value={n}>
-                {n} × {n}
-              </option>
-            ))}
-          </select>
-        </label>
+      <p className="eyebrow wide">{grid ? `Modifier la grille n° ${number}` : `Ajouter une grille (n° ${number})`}</p>
+      <label className="field">
+        Titre
+        <input name="title" required defaultValue={grid?.title ?? ""} placeholder="ex. Frissons d'octobre" />
+      </label>
+      <label className="field">
+        Taille
+        <select name="size" value={size} onChange={(e) => setSize(Number(e.target.value))}>
+          {[3, 4, 5, 6].map((n) => (
+            <option key={n} value={n}>
+              {n} × {n}
+            </option>
+          ))}
+        </select>
+      </label>
+      <div className="field">
+        <span>Aperçu</span>
+        <div className="mini-grid" style={{ gridTemplateColumns: `repeat(${size}, 1fr)`, width: size * 14 }}>
+          {Array.from({ length: expected }, (_, i) => (
+            <i key={i} />
+          ))}
+        </div>
       </div>
-      <label className="flex flex-col gap-1 text-sm font-medium">
+      <label className="field wide">
         Consignes — une par ligne, de gauche à droite puis de haut en bas ({count}/{expected})
         <textarea
           name="prompts"
@@ -42,21 +57,25 @@ export function GridForm({ grid, onDone }: { grid: GridValues | null; onDone?: (
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder={"Un livre à la couverture rouge\nUn roman de plus de 500 pages\n…"}
-          className={`${field} font-mono text-sm`}
+          className="font-mono text-sm"
         />
       </label>
-      {state?.error && <p className="text-sm text-red-700">{state.error}</p>}
-      {state?.success && <p className="text-sm text-green-700">{state.success}</p>}
-      <div className="flex items-center gap-3">
-        <button type="submit" disabled={pending || count !== expected} className="rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white disabled:opacity-50">
+      {state?.error && <p className="flash err wide">⚠️ {state.error}</p>}
+      {state?.success && <p className="flash ok wide">{state.success}</p>}
+      <div className="wide flex flex-wrap items-center gap-3">
+        <button type="submit" disabled={pending || count !== expected} className="btn">
           {pending ? "…" : grid ? "Mettre à jour" : "Créer la grille"}
         </button>
-        {onDone && (
-          <button type="button" onClick={onDone} className="rounded-lg px-3 py-2 text-slate-500">
+        {closeHref && (
+          <Link href={closeHref} className="btn ghost">
             Fermer
-          </button>
+          </Link>
         )}
-        {grid && <p className="text-xs text-slate-500">Modifier une consigne conserve les lectures placées ; réduire la taille supprime les cases hors grille.</p>}
+        {grid && (
+          <span className="text-xs text-[color:var(--muted)]">
+            Modifier une consigne conserve les lectures placées ; réduire la taille supprime les cases hors grille.
+          </span>
+        )}
       </div>
     </form>
   );
