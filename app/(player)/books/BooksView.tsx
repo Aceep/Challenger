@@ -3,6 +3,8 @@ import { Button, Eyebrow, KyleEmpty, Pill } from "@/components/ui";
 import { Flash } from "@/components/Flash";
 import { PencilIcon } from "@/components/ui/icons";
 import { fmtDelta } from "@/lib/format";
+import type { ActionState } from "@/lib/forms";
+import { BookEditModal, type BookEditProps } from "./BookEditModal";
 import { DeleteBookButton } from "./DeleteBookButton";
 
 export type BookRow = {
@@ -32,6 +34,9 @@ export type BooksViewProps = {
   params: Record<string, string | string[] | undefined>;
   demo?: boolean;
   deleteBookAction?: (formData: FormData) => Promise<void>;
+  /** Reading open in the edit modal (`?edit=<id>`), null when none. */
+  editing?: BookEditProps | null;
+  updateBookAction?: (prev: ActionState, formData: FormData) => Promise<ActionState>;
 };
 
 const dateFmt = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short" });
@@ -76,7 +81,7 @@ function Row({ b, index, showOwner, teamColor, prefix, deleteBookAction }: { b: 
           </span>
           {b.editable && (
             <span className="actions">
-              <Link href={`${prefix}/books/${b.id}/edit`} className="icon-btn" title="Modifier" aria-label={`Modifier « ${b.title} »`}>
+              <Link href={`${prefix}/books?edit=${b.id}`} scroll={false} className="icon-btn" title="Modifier" aria-label={`Modifier « ${b.title} »`}>
                 <PencilIcon />
               </Link>
               {deleteBookAction && <DeleteBookButton bookId={b.id} title={b.title} points={b.points} hasLinks={b.questNumber !== null || !!b.cellLabel} action={deleteBookAction} />}
@@ -89,7 +94,7 @@ function Row({ b, index, showOwner, teamColor, prefix, deleteBookAction }: { b: 
 }
 
 /** Readings screen — pure view, reused by /demo. */
-export function BooksView({ books, teamBooks, isCaptain, teamColor, params, demo, deleteBookAction }: BooksViewProps) {
+export function BooksView({ books, teamBooks, isCaptain, teamColor, params, demo, deleteBookAction, editing, updateBookAction }: BooksViewProps) {
   const prefix = demo ? "/demo" : "";
 
   return (
@@ -127,6 +132,7 @@ export function BooksView({ books, teamBooks, isCaptain, teamColor, params, demo
       ) : (
         <KyleEmpty>Tu n&apos;es pas capitaine : seules tes lectures apparaissent ici.</KyleEmpty>
       )}
+      {editing && updateBookAction && <BookEditModal edit={editing} prefix={prefix} action={updateBookAction} />}
     </main>
   );
 }

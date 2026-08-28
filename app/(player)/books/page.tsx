@@ -2,7 +2,8 @@ import { getCurrentPlayer } from "@/lib/dal";
 import { cellLabel } from "@/lib/services/bingo";
 import { listBooks, listTeamBooks } from "@/lib/services/books";
 import { BooksView, type BookRow } from "./BooksView";
-import { deleteBookAction } from "./actions";
+import { deleteBookAction, updateBookAction } from "./actions";
+import { loadBookEdit } from "./edit-props";
 
 type Listed = Awaited<ReturnType<typeof listBooks>>[number];
 
@@ -33,6 +34,9 @@ export default async function BooksPage({ searchParams }: PageProps<"/books">) {
     isCaptain && team ? listTeamBooks(team.id, user.id, actor) : Promise.resolve([]),
   ]);
   const showDeadline = !isCaptain && user.role !== "ADMIN";
+  const editId = Array.isArray(params.edit) ? params.edit[0] : params.edit;
+  const editing = editId ? await loadBookEdit(editId, user) : null;
+  const flash = editId && !editing ? { ...params, error: "Cette lecture n'est plus modifiable (délai d'1 h dépassé — demande à ton·ta capitaine)." } : params;
 
   return (
     <BooksView
@@ -40,8 +44,10 @@ export default async function BooksPage({ searchParams }: PageProps<"/books">) {
       teamBooks={teamBooks.map((b) => toRow(b, user.id, showDeadline))}
       isCaptain={isCaptain}
       teamColor={team?.color ?? "#2E4A7D"}
-      params={params}
+      params={flash}
       deleteBookAction={deleteBookAction}
+      editing={editing}
+      updateBookAction={updateBookAction}
     />
   );
 }
