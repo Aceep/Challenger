@@ -4,7 +4,6 @@ import { fmtPoints } from "@/lib/format";
 
 export type HomeViewProps = {
   userName: string;
-  isAdmin: boolean;
   team: { name: string; color: string } | null;
   challengeName: string | null;
   /** The challenge is over: scores are frozen. */
@@ -35,7 +34,7 @@ function remaining(deadline: Date, now: Date) {
 }
 
 /** Player home screen — pure view, reused by /demo. */
-export function HomeView({ userName, isAdmin, team, challengeName, challengeOver, score, rank, stats, week, demo, signOutAction }: HomeViewProps) {
+export function HomeView({ userName, team, challengeName, challengeOver, score, rank, stats, week, demo, signOutAction }: HomeViewProps) {
   const p = (path: string) => (demo ? `/demo${path}` : path);
   const now = new Date();
 
@@ -113,22 +112,6 @@ export function HomeView({ userName, isAdmin, team, challengeName, challengeOver
         </p>
       </Card>
 
-      <div className="flex flex-wrap justify-center gap-4 text-[13px]">
-        <Link href={p("/leaderboard")} className="underline">
-          Classement
-        </Link>
-        <Link href={p("/team")} className="underline">
-          Mon équipe
-        </Link>
-        <Link href={p("/help")} className="underline">
-          Aide &amp; règles
-        </Link>
-        {isAdmin && (
-          <Link href={demo ? "/demo/admin" : "/admin"} className="underline">
-            Administration
-          </Link>
-        )}
-      </div>
     </main>
   );
 }

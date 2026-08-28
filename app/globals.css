@@ -674,12 +674,17 @@
 
   .bottomnav {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     background: var(--surface);
     border-top: 1px solid var(--line);
     padding: 8px 4px calc(14px + env(safe-area-inset-bottom));
   }
-  .bottomnav a {
+  .bottomnav a,
+  .bottomnav button {
+    border: 0;
+    background: transparent;
+    font: inherit;
+    cursor: pointer;
     color: var(--muted);
     font-size: 10.5px;
     font-weight: 700;
@@ -691,14 +696,19 @@
     border-radius: 10px;
     text-decoration: none;
   }
-  .bottomnav a .ic {
+  .bottomnav a .ic,
+  .bottomnav button .ic {
     font-size: 20px;
     line-height: 1;
   }
-  .bottomnav a[aria-current="page"] {
+  .bottomnav a[aria-current="page"],
+  .bottomnav button[aria-current="page"],
+  .bottomnav button[aria-expanded="true"] {
     color: var(--ink);
   }
-  .bottomnav a[aria-current="page"] .ic {
+  .bottomnav a[aria-current="page"] .ic,
+  .bottomnav button[aria-current="page"] .ic,
+  .bottomnav button[aria-expanded="true"] .ic {
     background: var(--kyle);
     color: #1a1a1f;
     border-radius: 10px;

@@ -32,7 +32,6 @@ export default async function HomePage() {
   return (
     <HomeView
       userName={user.name ?? "lecteur·ice"}
-      isAdmin={user.role === "ADMIN"}
       team={team ? { name: team.name, color: team.color } : null}
       challengeName={team?.challenge.name ?? null}
       challengeOver={!!team && team.challenge.endAt < new Date()}

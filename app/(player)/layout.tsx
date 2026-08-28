@@ -4,12 +4,12 @@ import { requireUser } from "@/lib/dal";
 import { tickOnActivity } from "@/lib/services/tick";
 
 export default async function PlayerLayout({ children }: LayoutProps<"/">) {
-  await requireUser();
+  const user = await requireUser();
   after(() => tickOnActivity());
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col">
       <div className="flex flex-1 flex-col">{children}</div>
-      <BottomNav />
+      <BottomNav isAdmin={user.role === "ADMIN"} />
     </div>
   );
 }
