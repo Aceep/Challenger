@@ -50,7 +50,7 @@ export function AdminRail({
         <Kyle width={28} />
         Aceep&amp;Kyle
       </div>
-      <div className="edition">
+      <div className="rail-edition">
         <EditionSwitcher
           current={{ ...edition, role: "ORGANIZER" }}
           options={editions}

@@ -17,6 +17,7 @@ export type ChallengeLike = {
   id: string;
   status: "DRAFT" | "ACTIVE" | "FINISHED";
   startAt: Date;
+  endAt: Date;
 };
 
 export type MembershipLike<C extends ChallengeLike = ChallengeLike> = {
@@ -30,19 +31,39 @@ type Relevant = ChallengeLike | { challenge: ChallengeLike };
 
 const challengeOf = (item: Relevant): ChallengeLike => ("challenge" in item ? item.challenge : item);
 
-/** ACTIVE first, then the latest `startAt`. */
-function byRelevance(a: ChallengeLike, b: ChallengeLike): number {
-  const active = Number(b.status === "ACTIVE") - Number(a.status === "ACTIVE");
-  return active !== 0 ? active : b.startAt.getTime() - a.startAt.getTime();
+/** One day of grace after `endAt`, the same the tick uses. */
+const GRACE_MS = 86_400_000;
+
+/**
+ * 0 = ACTIVE and running now, 1 = ACTIVE and upcoming, 2 = ACTIVE but over,
+ * 3 = DRAFT, 4 = FINISHED. A test edition created for next year must not
+ * steal the screen from the one people are reading for today.
+ */
+function tier(c: ChallengeLike, now: number): number {
+  if (c.status === "ACTIVE") {
+    if (now < c.startAt.getTime()) return 1;
+    if (now > c.endAt.getTime() + GRACE_MS) return 2;
+    return 0;
+  }
+  return c.status === "DRAFT" ? 3 : 4;
+}
+
+function byRelevance(a: ChallengeLike, b: ChallengeLike, now: number): number {
+  const ta = tier(a, now);
+  const tb = tier(b, now);
+  if (ta !== tb) return ta - tb;
+  // Upcoming: the soonest first. Anything else: the most recently started first.
+  return ta === 1 ? a.startAt.getTime() - b.startAt.getTime() : b.startAt.getTime() - a.startAt.getTime();
 }
 
 /**
- * Editions in the order a person expects to see them: the ACTIVE one first,
- * then the most recently started. Accepts challenges or anything holding one
- * (memberships, switchable editions). Never mutates the given list.
+ * Editions in the order a person expects to see them: the one running today,
+ * then the next to start, then the rest by recency. Accepts challenges or
+ * anything holding one (memberships, switchable editions). Never mutates.
  */
-export function sortByRelevance<T extends Relevant>(items: T[]): T[] {
-  return [...items].sort((a, b) => byRelevance(challengeOf(a), challengeOf(b)));
+export function sortByRelevance<T extends Relevant>(items: T[], now: Date = new Date()): T[] {
+  const t = now.getTime();
+  return [...items].sort((a, b) => byRelevance(challengeOf(a), challengeOf(b), t));
 }
 
 /**
