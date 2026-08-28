@@ -8,6 +8,8 @@
 
 import type { BookRow } from "@/app/(player)/books/BooksView";
 import type { BoardCell } from "@/app/(player)/bingo/BingoBoard";
+import type { FaqQuestionRow } from "@/app/(player)/faq/FaqListView";
+import type { QuestionDetailView, QuestionMessageRow } from "@/app/(player)/faq/QuestionView";
 import type { HomeViewProps } from "@/app/(player)/home/HomeView";
 import type { LeaderboardRowView } from "@/app/(player)/leaderboard/LeaderboardView";
 import type { QuestRow } from "@/app/(player)/quests/QuestsView";
@@ -453,6 +455,161 @@ export const DEMO_STORY: Pick<StoryViewProps, "storyTitle" | "node" | "unmet" | 
     { title: "La salle des cartes", choiceLabel: "Cueillir la clé" },
   ],
 };
+
+// ---------------------------------------------------------------------------
+// FAQ
+// ---------------------------------------------------------------------------
+
+const hoursAgo = (h: number) => new Date(NOW - h * HOUR);
+const DEMO_GUILD = "962000000000000001";
+const faqThread = (n: number) => `https://discord.com/channels/${DEMO_GUILD}/97200000000000000${n}`;
+
+const QUESTION_MESSAGES: Record<string, QuestionMessageRow[]> = {
+  "demo-question-manga": [
+    {
+      id: "demo-qm-manga-1",
+      author: "Alycia",
+      isAdmin: true,
+      fromDiscord: false,
+      body: "Oui : un manga est une lecture graphique. Il vaut donc ½ quête et ½ case — il en faut deux pour valider, et les points sont ceux du barème (pages ÷ 10, moitié sous 150 pages).",
+      createdAt: hoursAgo(50),
+    },
+    { id: "demo-qm-manga-2", author: "Léa", isAdmin: false, fromDiscord: false, body: "Parfait, merci !", createdAt: hoursAgo(49) },
+  ],
+  "demo-question-tome": [
+    {
+      id: "demo-qm-tome-1",
+      author: "Nour",
+      isAdmin: false,
+      fromDiscord: true,
+      body: "Je me pose la même question pour une intégrale de 900 pages…",
+      createdAt: hoursAgo(20),
+    },
+    {
+      id: "demo-qm-tome-2",
+      author: "Alycia",
+      isAdmin: true,
+      fromDiscord: true,
+      body: "Chaque tome compte comme une lecture séparée. Une intégrale se déclare en une seule lecture, avec son nombre de pages total.",
+      createdAt: hoursAgo(18),
+    },
+  ],
+  "demo-question-audio": [
+    {
+      id: "demo-qm-audio-1",
+      author: "Marc",
+      isAdmin: false,
+      fromDiscord: true,
+      body: "Pour moi ça compte, l'idée c'est de lire (ou d'écouter) des histoires 🙂",
+      createdAt: hoursAgo(5),
+    },
+  ],
+  "demo-question-dimanche": [],
+  "demo-question-equipe": [
+    {
+      id: "demo-qm-equipe-1",
+      author: "Alycia",
+      isAdmin: true,
+      fromDiscord: false,
+      body: "Écris-moi en message privé : je te bascule d'équipe. Les points déjà marqués restent à l'ancienne équipe (ils sont figés à la déclaration).",
+      createdAt: hoursAgo(70),
+    },
+  ],
+};
+
+/** Five questions: one pinned, one resolved, one still unanswered. */
+export const DEMO_QUESTIONS: FaqQuestionRow[] = [
+  {
+    id: "demo-question-manga",
+    title: "Est-ce qu’un manga compte comme une lecture graphique ?",
+    body: "Je viens de finir un tome de 210 pages, je ne sais pas quoi cocher dans le formulaire.",
+    status: "ANSWERED",
+    pinned: true,
+    author: "Léa",
+    createdAt: hoursAgo(52),
+    messages: 2,
+    lastAnswer: { author: "Alycia", body: QUESTION_MESSAGES["demo-question-manga"][0].body },
+    discordUrl: faqThread(1),
+  },
+  {
+    id: "demo-question-tome",
+    title: "Une série en plusieurs tomes, c’est une lecture ou plusieurs ?",
+    body: "",
+    status: "ANSWERED",
+    pinned: false,
+    author: "Sara",
+    createdAt: hoursAgo(22),
+    messages: 2,
+    lastAnswer: { author: "Alycia", body: QUESTION_MESSAGES["demo-question-tome"][1].body },
+    discordUrl: faqThread(2),
+  },
+  {
+    id: "demo-question-audio",
+    title: "Les livres audio comptent-ils dans le défi ?",
+    body: "J’écoute beaucoup en voiture, ça représente pas mal d’heures.",
+    status: "OPEN",
+    pinned: false,
+    author: "Tom",
+    createdAt: hoursAgo(6),
+    messages: 1,
+    lastAnswer: null,
+    discordUrl: faqThread(3),
+  },
+  {
+    id: "demo-question-dimanche",
+    title: "Pourquoi je ne peux rien ajouter le dimanche soir ?",
+    body: "Le bot m’a refusé ma lecture à 19 h 40.",
+    status: "OPEN",
+    pinned: false,
+    author: "Inès",
+    createdAt: hoursAgo(2),
+    messages: 0,
+    lastAnswer: null,
+    discordUrl: faqThread(4),
+  },
+  {
+    id: "demo-question-equipe",
+    title: "Je change d’équipe : que deviennent mes points ?",
+    body: "",
+    status: "RESOLVED",
+    pinned: false,
+    author: "Paul",
+    createdAt: hoursAgo(72),
+    messages: 1,
+    lastAnswer: { author: "Alycia", body: QUESTION_MESSAGES["demo-question-equipe"][0].body },
+    discordUrl: faqThread(5),
+  },
+];
+
+/** Same questions with their thread, for /demo/faq/[id]. Léa (the demo player) owns the first one. */
+export const DEMO_QUESTION_THREADS: QuestionDetailView[] = DEMO_QUESTIONS.map((q) => ({
+  id: q.id,
+  title: q.title,
+  body: q.body,
+  status: q.status,
+  pinned: q.pinned,
+  author: q.author,
+  createdAt: q.createdAt,
+  discordUrl: q.discordUrl,
+  messages: QUESTION_MESSAGES[q.id] ?? [],
+  canReply: q.status !== "RESOLVED",
+  canResolve: q.status !== "RESOLVED" && q.author === DEMO_PLAYER.name,
+  canPin: false,
+}));
+
+/** Admin › FAQ: the forum is wired, one question is still unanswered. */
+export const DEMO_FAQ_SETUP = {
+  guildId: DEMO_GUILD,
+  channelId: "972000000000000000",
+  roleId: "973000000000000000",
+  tags: { open: "t-open", answered: "t-answered", resolved: "t-resolved" },
+  channelUrl: `https://discord.com/channels/${DEMO_GUILD}/972000000000000000`,
+  adminsWithDiscord: 2,
+  lastSyncAt: hoursAgo(0.05),
+  inviteUrl: "https://discord.com/oauth2/authorize?client_id=demo&scope=bot%20applications.commands&permissions=268453904",
+};
+
+export const DEMO_OPEN_QUESTIONS = DEMO_QUESTIONS.filter((q) => q.status === "OPEN").length;
 
 // ---------------------------------------------------------------------------
 // Classement
