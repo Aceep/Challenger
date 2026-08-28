@@ -13,6 +13,8 @@ export type EditorNode = {
   requiredQuestId: string | null;
   requiredBingoLines: number | null;
   requiredPoints: number | null;
+  voteHours: number | null;
+  defaultChoiceId: string | null;
   teamsHere: number;
   choices: EditorChoice[];
 };
@@ -79,6 +81,23 @@ export function NodeForm({ storyId, node, quests, onDone }: { storyId: string; n
         Condition : points d&apos;équipe
         <input name="requiredPoints" type="number" min={0} defaultValue={node?.requiredPoints ?? ""} className={field} />
       </label>
+      <label className="flex flex-col gap-1 text-sm font-medium">
+        Durée du vote (h, vide = défaut de l&apos;histoire)
+        <input name="voteHours" type="number" min={1} max={720} defaultValue={node?.voteHours ?? ""} className={field} />
+      </label>
+      {node && node.choices.length > 0 && (
+        <label className="flex flex-col gap-1 text-sm font-medium sm:col-span-2">
+          Choix par défaut à l&apos;expiration (sans majorité ni quorum)
+          <select name="defaultChoiceId" defaultValue={node.defaultChoiceId ?? ""} className={field}>
+            <option value="">— le premier choix —</option>
+            {node.choices.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       {state?.error && <p className="text-sm text-red-700 sm:col-span-3">{state.error}</p>}
       {state?.success && <p className="text-sm text-green-700 sm:col-span-3">{state.success}</p>}
       <div className="flex gap-2 sm:col-span-3">
@@ -188,6 +207,8 @@ export function NodeList({ story, quests }: { story: EditorStory; quests: { id: 
                     {n.requiredQuestId && " · condition quête"}
                     {n.requiredBingoLines ? ` · ${n.requiredBingoLines} lignes bingo` : ""}
                     {n.requiredPoints ? ` · ${n.requiredPoints} pts` : ""}
+                    {n.voteHours ? ` · vote ${n.voteHours} h` : ""}
+                    {n.defaultChoiceId ? ` · défaut : ${n.choices.find((c) => c.id === n.defaultChoiceId)?.label ?? "?"}` : ""}
                   </p>
                 </div>
                 <div className="flex gap-3 text-sm">

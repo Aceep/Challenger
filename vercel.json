@@ -1,3 +1,6 @@
 {
-  "crons": [{ "path": "/api/cron/resolve-votes", "schedule": "0 6 * * *" }]
+  "crons": [
+    { "path": "/api/cron/tick", "schedule": "0 6 * * *" },
+    { "path": "/api/cron/tick", "schedule": "0 18 * * 0" }
+  ]
 }

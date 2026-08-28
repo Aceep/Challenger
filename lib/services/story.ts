@@ -6,7 +6,7 @@ import { activeGridForTeam, completePositions } from "@/lib/services/bingo";
 import { awardPoints } from "@/lib/services/points";
 import { getTeamScore } from "@/lib/services/leaderboard";
 import { describeEffect, needsTargetTeam, parseEffects, effectsSchema, type Effect } from "@/lib/story/effects";
-import { resolveVote, unmetConditions } from "@/lib/story/vote";
+import { canBreakTie, resolveVote, tieCascadeStage, unmetConditions, type TieStage } from "@/lib/story/vote";
 
 type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
 
@@ -30,6 +30,10 @@ export const nodeSchema = z.object({
   requiredQuestId: z.string().optional().transform((s) => s || null),
   requiredBingoLines: z.coerce.number().int().min(0).optional().transform((n) => n || null),
   requiredPoints: z.coerce.number().int().min(0).optional().transform((n) => n || null),
+  /** Vote duration override in hours (empty = story default). */
+  voteHours: z.coerce.number().int().min(1).max(720).optional().transform((n) => n || null),
+  /** Choice applied when the vote expires without a clear majority. */
+  defaultChoiceId: z.string().optional().transform((s) => s || null),
 });
 
 export async function createNode(storyId: string, input: z.infer<typeof nodeSchema>) {
@@ -172,7 +176,7 @@ async function openVoteIfReady(teamId: string, nodeId: string, challengeId: stri
   if (unmetConditions(node, progress).length > 0) return null;
   const already = await prisma.vote.findFirst({ where: { teamId, nodeId, status: { not: "RESOLVED" } } });
   if (already) return already;
-  return prisma.vote.create({ data: { teamId, nodeId, deadline: new Date(Date.now() + voteHours * 3600_000) } });
+  return prisma.vote.create({ data: { teamId, nodeId, deadline: new Date(Date.now() + (node.voteHours ?? voteHours) * 3600_000) } });
 }
 
 export async function getTeamStoryView(teamId: string, userId: string) {
@@ -193,8 +197,9 @@ export async function getTeamStoryView(teamId: string, userId: string) {
 
   const vote = await prisma.vote.findFirst({
     where: { teamId, status: { not: "RESOLVED" } },
-    include: { ballots: { include: { user: { select: { name: true } } } }, resultChoice: true },
+    include: { ballots: { include: { user: { select: { name: true } } } }, resultChoice: true, team: { select: { captainId: true, deputyId: true } } },
   });
+  const tie = vote && vote.status === "OPEN" && vote.tieStage !== "NONE" && vote.tieSince ? tieInfo(vote, userId, node.choices.map((c) => c.id)) : null;
   const lockQuestIds = node.choices.map((c) => c.lockedByQuestId).filter((x): x is string => !!x);
   const lockQuests = lockQuestIds.length ? await prisma.quest.findMany({ where: { id: { in: lockQuestIds } }, select: { id: true, title: true } }) : [];
 
@@ -230,6 +235,7 @@ export async function getTeamStoryView(teamId: string, userId: string) {
           myChoiceId: vote.ballots.find((b) => b.userId === userId)?.choiceId ?? null,
           ballots: vote.ballots.length,
           resultChoice: vote.resultChoice ? { id: vote.resultChoice.id, label: vote.resultChoice.label } : null,
+          tie,
         }
       : null,
     isCaptain: team.captainId === userId,
@@ -280,6 +286,9 @@ export type ResolutionSummary = {
   nextTitle: string | null;
   effects: string[];
   awaitingTarget: boolean;
+  how: "majority" | "default" | "tie-break";
+  /** Other teams touched by the effects (posted in their aventure channel). */
+  affectedTeamIds: string[];
 };
 
 /** Resolves the vote if everyone voted or the deadline passed. */
@@ -296,20 +305,83 @@ export async function tryResolveVote(voteId: string, now = new Date()): Promise<
   const result = resolveVote({
     ballots: vote.ballots,
     choiceIds: votable.map((c) => c.id),
-    captainId: vote.team.captainId,
+    defaultChoiceId: vote.node.defaultChoiceId,
     eligibleCount: voters.length,
     deadline: vote.deadline,
     now,
   });
+  if (result.status === "tie") {
+    if (vote.tieStage === "NONE") await prisma.vote.update({ where: { id: voteId }, data: { tieStage: "CAPTAIN", tieSince: now } });
+    return null;
+  }
   if (result.status !== "resolved") return null;
 
   const choice = votable.find((c) => c.id === result.choiceId)!;
+  return settleChoice(vote, choice, result.how);
+}
+
+type TieVote = { tieStage: TieStage | "NONE"; tieSince: Date | null; team: { captainId: string | null; deputyId: string | null }; ballots: { choiceId: string }[]; pendingChoiceId: string | null; pendingById: string | null };
+
+function tieInfo(vote: TieVote, userId: string, choiceIds: string[]) {
+  const stage = tieCascadeStage(vote.tieSince!, new Date());
+  const t: Record<string, number> = Object.fromEntries(choiceIds.map((id) => [id, 0]));
+  for (const b of vote.ballots) if (b.choiceId in t) t[b.choiceId]++;
+  const max = Math.max(0, ...Object.values(t));
+  const leaders = choiceIds.filter((id) => t[id] === max);
+  const role = vote.team.captainId === userId ? "captain" : vote.team.deputyId === userId ? "deputy" : "member";
+  return { stage, leaders, canBreak: canBreakTie(stage, role), role, pendingChoiceId: vote.pendingChoiceId, pendingById: vote.pendingById } as const;
+}
+
+/** Applies the winning choice: pauses for a rival pick when needed, otherwise resolves. */
+async function settleChoice(vote: { id: string; teamId: string; team: { name: string } }, choice: { id: string; label: string; effects: unknown }, how: "majority" | "default" | "tie-break"): Promise<ResolutionSummary | null> {
+  const voteId = vote.id;
   const effects = parseEffects(choice.effects);
   if (needsTargetTeam(effects)) {
     await prisma.vote.update({ where: { id: voteId }, data: { status: "AWAITING_TARGET", resultChoiceId: choice.id } });
-    return { teamId: vote.teamId, teamName: vote.team.name, choiceLabel: choice.label, nextTitle: null, effects: [], awaitingTarget: true };
+    return { teamId: vote.teamId, teamName: vote.team.name, choiceLabel: choice.label, nextTitle: null, effects: [], awaitingTarget: true, how, affectedTeamIds: [] };
   }
-  return applyResolution(voteId, choice.id, null);
+  return applyResolution(voteId, choice.id, null, how);
+}
+
+/**
+ * Tie cascade: captain (5 active h) → deputy (5 more) → any member, whose pick
+ * needs an admin confirmation. Admins may settle a tie at any time.
+ */
+export async function breakTie(voteId: string, userId: string, choiceId: string): Promise<ResolutionSummary | null> {
+  const [vote, user] = await Promise.all([
+    prisma.vote.findUniqueOrThrow({ where: { id: voteId }, include: { team: true, ballots: true, node: { include: { choices: { orderBy: { sortOrder: "asc" } } } } } }),
+    prisma.user.findUniqueOrThrow({ where: { id: userId } }),
+  ]);
+  if (vote.status !== "OPEN" || vote.tieStage === "NONE" || !vote.tieSince) throw new Error("Pas d'égalité à trancher");
+  const info = tieInfo(vote, userId, vote.node.choices.map((c) => c.id));
+  if (!info.leaders.includes(choiceId)) throw new Error("Choisis l'un des choix à égalité");
+  const role = user.role === "ADMIN" ? "admin" : info.role;
+  if (!canBreakTie(info.stage, role)) {
+    throw new Error(info.stage === "CAPTAIN" ? "Le·la capitaine a 5 h pour trancher" : info.stage === "DEPUTY" ? "L'adjoint·e a 5 h pour trancher" : "Tu ne peux pas trancher");
+  }
+  if (role === "member") {
+    if (vote.pendingChoiceId) throw new Error("Un choix attend déjà la confirmation d'un·e admin");
+    await prisma.vote.update({ where: { id: voteId }, data: { pendingChoiceId: choiceId, pendingById: userId } });
+    return null;
+  }
+  const choice = vote.node.choices.find((c) => c.id === choiceId)!;
+  return settleChoice(vote, choice, "tie-break");
+}
+
+/** Admin confirms (or rejects) the pick made by the first member to act. */
+export async function confirmTieBreak(voteId: string, adminId: string, accept: boolean): Promise<ResolutionSummary | null> {
+  const [vote, admin] = await Promise.all([
+    prisma.vote.findUniqueOrThrow({ where: { id: voteId }, include: { team: true, node: { include: { choices: true } } } }),
+    prisma.user.findUniqueOrThrow({ where: { id: adminId } }),
+  ]);
+  if (admin.role !== "ADMIN") throw new Error("Réservé aux admins");
+  if (vote.status !== "OPEN" || !vote.pendingChoiceId) throw new Error("Rien à confirmer");
+  if (!accept) {
+    await prisma.vote.update({ where: { id: voteId }, data: { pendingChoiceId: null, pendingById: null } });
+    return null;
+  }
+  const choice = vote.node.choices.find((c) => c.id === vote.pendingChoiceId)!;
+  return settleChoice(vote, choice, "tie-break");
 }
 
 /** Captain picks the rival for hostile/alliance effects, then the resolution applies. */
@@ -319,10 +391,10 @@ export async function chooseTargetTeam(voteId: string, userId: string, targetTea
   const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
   if (vote.team.captainId !== userId && user.role !== "ADMIN") throw new Error("Seul·e le·la capitaine choisit la cible");
   if (targetTeamId === vote.teamId) throw new Error("Choisis une autre équipe");
-  return applyResolution(voteId, vote.resultChoiceId, targetTeamId);
+  return applyResolution(voteId, vote.resultChoiceId, targetTeamId, "majority");
 }
 
-async function applyResolution(voteId: string, choiceId: string, targetTeamId: string | null): Promise<ResolutionSummary> {
+async function applyResolution(voteId: string, choiceId: string, targetTeamId: string | null, how: ResolutionSummary["how"]): Promise<ResolutionSummary> {
   return prisma.$transaction(async (tx) => {
     const vote = await tx.vote.findUniqueOrThrow({ where: { id: voteId }, include: { team: { include: { challenge: { include: { story: true } } } } } });
     const choice = await tx.storyChoice.findUniqueOrThrow({ where: { id: choiceId }, include: { target: true } });
@@ -330,12 +402,18 @@ async function applyResolution(voteId: string, choiceId: string, targetTeamId: s
     const others = await tx.team.findMany({ where: { challengeId: vote.team.challengeId, id: { not: vote.teamId } } });
     const names = { self: vote.team.name, chosen: chosen?.name };
     const summaries: string[] = [];
+    const affected = new Set<string>();
 
     const targets = (t: "self" | "chosen" | "others") =>
       t === "self" ? [vote.team] : t === "chosen" ? (chosen ? [chosen] : []) : others;
 
     for (const e of parseEffects(choice.effects) as Effect[]) {
       summaries.push(describeEffect(e, names));
+      if (e.type === "steal" || e.type === "alliance") {
+        if (chosen) affected.add(chosen.id);
+      } else if ("target" in e) {
+        for (const t of targets(e.target)) if (t.id !== vote.teamId) affected.add(t.id);
+      }
       switch (e.type) {
         case "points":
           for (const t of targets(e.target)) {
@@ -380,12 +458,12 @@ async function applyResolution(voteId: string, choiceId: string, targetTeamId: s
       }
     }
 
-    await tx.vote.update({ where: { id: voteId }, data: { status: "RESOLVED", resultChoiceId: choiceId, targetTeamId, resolvedAt: new Date() } });
+    await tx.vote.update({ where: { id: voteId }, data: { status: "RESOLVED", resultChoiceId: choiceId, targetTeamId, resolvedAt: new Date(), pendingChoiceId: null, pendingById: null } });
     if (choice.targetNodeId) {
       await tx.teamStoryState.update({ where: { teamId: vote.teamId }, data: { currentNodeId: choice.targetNodeId } });
       await tx.storyVisit.create({ data: { teamId: vote.teamId, nodeId: choice.targetNodeId, choiceLabel: choice.label } });
     }
-    return { teamId: vote.teamId, teamName: vote.team.name, choiceLabel: choice.label, nextTitle: choice.target?.title ?? null, effects: summaries, awaitingTarget: false };
+    return { teamId: vote.teamId, teamName: vote.team.name, choiceLabel: choice.label, nextTitle: choice.target?.title ?? null, effects: summaries, awaitingTarget: false, how, affectedTeamIds: [...affected] };
   });
 }
 
@@ -399,4 +477,40 @@ export async function resolveExpiredVotes(now = new Date()) {
     await ensureTeamStory(v.teamId);
   }
   return results;
+}
+
+/** Teams whose chapter has been stuck (no open vote) for more than `days` days. */
+export async function dormantTeams(days = 7, now = new Date()) {
+  const states = await prisma.teamStoryState.findMany({
+    where: { updatedAt: { lte: new Date(now.getTime() - days * 86_400_000) } },
+    include: { currentNode: { select: { id: true, title: true, choices: { select: { id: true } } } }, team: { select: { id: true, name: true, discordChannelId: true } } },
+  });
+  const out: { teamId: string; nodeId: string; title: string; channelId: string | null; reason: string }[] = [];
+  for (const s of states) {
+    if (s.currentNode.choices.length === 0) continue;
+    const vote = await prisma.vote.findFirst({ where: { teamId: s.teamId, status: { not: "RESOLVED" } } });
+    if (vote?.status === "OPEN" && vote.tieStage === "NONE") continue;
+    const status = await getTeamChapterStatus(s.teamId);
+    const reason = vote?.status === "AWAITING_TARGET" ? "le·la capitaine doit désigner l'équipe visée" : vote?.status === "OPEN" ? "une égalité attend d'être tranchée" : status?.unmet.length ? `pour continuer : ${status.unmet.join(" ; ")}` : "";
+    out.push({ teamId: s.teamId, nodeId: s.currentNodeId, title: s.currentNode.title, channelId: s.team.discordChannelId, reason });
+  }
+  return out;
+}
+
+/** Open votes stuck on a tie, with the cascade stage reached now (for reminders). */
+export async function tiedVotes(now = new Date()) {
+  const votes = await prisma.vote.findMany({ where: { status: "OPEN", tieStage: { not: "NONE" }, tieSince: { not: null } }, include: { team: true } });
+  return votes.map((v) => ({ id: v.id, teamId: v.teamId, teamName: v.team.name, channelId: v.team.discordChannelId, stage: tieCascadeStage(v.tieSince!, now), recorded: v.tieStage, pending: !!v.pendingChoiceId }));
+}
+
+/** Persists the cascade stage reached (so reminders are posted once per stage). Returns votes that moved. */
+export async function advanceTieStages(now = new Date()) {
+  const moved: Awaited<ReturnType<typeof tiedVotes>> = [];
+  for (const v of await tiedVotes(now)) {
+    if (v.stage !== v.recorded) {
+      await prisma.vote.update({ where: { id: v.id }, data: { tieStage: v.stage } });
+      moved.push(v);
+    }
+  }
+  return moved;
 }

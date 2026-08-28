@@ -1,6 +1,8 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { editMessage, postMessage, type MessageButton } from "@/lib/discord/rest";
+import { fmtPoints } from "@/lib/format";
+import { getLeaderboard } from "@/lib/services/leaderboard";
 import { getTeamChapterStatus, type ResolutionSummary } from "@/lib/services/story";
 
 const appUrl = () => process.env.AUTH_URL ?? "https://challenge-six-rose.vercel.app";
@@ -69,10 +71,11 @@ export async function announceResolution(r: ResolutionSummary | null) {
     await postMessage(ch.team, { content: `🗳️ Choix retenu : **${r.choiceLabel}**. Le·la capitaine doit désigner l'équipe visée sur ${appUrl()}/story` });
     return;
   }
+  const howLabel = r.how === "default" ? " (choix par défaut, délai écoulé)" : r.how === "tie-break" ? " (égalité tranchée)" : "";
   await postMessage(ch.team, {
     embeds: [
       {
-        title: `🗳️ Décision : ${r.choiceLabel}`,
+        title: `🗳️ Décision : ${r.choiceLabel}${howLabel}`,
         description: [r.nextTitle ? `Chapitre suivant : **${r.nextTitle}**` : "Fin de votre histoire.", ...r.effects.map((e) => `• ${e}`)].join("\n"),
         color: COLOR.story,
         url: `${appUrl()}/story`,
@@ -81,6 +84,11 @@ export async function announceResolution(r: ResolutionSummary | null) {
   });
   if (r.effects.length && ch.general) {
     await postMessage(ch.general, { embeds: [{ title: `⚔️ ${r.teamName} a agi dans l'histoire`, description: r.effects.map((e) => `• ${e}`).join("\n"), color: COLOR.effect }] });
+  }
+  // Cross effects are signalled in every affected team's aventure channel.
+  for (const teamId of r.affectedTeamIds) {
+    const other = await channelsFor(teamId);
+    await postMessage(other.team, { embeds: [{ title: `⚔️ L'histoire de ${r.teamName} vous touche`, description: r.effects.map((e) => `• ${e}`).join("\n"), color: COLOR.effect, url: `${appUrl()}/team` }] });
   }
   // A new vote may have opened on the next chapter; otherwise post the chapter itself (ending or gated).
   const next = await prisma.vote.findFirst({ where: { teamId: r.teamId, status: "OPEN" } });
@@ -143,4 +151,59 @@ export async function announceGridChange(teamId: string, grid: { completed: true
       },
     ],
   });
+}
+
+async function generalChannel(challengeId: string) {
+  const c = await prisma.challenge.findUnique({ where: { id: challengeId } });
+  return c?.discordGeneralChannelId ?? null;
+}
+
+/** Sunday verification window opening / closing (general channel). */
+export async function announceWindow(challengeId: string, kind: "open" | "close") {
+  await postMessage(await generalChannel(challengeId), {
+    content:
+      kind === "open"
+        ? "🔍 **Fenêtre de vérification ouverte** (dimanche 19 h – 21 h). Ajouts, modifications et suppressions de lectures sont suspendus : capitaines, c'est le moment de vérifier les lectures de votre équipe. Le classement tombe à 20 h."
+        : "✅ **Fenêtre de vérification fermée.** Les commandes sont de nouveau disponibles — bonne semaine de lecture !",
+  });
+}
+
+/** Weekly leaderboard (Sunday 20:00 Paris), with a late notice when caught up afterwards. */
+export async function announceWeekly(challengeId: string, sunday: string, late: boolean) {
+  const rows = await getLeaderboard(challengeId);
+  if (!rows.length) return;
+  const medals = ["🥇", "🥈", "🥉"];
+  const date = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", timeZone: "Europe/Paris" }).format(new Date(`${sunday}T12:00:00Z`));
+  const lines = rows.map((r) => {
+    const tied = rows.filter((o) => o.rank === r.rank).length > 1;
+    return `${medals[r.rank - 1] ?? `${r.rank}.`} **${r.name}**${tied ? " (ex æquo)" : ""} — ${fmtPoints(r.points)} pts · ${r.books} roman${r.books > 1 ? "s" : ""}, ${r.graphics} graphique${r.graphics > 1 ? "s" : ""}`;
+  });
+  await postMessage(await generalChannel(challengeId), {
+    embeds: [
+      {
+        title: `🏆 Classement du dimanche ${date}`,
+        description: `${lines.join("\n")}${late ? "\n\n_Publié en retard — le bot n'était pas disponible à 20 h._" : ""}`,
+        color: COLOR.rank,
+        url: `${appUrl()}/leaderboard`,
+      },
+    ],
+  });
+}
+
+/** Tie cascade reminder in the team's aventure channel when a new stage is reached. */
+export async function announceTieStage(v: { channelId: string | null; stage: "CAPTAIN" | "DEPUTY" | "ANY"; pending: boolean }) {
+  const text =
+    v.stage === "CAPTAIN"
+      ? "⚖️ **Égalité au vote !** Le·la capitaine a 5 h pour trancher (les compteurs sont en pause de minuit à 8 h)."
+      : v.stage === "DEPUTY"
+        ? "⚖️ Le·la capitaine n'a pas tranché : l'**adjoint·e** a 5 h pour le faire."
+        : v.pending
+          ? "⚖️ Un choix attend la confirmation d'un·e admin."
+          : "⚖️ Personne n'a tranché : le **premier membre** qui se manifeste choisit, avec l'accord d'un·e admin.";
+  await postMessage(v.channelId, { content: `${text} → ${appUrl()}/story` });
+}
+
+/** Weekly nudge for a team stuck on a chapter. */
+export async function announceDormant(d: { channelId: string | null; title: string; reason: string }) {
+  await postMessage(d.channelId, { content: `📖 Votre histoire attend au chapitre **${d.title}** depuis plus d'une semaine${d.reason ? ` — ${d.reason}` : ""}. → ${appUrl()}/story` });
 }
