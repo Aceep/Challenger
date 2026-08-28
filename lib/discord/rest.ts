@@ -14,10 +14,14 @@ const API = "https://discord.com/api/v10";
 
 export type MessageButton = { customId: string; label: string; style?: 1 | 2 | 3 | 4; disabled?: boolean };
 
+/** Pings are ignored unless they are explicitly allowed, so roles/users must be listed. */
+export type AllowedMentions = { roles?: string[]; users?: string[] };
+
 export type OutgoingMessage = {
   content?: string;
   embeds?: { title?: string; description?: string; color?: number; footer?: { text: string }; url?: string }[];
   buttons?: MessageButton[];
+  allowedMentions?: AllowedMentions;
 };
 
 export type DiscordResult<T> = { ok: true; data: T } | { ok: false; status: number; error: string };
@@ -30,6 +34,12 @@ function enabled() {
   return !!process.env.DISCORD_BOT_TOKEN;
 }
 
+/** `parse: []` disables @everyone; only the listed roles/users are actually pinged. */
+function toAllowedMentions(a: AllowedMentions | undefined) {
+  if (!a) return undefined;
+  return { parse: [] as string[], roles: a.roles ?? [], users: a.users ?? [] };
+}
+
 function toPayload(m: OutgoingMessage) {
   const rows = [];
   for (let i = 0; i < (m.buttons?.length ?? 0); i += 5) {
@@ -38,7 +48,7 @@ function toPayload(m: OutgoingMessage) {
       components: m.buttons!.slice(i, i + 5).map((b) => ({ type: 2, style: b.style ?? 2, label: b.label.slice(0, 80), custom_id: b.customId, disabled: b.disabled ?? false })),
     });
   }
-  return { content: m.content, embeds: m.embeds, components: rows };
+  return { content: m.content, embeds: m.embeds, components: rows, allowed_mentions: toAllowedMentions(m.allowedMentions) };
 }
 
 /**
@@ -152,4 +162,55 @@ export async function pinMessage(channelId: string, messageId: string) {
   const r = await request<unknown>(`/channels/${channelId}/messages/pins/${messageId}`, "PUT");
   if (!r.ok && r.status === 404) return request<unknown>(`/channels/${channelId}/pins/${messageId}`, "PUT");
   return r;
+}
+
+// ---------------------------------------------------------------------------
+// FAQ forum: channel/role creation, threads and incremental message polling
+// ---------------------------------------------------------------------------
+
+const FORUM_CHANNEL = 15;
+
+export type ForumTag = { id: string; name: string };
+
+/** Creates a forum channel with its available tags. Needs « Gérer les salons ». */
+export async function createForumChannel(guildId: string, name: string, tags: { name: string; emoji?: string }[]) {
+  const r = await request<{ id: string; available_tags?: ForumTag[] }>(`/guilds/${guildId}/channels`, "POST", {
+    type: FORUM_CHANNEL,
+    name,
+    available_tags: tags.map((t) => ({ name: t.name, moderated: false, emoji_name: t.emoji ?? null })),
+  });
+  return r.ok && r.data.id ? { id: r.data.id, tags: r.data.available_tags ?? [] } : null;
+}
+
+/** Opens a thread in a forum channel with its starter message. */
+export async function createForumPost(
+  forumId: string,
+  { name, content, appliedTags, allowedMentions }: { name: string; content: string; appliedTags?: string[]; allowedMentions?: AllowedMentions },
+) {
+  const r = await request<{ id: string; message?: { id: string } }>(`/channels/${forumId}/threads`, "POST", {
+    name: name.slice(0, 100),
+    applied_tags: appliedTags?.length ? appliedTags : undefined,
+    message: { content: content.slice(0, 2000), allowed_mentions: toAllowedMentions(allowedMentions) },
+  });
+  return r.ok && r.data.id ? { threadId: r.data.id, messageId: r.data.message?.id ?? null } : null;
+}
+
+export type DiscordMessage = {
+  id: string;
+  content?: string;
+  type?: number;
+  author?: { id: string; username?: string; global_name?: string | null; bot?: boolean };
+};
+
+/** Up to 100 messages of a channel/thread, optionally only those after a message id. */
+export async function listMessages(channelId: string, after?: string | null): Promise<DiscordMessage[]> {
+  const q = new URLSearchParams({ limit: "100" });
+  if (after) q.set("after", after);
+  const r = await request<DiscordMessage[]>(`/channels/${channelId}/messages?${q}`, "GET");
+  return r.ok ? r.data : [];
+}
+
+/** Updates a thread: tags, archive, lock. */
+export async function patchThread(threadId: string, data: { applied_tags?: string[]; archived?: boolean; locked?: boolean }) {
+  return call(`/channels/${threadId}`, "PATCH", data);
 }

@@ -9,6 +9,7 @@ import { cellChoices, editableBookChoices, questChoices } from "@/lib/services/a
 import { bookPatchSchema, bookSchema, deleteBook, describeResult, logBook, updateBook, type BookResult } from "@/lib/services/books";
 import { getLeaderboard, withLeaderWatch } from "@/lib/services/leaderboard";
 import { listQuestsForTeam } from "@/lib/services/quests";
+import { askQuestion } from "@/lib/services/questions";
 import { castBallot, getTeamStoryView } from "@/lib/services/story";
 import { tickOnActivity } from "@/lib/services/tick";
 
@@ -180,6 +181,16 @@ export async function POST(request: Request) {
           `📖 **${view.node.title}**\n${view.node.body.slice(0, 800)}${view.node.body.length > 800 ? "…" : ""}\n\n${
             view.vote?.status === "OPEN" ? `🗳️ Vote en cours (${view.vote.ballots} vote${view.vote.ballots > 1 ? "s" : ""}) → ${appUrl()}/story` : view.unmet.length ? `🔒 À faire : ${view.unmet.join(" ; ")}` : view.node.isEnding ? "✨ Fin de l'histoire." : ""
           }`,
+        );
+      }
+      case "question": {
+        const result = await askQuestion({ userId: user.id, title: String(opts.titre ?? ""), detail: opts.detail === undefined ? "" : String(opts.detail) });
+        return ephemeral(
+          result.threadUrl
+            ? `❓ Question publiée : ${result.threadUrl}`
+            : result.forumConfigured
+              ? `❓ Question enregistrée, mais le sujet Discord n'a pas pu être créé. Elle est visible sur ${appUrl()}/faq`
+              : `❓ Question enregistrée — le forum n'est pas encore relié, elle est visible sur ${appUrl()}/faq`,
         );
       }
       case "help":
