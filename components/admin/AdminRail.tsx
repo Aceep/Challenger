@@ -29,6 +29,9 @@ export function AdminRail({ who, base = "" }: { who: string; base?: string }) {
   const pathname = usePathname();
   return (
     <nav className="rail" aria-label="Administration">
+      <Link href={base || "/home"} className="back" aria-label="Retour à la vue joueur">
+        ← Vue joueur
+      </Link>
       <div className="flex items-center gap-2 px-2 pt-1.5 pb-4 font-display text-[17px] font-black">
         <Kyle width={28} />
         Aceep&amp;Kyle
@@ -47,13 +50,7 @@ export function AdminRail({ who, base = "" }: { who: string; base?: string }) {
           })}
         </div>
       ))}
-      <p className="foot">
-        {who}
-        <br />
-        <Link href={base || "/home"} className="!inline !p-0 underline">
-          ← vue joueur
-        </Link>
-      </p>
+      <p className="foot">{who}</p>
     </nav>
   );
 }
