@@ -19,6 +19,8 @@ const dateFmt = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short
 
 /** Bingo screen — pure view, reused by /demo. */
 export function BingoView({ grid, total, history, books, bonus, hasTeam, params, placeBookAction, removeBookAction }: BingoViewProps) {
+  const okText = Array.isArray(params.ok) ? params.ok[0] : params.ok;
+  const justValidated = okText?.match(/case ([A-Z]\d+) validée/)?.[1] ?? null;
   if (!hasTeam) {
     return (
       <main className="flex flex-1 flex-col gap-4 p-5">
@@ -33,6 +35,7 @@ export function BingoView({ grid, total, history, books, bonus, hasTeam, params,
       <Flash params={params} />
       {grid ? (
         <BingoBoard
+          justValidated={justValidated}
           title={grid.title}
           size={grid.size}
           cells={grid.cells}
