@@ -87,3 +87,27 @@ export function sundayKey(date: Date): string {
   d.setUTCDate(d.getUTCDate() + ((7 - weekday) % 7));
   return d.toISOString().slice(0, 10);
 }
+
+/** The instant of `YYYY-MM-DD hh:mm` in Paris local time (DST-safe). */
+export function parisInstant(day: string, hour: number, minute = 0): Date {
+  const hh = String(hour).padStart(2, "0");
+  const mm = String(minute).padStart(2, "0");
+  for (const offset of ["+02:00", "+01:00"]) {
+    const d = new Date(`${day}T${hh}:${mm}:00${offset}`);
+    const clock = parisClock(d);
+    if (clock.hour === hour && clock.minute === minute) return d;
+  }
+  return new Date(`${day}T${hh}:${mm}:00+01:00`);
+}
+
+/** Paris calendar date (YYYY-MM-DD) of an instant. */
+export function parisDay(date: Date): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+}
+
+/** The most recent Sunday (YYYY-MM-DD, Paris) whose 20:00 is at or before `date`. */
+export function dueSundayKey(date: Date): string {
+  const { weekday, hour } = parisClock(date);
+  if (weekday === 0 && hour >= 20) return sundayKey(date);
+  return sundayKey(new Date(date.getTime() - 7 * 86_400_000));
+}

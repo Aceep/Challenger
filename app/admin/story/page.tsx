@@ -35,6 +35,8 @@ export default async function AdminStoryPage() {
           requiredQuestId: n.requiredQuestId,
           requiredBingoLines: n.requiredBingoLines,
           requiredPoints: n.requiredPoints,
+          voteHours: n.voteHours,
+          defaultChoiceId: n.defaultChoiceId,
           teamsHere: n._count.teamStates,
           choices: n.choices.map((c) => ({
             id: c.id,

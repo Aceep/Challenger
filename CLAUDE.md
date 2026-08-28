@@ -40,6 +40,12 @@ npm run db:seed      # tsx prisma/seed.ts
 - Prisma 7: config in `prisma.config.ts` (loads `.env` via dotenv), client uses the Neon driver adapter (`lib/db.ts`). No `url` in `schema.prisma`.
 - Auth.js v5 (`auth.ts`): Discord-only OAuth, JWT sessions. Sign-in is refused unless an unused `Invite` matches the Discord id (or the user already exists); `events.createUser` consumes the invite (sets `discordId`, `role`, team membership).
 
+## Rulebook
+
+`SPEC-challenge-lecture.md` (repo root) is the source of truth for game rules; decisions on its §12 open points are recorded in the plan file ("Spec alignment"). Key implemented rules: points = pages/10 (halved under 150 p.), commercial rounding to 0,1, stored on `Book.points` and as `Decimal(8,1)` in the ledger (read with `num()` from `lib/services/points.ts`, display with `fmtPoints`); effective type `ROMAN|GRAPHIQUE` (<150 p. ⇒ graphique); quests are team-level and numbered; bingo is an ordered series of grids (`TeamGrid` = a team's active grid); readings are soft-deleted (`deletedAt`) — always filter `deletedAt: null`; Sunday 19–21 h Europe/Paris verification window refuses non-admin writes (`assertWritable`).
+
+Time-driven work (window announcements, Sunday 20 h leaderboard post with catch-up, vote expiry, tie cascade, dormant reminders) lives in `lib/services/tick.ts` (`runTick`, idempotent via `BotEvent`). It is triggered by `/api/cron/tick` (Vercel crons in `vercel.json` — the Hobby plan only allows daily, imprecise crons) and on activity (`tickOnActivity`, throttled, from the player layout and the Discord endpoint). For minute-precision, point an external scheduler at `GET /api/cron/tick?secret=$CRON_SECRET` hourly.
+
 ## Architecture rules
 
 - **Authorization lives in `lib/dal.ts`** (`requireUser`, `requireAdmin`, `getCurrentPlayer`), called inside every page, Server Action and Route Handler. Never rely on layouts or the proxy for security.

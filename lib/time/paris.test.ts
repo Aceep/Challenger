@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addActiveHours, isNightPause, isVerificationWindow, parisClock, pausedMs, sundayKey } from "./paris";
+import { addActiveHours, dueSundayKey, isNightPause, isVerificationWindow, parisClock, parisInstant, pausedMs, sundayKey } from "./paris";
 
 describe("isVerificationWindow", () => {
   it("is Sunday 19:00–21:00 Paris in summer time (UTC+2)", () => {
@@ -45,5 +45,17 @@ describe("sundayKey", () => {
     expect(sundayKey(new Date("2026-09-02T10:00:00Z"))).toBe("2026-09-06");
     expect(sundayKey(new Date("2026-09-06T18:00:00Z"))).toBe("2026-09-06");
     expect(sundayKey(new Date("2026-09-06T22:30:00Z"))).toBe("2026-09-13"); // Monday 00:30 Paris
+  });
+});
+
+describe("parisInstant / dueSundayKey", () => {
+  it("builds Paris instants across DST", () => {
+    expect(parisInstant("2026-09-06", 20)).toEqual(new Date("2026-09-06T18:00:00Z"));
+    expect(parisInstant("2026-11-01", 20)).toEqual(new Date("2026-11-01T19:00:00Z"));
+  });
+  it("finds the last Sunday 20:00 that is due", () => {
+    expect(dueSundayKey(new Date("2026-09-06T17:00:00Z"))).toBe("2026-08-30"); // Sunday 19:00 Paris: not yet
+    expect(dueSundayKey(new Date("2026-09-06T18:00:00Z"))).toBe("2026-09-06");
+    expect(dueSundayKey(new Date("2026-09-09T10:00:00Z"))).toBe("2026-09-06");
   });
 });

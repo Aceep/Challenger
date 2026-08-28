@@ -3,7 +3,7 @@ import { LiveRefresh } from "@/components/LiveRefresh";
 import { syncVoteMessage } from "@/lib/discord/events";
 import { getCurrentPlayer } from "@/lib/dal";
 import { getTeamStoryView } from "@/lib/services/story";
-import { chooseTargetAction, voteAction } from "./actions";
+import { breakTieAction, chooseTargetAction, confirmTieAction, voteAction } from "./actions";
 
 const dateFmt = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
 
@@ -73,12 +73,52 @@ export default async function StoryPage() {
         </section>
       )}
 
+      {vote?.status === "OPEN" && vote.tie && (
+        <section className="rounded-xl border border-amber-400 bg-amber-50 p-4 text-sm dark:bg-amber-950">
+          <p className="font-semibold">⚖️ Égalité !</p>
+          <p className="mt-1 text-slate-600 dark:text-slate-300">
+            {vote.tie.stage === "CAPTAIN" && "Le·la capitaine a 5 h pour trancher."}
+            {vote.tie.stage === "DEPUTY" && "Le·la capitaine n'a pas tranché : l'adjoint·e a 5 h."}
+            {vote.tie.stage === "ANY" && !vote.tie.pendingChoiceId && "Le premier membre qui se manifeste tranche, avec l'accord d'un·e admin."}
+            {vote.tie.pendingChoiceId && `Un choix attend la confirmation d'un·e admin : « ${choices.find((c) => c.id === vote.tie!.pendingChoiceId)?.label ?? "?"} ».`}
+            {" "}Les compteurs sont en pause de minuit à 8 h.
+          </p>
+          {(vote.tie.canBreak || user.role === "ADMIN") && !vote.tie.pendingChoiceId && (
+            <div className="mt-3 flex flex-col gap-2">
+              {choices
+                .filter((c) => vote.tie!.leaders.includes(c.id))
+                .map((c) => (
+                  <form key={c.id} action={breakTieAction}>
+                    <input type="hidden" name="voteId" value={vote.id} />
+                    <input type="hidden" name="choiceId" value={c.id} />
+                    <button className="w-full rounded-lg bg-amber-600 py-2 font-semibold text-white">Trancher : {c.label}</button>
+                  </form>
+                ))}
+            </div>
+          )}
+          {vote.tie.pendingChoiceId && user.role === "ADMIN" && (
+            <div className="mt-3 flex gap-2">
+              <form action={confirmTieAction}>
+                <input type="hidden" name="voteId" value={vote.id} />
+                <input type="hidden" name="accept" value="1" />
+                <button className="rounded-lg bg-green-700 px-3 py-2 font-semibold text-white">Confirmer</button>
+              </form>
+              <form action={confirmTieAction}>
+                <input type="hidden" name="voteId" value={vote.id} />
+                <input type="hidden" name="accept" value="0" />
+                <button className="rounded-lg border border-slate-300 px-3 py-2">Refuser</button>
+              </form>
+            </div>
+          )}
+        </section>
+      )}
+
       {vote?.status === "OPEN" && (
         <section className="flex flex-col gap-3">
           <h2 className="font-semibold">Que fait votre équipe ?</h2>
           <p className="text-xs text-slate-500">
-            Vote ouvert jusqu&apos;au {dateFmt.format(vote.deadline)} · {vote.ballots} vote{vote.ballots > 1 ? "s" : ""}
-            {vote.myChoiceId && " · tu as voté"}
+            Vote ouvert jusqu&apos;au {dateFmt.format(vote.deadline)} · {vote.ballots} vote{vote.ballots > 1 ? "s" : ""} (3 votants minimum)
+            {vote.myChoiceId && " · tu as voté, tu peux changer d'avis jusqu'à la clôture"}
           </p>
           {choices.map((c) => (
             <form key={c.id} action={voteAction}>

@@ -8,6 +8,7 @@ import { bookPatchSchema, bookSchema, deleteBook, describeResult, logBook, updat
 import { getLeaderboard, withLeaderWatch } from "@/lib/services/leaderboard";
 import { listQuestsForTeam } from "@/lib/services/quests";
 import { castBallot, getTeamStoryView } from "@/lib/services/story";
+import { tickOnActivity } from "@/lib/services/tick";
 
 /**
  * Discord HTTP interactions: slash commands, autocomplete and vote buttons.
@@ -54,6 +55,7 @@ export async function POST(request: Request) {
 
   const interaction = JSON.parse(rawBody) as Interaction;
   if (interaction.type === InteractionType.PING) return NextResponse.json({ type: InteractionResponseType.PONG });
+  if (interaction.type !== InteractionType.APPLICATION_COMMAND_AUTOCOMPLETE) after(() => tickOnActivity());
 
   const discordUser = interaction.member?.user ?? interaction.user;
   if (!discordUser) return ephemeral("Utilisateur inconnu.");
@@ -69,6 +71,10 @@ export async function POST(request: Request) {
   const inTeamChannel = !!libraryChannel && interaction.channel_id === libraryChannel;
   const teamChannelOnly = () =>
     ephemeral(libraryChannel ? `Utilise cette commande dans la librairie de ton équipe (<#${libraryChannel}>).` : "Ton équipe n'a pas encore de salon librairie configuré.");
+  const adventureChannel = team?.discordChannelId ?? null;
+  const inAdventure = !!adventureChannel && interaction.channel_id === adventureChannel;
+  const adventureOnly = () =>
+    ephemeral(adventureChannel ? `L'histoire se joue dans le salon aventure de ton équipe (<#${adventureChannel}>).` : "Ton équipe n'a pas encore de salon aventure configuré.");
 
   try {
     // --- Autocomplete --------------------------------------------------------
@@ -86,6 +92,7 @@ export async function POST(request: Request) {
     if (interaction.type === InteractionType.MESSAGE_COMPONENT) {
       const [kind, voteId, choiceId] = (interaction.data?.custom_id ?? "").split(":");
       if (kind !== "vote" || !voteId || !choiceId) return ephemeral("Bouton inconnu.");
+      if (!inAdventure) return adventureOnly();
       const result = await castBallot(voteId, user.id, choiceId);
       after(async () => {
         await syncVoteMessage(voteId);
@@ -157,6 +164,7 @@ export async function POST(request: Request) {
       }
       case "histoire": {
         if (!team) return ephemeral("Rejoins une équipe d'abord.");
+        if (!inAdventure) return adventureOnly();
         const view = await getTeamStoryView(team.id, user.id);
         if (!view) return ephemeral("L'histoire n'a pas encore commencé.");
         if (view.vote?.status === "OPEN") after(() => syncVoteMessage(view.vote!.id));
