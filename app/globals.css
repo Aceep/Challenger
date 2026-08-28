@@ -1247,10 +1247,16 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .ed-switch {
-    display: flex;
-    flex-direction: column;
-    gap: var(--sp-2);
+  /* No `display: flex` on the <details>: Chrome would then keep the closed
+     list's height on screen. The gap comes from the list itself. */
+  .ed-switch > .ed-list,
+  .ed-switch.flat > .ed-list,
+  .ed-switch.flat > .meta-xs {
+    margin-top: var(--sp-2);
+  }
+  .ed-switch > summary .name {
+    white-space: normal;
+    line-height: 1.2;
   }
   .ed-switch > summary {
     cursor: pointer;
@@ -1368,7 +1374,7 @@
     padding: var(--sp-2) 12px;
   }
   /* The edition being administrated, right under the brand block. */
-  .rail .edition {
+  .rail .rail-edition {
     padding: 0 2px var(--sp-3);
   }
 
@@ -1822,13 +1828,13 @@
   }
   /* The edition takes its own line, under the links, and its list floats over
      the page rather than pushing the whole bar down. */
-  .rail .edition {
+  .rail .rail-edition {
     flex-basis: 100%;
     order: 10;
     position: relative;
     padding: 0;
   }
-  .rail .edition .ed-list {
+  .rail .rail-edition .ed-list {
     position: absolute;
     left: 0;
     right: 0;

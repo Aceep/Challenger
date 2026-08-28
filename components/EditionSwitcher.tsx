@@ -32,13 +32,16 @@ const ROLE: Record<EditionRole, string> = { ORGANIZER: "organisateur·ice", PLAY
 export function EditionSwitcher({ current, options, action, returnTo, variant }: EditionSwitcherProps) {
   const others = options.filter((o) => o.id !== current?.id);
 
+  // The rail is narrow and everyone there is an organiser: no role badge.
   const head = current ? (
     <>
       <span className="dot" style={{ background: current.color }} />
       <span className="name">{current.name}</span>
-      <Pill tone="type" xs>
-        {ROLE[current.role]}
-      </Pill>
+      {variant === "section" && (
+        <Pill tone="type" xs>
+          {ROLE[current.role]}
+        </Pill>
+      )}
     </>
   ) : (
     <span className="name">Aucune édition</span>

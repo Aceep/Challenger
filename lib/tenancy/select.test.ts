@@ -1,22 +1,33 @@
 import { describe, expect, it } from "vitest";
 import { CHALLENGE_COOKIE, pickChallengeForGuild, pickCurrentMembership, sortByRelevance, switchLanding } from "./select";
 
-const challenge = (id: string, status: "DRAFT" | "ACTIVE" | "FINISHED", startAt: string) => ({ id, status, startAt: new Date(startAt) });
+const challenge = (id: string, status: "DRAFT" | "ACTIVE" | "FINISHED", startAt: string, endAt = "2099-01-01") => ({ id, status, startAt: new Date(startAt), endAt: new Date(endAt) });
+/** Every relevance test is judged from this day. */
+const NOW = new Date("2026-08-28");
 const member = (c: ReturnType<typeof challenge>, role: "ORGANIZER" | "PLAYER" = "PLAYER") => ({ challengeId: c.id, role, challenge: c });
 
-const active = challenge("c_active", "ACTIVE", "2026-01-01");
-const finished = challenge("c_old", "FINISHED", "2025-01-01");
+const active = challenge("c_active", "ACTIVE", "2026-01-01", "2026-12-31");
+const finished = challenge("c_old", "FINISHED", "2025-01-01", "2025-12-31");
 const draft = challenge("c_next", "DRAFT", "2027-01-01");
+const upcoming = challenge("c_soon", "ACTIVE", "2027-01-04", "2027-03-28");
+const later = challenge("c_later", "ACTIVE", "2027-09-01", "2027-12-01");
+const over = challenge("c_over", "ACTIVE", "2025-09-01", "2025-11-30");
 
 describe("sortByRelevance", () => {
   it("has nothing to sort in an empty list", () => {
     expect(sortByRelevance([])).toEqual([]);
   });
-  it("puts the ACTIVE edition first, then the latest startAt", () => {
-    expect(sortByRelevance([finished, draft, active]).map((c) => c.id)).toEqual(["c_active", "c_next", "c_old"]);
+  it("puts the ACTIVE edition first, then drafts, then finished ones", () => {
+    expect(sortByRelevance([finished, draft, active], NOW).map((c) => c.id)).toEqual(["c_active", "c_next", "c_old"]);
+  });
+  it("keeps the edition running today ahead of one that starts next year", () => {
+    expect(sortByRelevance([upcoming, active], NOW).map((c) => c.id)).toEqual(["c_active", "c_soon"]);
+  });
+  it("ranks upcoming editions soonest first, and an ACTIVE one that is over after them", () => {
+    expect(sortByRelevance([later, over, upcoming], NOW).map((c) => c.id)).toEqual(["c_soon", "c_later", "c_over"]);
   });
   it("sorts anything holding a challenge, memberships included", () => {
-    expect(sortByRelevance([member(finished), member(draft), member(active)]).map((m) => m.challengeId)).toEqual(["c_active", "c_next", "c_old"]);
+    expect(sortByRelevance([member(finished), member(draft), member(active)], NOW).map((m) => m.challengeId)).toEqual(["c_active", "c_next", "c_old"]);
   });
   it("does not mutate the given list", () => {
     const list = [finished, active];
