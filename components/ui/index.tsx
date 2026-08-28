@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CountUp } from "@/components/ui/CountUp";
 import type { ComponentProps, ReactNode } from "react";
 import { fmtDelta, fmtPoints } from "@/lib/format";
 import { Kyle } from "./Kyle";
@@ -113,7 +114,7 @@ export function ScoreCard({
         </Link>
       </div>
       <p className="value num">
-        {fmtPoints(points)}
+        <CountUp value={points} />
         <small>pts</small>
       </p>
       {rankLine ? <p className="text-[13px] text-[color:var(--muted)]">{rankLine}</p> : null}
@@ -209,6 +210,7 @@ export function BingoCell({
   note,
   state,
   selected,
+  pop,
   onClick,
 }: {
   label: string;
@@ -216,6 +218,8 @@ export function BingoCell({
   note?: ReactNode;
   state: "done" | "half" | "free";
   selected?: boolean;
+  /** Plays the validation animation once (cell just completed). */
+  pop?: boolean;
   onClick?: () => void;
 }) {
   return (
@@ -223,7 +227,7 @@ export function BingoCell({
       type="button"
       onClick={onClick}
       title={`${label} — ${prompt}`}
-      className={cx("cell", state === "done" && "done", state === "half" && "half", selected && "sel")}
+      className={cx("cell", state === "done" && "done", state === "half" && "half", selected && "sel", pop && "pop")}
     >
       <span className="k" aria-hidden="true">{label}</span>
       <span className="p">{prompt}</span>

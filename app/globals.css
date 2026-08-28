@@ -1221,3 +1221,56 @@ button[aria-busy="true"] {
   .modal-head { padding-top: calc(14px + env(safe-area-inset-top)); }
   .modal-body { padding-bottom: calc(22px + env(safe-area-inset-bottom)); }
 }
+
+/* --- interactions: hover, press, focus (discreet, brand-consistent) --------- */
+@media (prefers-reduced-motion: no-preference) {
+  .btn, .card, .cell, .choice, .rank, .member, .book, .quest, .kpi, .node,
+  .data-table tbody tr, .rail a, .bottomnav a, .bottomnav button, .pill, a.underline, .modal-x, .toast-x, .edition, .pillars .card {
+    transition: transform 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease, color 0.16s ease, border-color 0.16s ease, opacity 0.16s ease;
+  }
+}
+@media (hover: hover) {
+  .btn:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0, 0, 0, 0.14); filter: brightness(1.03); }
+  .btn.ghost:not(:disabled):hover { background: var(--surface-2); }
+  .btn.danger:not(:disabled):hover { background: color-mix(in srgb, var(--brick) 12%, transparent); }
+  a.underline:hover, .book .actions a:hover, .book .actions button:hover { color: var(--ink); text-decoration-thickness: 2px; }
+  .cell:hover { transform: translateY(-2px); box-shadow: 0 8px 18px rgba(0, 0, 0, 0.14); }
+  .choice:not(:disabled):hover { border-color: var(--kyle-deep); background: var(--hi); }
+  .rank:hover, .member:hover, .book:hover, .quest:hover, .kpi:hover, .node:hover, .pillars .card:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12); }
+  .data-table tbody tr:hover td { background: var(--hi); }
+  .rail a:hover { background: var(--surface-2); color: var(--ink); }
+  .bottomnav a:hover, .bottomnav button:hover { color: var(--ink); }
+  .bottomnav a:hover .ic, .bottomnav button:hover .ic { transform: translateY(-2px); }
+  .modal-x:hover, .toast-x:hover { background: var(--hi); color: var(--ink); }
+  .edition:hover { transform: translateY(-3px); box-shadow: 0 16px 36px rgba(0, 0, 0, 0.25); }
+  .score a:hover { color: var(--ink); }
+}
+.btn:not(:disabled):active, .rank:active, .member:active, .book:active, .quest:active, .node:active { transform: translateY(0) scale(0.985); box-shadow: none; }
+.data-table tbody tr:active td { background: var(--kyle); color: #1a1a1f; }
+.bottomnav a .ic, .bottomnav button .ic { transition: transform 0.16s ease; }
+:focus-visible { outline: 3px solid var(--kyle-deep); outline-offset: 2px; border-radius: 6px; }
+.btn:focus-visible, .cell:focus-visible, .choice:focus-visible { box-shadow: 0 0 0 4px color-mix(in srgb, var(--kyle-deep) 35%, transparent); outline-offset: 1px; }
+.field input:focus, .field select:focus, .field textarea:focus { border-color: var(--kyle-deep); box-shadow: 0 0 0 3px color-mix(in srgb, var(--kyle) 40%, transparent); outline: none; }
+.field input, .field select, .field textarea { transition: border-color 0.16s ease, box-shadow 0.16s ease; }
+
+/* --- action feedback: toast + Kyle ----------------------------------------- */
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+  animation: toast-in 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+.toast-x { border: 0; background: transparent; color: inherit; opacity: 0.7; width: 28px; height: 28px; border-radius: 50%; font-weight: 800; flex: none; }
+.kyle-react { display: inline-flex; flex: none; transform-origin: 50% 100%; }
+.kyle-react.hop { animation: kyle-hop 0.7s ease 0.15s 2; }
+.kyle-react.shake { animation: kyle-shake 0.5s ease 0.1s 1; }
+.confetti { position: fixed; inset: 0; width: 100vw; height: 100dvh; pointer-events: none; z-index: 60; }
+.cell.pop { animation: cell-pop 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.3) 1; }
+@keyframes toast-in { from { opacity: 0; transform: translateY(-8px) scale(0.98); } to { opacity: 1; transform: none; } }
+@keyframes kyle-hop { 0%, 100% { transform: translateY(0) rotate(0); } 40% { transform: translateY(-7px) rotate(-6deg); } 60% { transform: translateY(-5px) rotate(5deg); } }
+@keyframes kyle-shake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-4px) rotate(-4deg); } 40% { transform: translateX(4px) rotate(4deg); } 60% { transform: translateX(-3px); } 80% { transform: translateX(3px); } }
+@keyframes cell-pop { 0% { transform: scale(0.9); } 55% { transform: scale(1.08); box-shadow: 0 0 0 6px color-mix(in srgb, var(--olive) 35%, transparent); } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .toast, .kyle-react.hop, .kyle-react.shake, .cell.pop { animation: none; }
+}

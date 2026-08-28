@@ -20,6 +20,8 @@ type Props = {
   /** Books the current user may place/move (own within 1 h, or whole team for the captain). */
   books: { id: string; title: string; type: "ROMAN" | "GRAPHIQUE"; owner: string; placedOn: string | null }[];
   completedLines: number;
+  /** Label (B3) of the cell validated by the last action: it pops once. */
+  justValidated?: string | null;
   order: number;
   total: number;
   /** Replaces the player heading (admin supervision reuses the board). */
@@ -30,7 +32,7 @@ type Props = {
   removeBookAction: (formData: FormData) => Promise<void>;
 };
 
-export function BingoBoard({ title, size, cells, books, completedLines, order, total, heading, hint, placeBookAction, removeBookAction }: Props) {
+export function BingoBoard({ title, size, cells, books, completedLines, order, total, heading, hint, placeBookAction, removeBookAction, justValidated }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // Derived from the latest props so the panel reflects the cell after an action.
   const selected = cells.find((c) => c.id === selectedId) ?? null;
@@ -56,6 +58,7 @@ export function BingoBoard({ title, size, cells, books, completedLines, order, t
             prompt={c.prompt}
             state={c.complete ? "done" : c.weight > 0 ? "half" : "free"}
             selected={selectedId === c.id}
+            pop={justValidated === c.label}
             onClick={() => setSelectedId(c.id)}
             note={
               c.books.length
