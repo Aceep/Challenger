@@ -19,6 +19,7 @@ import {
   type GuildRole,
 } from "@/lib/discord/rest";
 import { once } from "@/lib/services/bot-events";
+import { organizersWithDiscord } from "@/lib/services/membership";
 import { GameError } from "@/lib/errors";
 
 /**
@@ -65,9 +66,9 @@ export async function setupGuild(challengeId: string): Promise<SetupSummary> {
   const teams = await prisma.team.findMany({
     where: { challengeId },
     orderBy: { name: "asc" },
-    include: { members: { include: { user: { select: { id: true, name: true, discordId: true, role: true } } } } },
+    include: { members: { include: { user: { select: { id: true, name: true, discordId: true } } } } },
   });
-  const admins = await prisma.user.findMany({ where: { role: "ADMIN", discordId: { not: null } }, select: { id: true, name: true, discordId: true } });
+  const admins = await organizersWithDiscord(challengeId);
 
   // --- 1. Inventory (also tells us whether the bot is actually on the server).
   const [rolesRes, channelsRes] = [await getGuildRoles(guildId), await getGuildChannels(guildId)];
@@ -267,30 +268,31 @@ export async function postWelcome(team: WelcomeTeam): Promise<boolean> {
 }
 
 /**
- * Aligns one member's Discord roles with the database: their team role, plus
- * « Organisateurs » when they are an admin. Best-effort — never throws, so a
- * login or a team change is never blocked by Discord.
- * Called from `auth.ts` (first login, via `after()`) and the admin players page.
+ * Aligns one member's Discord roles on one challenge's server: their team role,
+ * plus « Organisateurs » when they organise that edition. Best-effort — never
+ * throws, so a login or a team change is never blocked by Discord.
+ * Called from `auth.ts` (login, via `after()`) and the admin players page.
  */
-export async function syncMemberRoles(userId: string): Promise<void> {
+export async function syncMemberRoles(userId: string, challengeId: string): Promise<void> {
   try {
     if (!process.env.DISCORD_BOT_TOKEN) return;
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { discordId: true, role: true, membership: { select: { teamId: true } } },
-    });
+    const [user, member] = await Promise.all([
+      prisma.user.findUnique({ where: { id: userId }, select: { discordId: true } }),
+      prisma.challengeMember.findUnique({ where: { challengeId_userId: { challengeId, userId } }, select: { role: true } }),
+    ]);
     if (!user?.discordId) return;
 
-    const challenge = await prisma.challenge.findFirst({ where: { status: "ACTIVE" }, orderBy: { startAt: "desc" } });
+    const challenge = await prisma.challenge.findUnique({ where: { id: challengeId } });
     if (!challenge?.discordGuildId) return;
     const guildId = challenge.discordGuildId;
 
-    const teams = await prisma.team.findMany({ where: { challengeId: challenge.id }, select: { id: true, discordRoleId: true } });
+    const membership = await prisma.teamMember.findUnique({ where: { userId_challengeId: { userId, challengeId } }, select: { teamId: true } });
+    const teams = await prisma.team.findMany({ where: { challengeId }, select: { id: true, discordRoleId: true } });
     const managed = new Set([challenge.discordAdminRoleId, ...teams.map((t) => t.discordRoleId)].filter((x): x is string => !!x));
     const want = new Set<string>();
-    const mine = teams.find((t) => t.id === user.membership?.teamId);
+    const mine = teams.find((t) => t.id === membership?.teamId);
     if (mine?.discordRoleId) want.add(mine.discordRoleId);
-    if (user.role === "ADMIN" && challenge.discordAdminRoleId) want.add(challenge.discordAdminRoleId);
+    if (member?.role === "ORGANIZER" && challenge.discordAdminRoleId) want.add(challenge.discordAdminRoleId);
     if (managed.size === 0) return;
 
     const member = await getGuildMember(guildId, user.discordId);

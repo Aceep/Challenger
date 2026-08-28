@@ -3,6 +3,7 @@
  * question's status moves, and how the messages typed directly in Discord are
  * turned into rows to insert. Unit-tested in `faq.test.ts`.
  */
+import type { ChallengeRole } from "@/lib/generated/prisma/enums";
 
 export type QuestionStatus = "OPEN" | "ANSWERED" | "RESOLVED";
 
@@ -104,7 +105,7 @@ const TEXT_TYPES = new Set([0, 19, 21]);
  */
 export function mapDiscordMessages(
   raw: RawDiscordMessage[],
-  { botAppId, knownUsers, knownMessageIds }: { botAppId?: string | null; knownUsers: Map<string, { id: string; role: "ADMIN" | "PLAYER" }>; knownMessageIds?: Set<string> },
+  { botAppId, knownUsers, knownMessageIds }: { botAppId?: string | null; knownUsers: Map<string, { id: string; role: ChallengeRole }>; knownMessageIds?: Set<string> },
 ): { messages: ImportedMessage[]; lastMessageId: string | null } {
   const sorted = [...raw].sort((a, b) => compareSnowflakes(a.id, b.id));
   const messages: ImportedMessage[] = [];
@@ -126,7 +127,7 @@ export function mapDiscordMessages(
       discordUserId: author.id,
       discordUserName: author.global_name || author.username || "Discord",
       body: body.slice(0, 4000),
-      isAdmin: known?.role === "ADMIN",
+      isAdmin: known?.role === "ORGANIZER",
     });
   }
   return { messages, lastMessageId };

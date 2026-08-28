@@ -6,6 +6,7 @@ import { completedLines } from "@/lib/scoring/bingo";
 import { activeGridForTeam, completePositions } from "@/lib/services/bingo";
 import { awardPoints } from "@/lib/services/points";
 import { getTeamScore } from "@/lib/services/leaderboard";
+import { roleIn } from "@/lib/services/membership";
 import { describeEffect, needsTargetTeam, parseEffects, effectsSchema, type Effect } from "@/lib/story/effects";
 import { canBreakTie, resolveVote, tieCascadeStage, unmetConditions, type TieStage } from "@/lib/story/vote";
 
@@ -355,19 +356,16 @@ async function settleChoice(vote: { id: string; teamId: string; team: { name: st
  * needs an admin confirmation. Admins may settle a tie at any time.
  */
 export async function breakTie(voteId: string, userId: string, choiceId: string): Promise<ResolutionSummary | null> {
-  const [vote, user] = await Promise.all([
-    prisma.vote.findUniqueOrThrow({ where: { id: voteId }, include: { team: true, ballots: true, node: { include: { choices: { orderBy: { sortOrder: "asc" } } } } } }),
-    prisma.user.findUniqueOrThrow({ where: { id: userId } }),
-  ]);
+  const vote = await prisma.vote.findUniqueOrThrow({ where: { id: voteId }, include: { team: true, ballots: true, node: { include: { choices: { orderBy: { sortOrder: "asc" } } } } } });
   if (vote.status !== "OPEN" || vote.tieStage === "NONE" || !vote.tieSince) throw new GameError("Pas d'égalité à trancher");
   const info = tieInfo(vote, userId, vote.node.choices.map((c) => c.id));
   if (!info.leaders.includes(choiceId)) throw new GameError("Choisis l'un des choix à égalité");
-  const role = user.role === "ADMIN" ? "admin" : info.role;
+  const role = (await roleIn(userId, vote.team.challengeId)) === "ORGANIZER" ? "admin" : info.role;
   if (!canBreakTie(info.stage, role)) {
     throw new GameError(info.stage === "CAPTAIN" ? "Le·la capitaine a 5 h pour trancher" : info.stage === "DEPUTY" ? "L'adjoint·e a 5 h pour trancher" : "Tu ne peux pas trancher");
   }
   if (role === "member") {
-    if (vote.pendingChoiceId) throw new GameError("Un choix attend déjà la confirmation d'un·e admin");
+    if (vote.pendingChoiceId) throw new GameError("Un choix attend déjà la confirmation de l'organisation");
     await prisma.vote.update({ where: { id: voteId }, data: { pendingChoiceId: choiceId, pendingById: userId } });
     return null;
   }
@@ -375,13 +373,10 @@ export async function breakTie(voteId: string, userId: string, choiceId: string)
   return settleChoice(vote, choice, "tie-break");
 }
 
-/** Admin confirms (or rejects) the pick made by the first member to act. */
+/** An organiser confirms (or rejects) the pick made by the first member to act. */
 export async function confirmTieBreak(voteId: string, adminId: string, accept: boolean): Promise<ResolutionSummary | null> {
-  const [vote, admin] = await Promise.all([
-    prisma.vote.findUniqueOrThrow({ where: { id: voteId }, include: { team: true, node: { include: { choices: true } } } }),
-    prisma.user.findUniqueOrThrow({ where: { id: adminId } }),
-  ]);
-  if (admin.role !== "ADMIN") throw new GameError("Réservé aux admins");
+  const vote = await prisma.vote.findUniqueOrThrow({ where: { id: voteId }, include: { team: true, node: { include: { choices: true } } } });
+  if ((await roleIn(adminId, vote.team.challengeId)) !== "ORGANIZER") throw new GameError("Réservé à l'organisation");
   if (vote.status !== "OPEN" || !vote.pendingChoiceId) throw new GameError("Rien à confirmer");
   if (!accept) {
     await prisma.vote.update({ where: { id: voteId }, data: { pendingChoiceId: null, pendingById: null } });
@@ -395,9 +390,13 @@ export async function confirmTieBreak(voteId: string, adminId: string, accept: b
 export async function chooseTargetTeam(voteId: string, userId: string, targetTeamId: string) {
   const vote = await prisma.vote.findUniqueOrThrow({ where: { id: voteId }, include: { team: true } });
   if (vote.status !== "AWAITING_TARGET" || !vote.resultChoiceId) throw new GameError("Rien à cibler");
-  const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
-  if (vote.team.captainId !== userId && user.role !== "ADMIN") throw new GameError("Seul·e le·la capitaine choisit la cible");
+  if (vote.team.captainId !== userId && (await roleIn(userId, vote.team.challengeId)) !== "ORGANIZER") {
+    throw new GameError("Seul·e le·la capitaine choisit la cible");
+  }
   if (targetTeamId === vote.teamId) throw new GameError("Choisis une autre équipe");
+  // A rival is always a team of the same challenge.
+  const target = await prisma.team.findUnique({ where: { id: targetTeamId }, select: { challengeId: true } });
+  if (!target || target.challengeId !== vote.team.challengeId) throw new GameError("Choisis une équipe de ce défi");
   return applyResolution(voteId, vote.resultChoiceId, targetTeamId, "majority");
 }
 
