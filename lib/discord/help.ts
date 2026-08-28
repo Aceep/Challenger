@@ -1,6 +1,6 @@
 /** Rules + commands summary, shared by the Discord `/help` command and the web /help page. */
 
-export const APP_URL = () => process.env.AUTH_URL ?? "https://aceep-challenger.vercel.app";
+export const APP_URL = () => process.env.AUTH_URL ?? "https://challenger-aceepkyle.vercel.app";
 
 export type HelpSection = { title: string; lines: string[] };
 
