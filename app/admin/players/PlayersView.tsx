@@ -11,7 +11,7 @@ export type PlayerRow = {
   teamId: string;
   teamName: string | null;
   isCaptain: boolean;
-  role: "ADMIN" | "PLAYER";
+  role: "ORGANIZER" | "PLAYER";
   books: number;
   isMe: boolean;
 };
@@ -19,7 +19,7 @@ export type PlayerRow = {
 export type PlayersViewProps = {
   players: PlayerRow[];
   teams: { id: string; name: string; color: string }[];
-  invites: { id: string; discordId: string; teamName: string | null; role: "ADMIN" | "PLAYER" }[];
+  invites: { id: string; discordId: string; teamName: string | null; role: "ORGANIZER" | "PLAYER" }[];
   hasChallenge: boolean;
   params: Record<string, string | string[] | undefined>;
   demo?: boolean;
@@ -89,7 +89,7 @@ export function PlayersView({
                       className="rounded-lg border border-[color:var(--line)] bg-[color:var(--surface)] px-2 py-1 text-sm"
                     >
                       <option value="PLAYER">Joueur·euse</option>
-                      <option value="ADMIN">Admin</option>
+                      <option value="ORGANIZER">Organisateur·ice</option>
                     </select>
                     {!u.isMe && <button className="underline">OK</button>}
                   </form>
@@ -114,7 +114,7 @@ export function PlayersView({
                       <code>{shortId(i.discordId)}</code>
                     </td>
                     <td>{i.teamName ?? "sans équipe"}</td>
-                    <td>{i.role === "ADMIN" ? <Pill tone="ok">admin</Pill> : <Pill tone="wait">non utilisée</Pill>}</td>
+                    <td>{i.role === "ORGANIZER" ? <Pill tone="ok">organisateur·ice</Pill> : <Pill tone="wait">non utilisée</Pill>}</td>
                     <td>
                       <form action={deleteInviteAction}>
                         <input type="hidden" name="inviteId" value={i.id} />

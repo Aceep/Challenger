@@ -3,7 +3,7 @@
 import { withFlash } from "@/lib/actions";
 import { GameError, userMessage } from "@/lib/errors";
 import { revalidatePath } from "next/cache";
-import { getActiveChallenge, requireAdmin } from "@/lib/dal";
+import { requireOrganizer } from "@/lib/dal";
 import { parseForm, type ActionState } from "@/lib/forms";
 import { createTeam, deleteTeam, setCaptain, teamSchema, updateTeam } from "@/lib/services/admin";
 import { setDeputy } from "@/lib/services/team";
@@ -15,9 +15,7 @@ function refresh() {
 }
 
 export async function createTeamAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireAdmin();
-  const challenge = await getActiveChallenge();
-  if (!challenge) return { error: "Aucun défi actif : crée-le d'abord." };
+  const { challenge } = await requireOrganizer();
   const parsed = parseForm(teamSchema, formData);
   if ("error" in parsed) return { error: parsed.error };
   try {
@@ -30,42 +28,42 @@ export async function createTeamAction(_prev: ActionState, formData: FormData): 
 }
 
 export async function updateTeamAction(formData: FormData) {
-  await requireAdmin();
+  const { challenge } = await requireOrganizer();
   const id = String(formData.get("teamId") ?? "");
   const parsed = parseForm(teamSchema, formData);
   await withFlash("/admin/teams", async () => {
     if (!id) return;
     if ("error" in parsed) throw new GameError(parsed.error);
-    await updateTeam(id, parsed.data);
+    await updateTeam(challenge.id, id, parsed.data);
     return "Équipe enregistrée.";
   }, REVALIDATE);
 }
 
 export async function deleteTeamAction(formData: FormData) {
-  await requireAdmin();
+  const { challenge } = await requireOrganizer();
   const id = String(formData.get("teamId") ?? "");
   await withFlash("/admin/teams", async () => {
-    if (id) await deleteTeam(id);
+    if (id) await deleteTeam(challenge.id, id);
     return "Équipe supprimée.";
   }, REVALIDATE);
 }
 
 export async function setCaptainAction(formData: FormData) {
-  await requireAdmin();
+  const { challenge } = await requireOrganizer();
   const teamId = String(formData.get("teamId") ?? "");
   const userId = String(formData.get("userId") ?? "") || null;
   await withFlash("/admin/teams", async () => {
-    if (teamId) await setCaptain(teamId, userId);
+    if (teamId) await setCaptain(challenge.id, teamId, userId);
     return "Capitaine mis·e à jour.";
   }, REVALIDATE);
 }
 
 export async function setDeputyAction(formData: FormData) {
-  const admin = await requireAdmin();
+  const { user: admin } = await requireOrganizer();
   const teamId = String(formData.get("teamId") ?? "");
   const userId = String(formData.get("userId") ?? "") || null;
   await withFlash("/admin/teams", async () => {
-    if (teamId) await setDeputy(teamId, userId, { id: admin.id, role: "ADMIN" });
+    if (teamId) await setDeputy(teamId, userId, { id: admin.id, role: "ORGANIZER" });
     return "Adjoint·e mis·e à jour.";
   }, REVALIDATE);
 }

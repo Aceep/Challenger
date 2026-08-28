@@ -1,4 +1,4 @@
-import { getActiveChallenge, requireAdmin } from "@/lib/dal";
+import { requireOrganizer } from "@/lib/dal";
 import { prisma } from "@/lib/db";
 import { describeEffect, parseEffects } from "@/lib/story/effects";
 import { QUORUM } from "@/lib/story/vote";
@@ -10,10 +10,8 @@ import type { EditorStory } from "./StoryEditor";
 const actions = { saveStoryAction, saveNodeAction, saveChoiceAction, deleteNodeAction, deleteChoiceAction, setStartNodeAction };
 
 export default async function AdminStoryPage({ searchParams }: PageProps<"/admin/story">) {
-  await requireAdmin();
+  const { challenge } = await requireOrganizer();
   const params = await searchParams;
-  const challenge = await getActiveChallenge();
-  if (!challenge) return <StoryAdminView story={null} quests={[]} teams={[]} hasChallenge={false} params={params} actions={actions} />;
 
   const now = new Date();
   const [story, quests, teams, votes, ties, dormant] = await Promise.all([

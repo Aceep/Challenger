@@ -1,4 +1,4 @@
-import { getActiveChallenge, requireAdmin } from "@/lib/dal";
+import { requireOrganizer } from "@/lib/dal";
 import { prisma } from "@/lib/db";
 import { bookWeight, isComplete } from "@/lib/scoring/reading";
 import { listQuestsAdmin, listQuestsForTeam } from "@/lib/services/quests";
@@ -18,29 +18,8 @@ const selected_return = (p: Record<string, string | string[] | undefined>) => {
 const toLocalInput = (d: Date | null) => (d ? new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16) : "");
 
 export default async function AdminQuestsPage({ searchParams }: PageProps<"/admin/quests">) {
-  await requireAdmin();
+  const { challenge } = await requireOrganizer();
   const params = await searchParams;
-  const challenge = await getActiveChallenge();
-  if (!challenge) {
-    return (
-      <QuestsAdminView
-        quests={[]}
-        teams={[]}
-        hasChallenge={false}
-        editingId={null}
-        creating={false}
-        nextNumber={1}
-        params={params}
-        teamProgress={null}
-        selectedQuestId={null}
-        saveQuestAction={saveQuestAction}
-        deleteQuestAction={deleteQuestAction}
-        attachQuestBookAction={attachQuestBookAction.bind(null, "")}
-        detachQuestBookAction={detachQuestBookAction.bind(null, "")}
-      />
-    );
-  }
-
   const [quests, teams, links, completions] = await Promise.all([
     listQuestsAdmin(challenge.id),
     prisma.team.findMany({ where: { challengeId: challenge.id }, orderBy: { name: "asc" }, select: { id: true, name: true } }),

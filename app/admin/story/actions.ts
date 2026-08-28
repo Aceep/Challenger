@@ -3,7 +3,7 @@
 import { withFlash } from "@/lib/actions";
 import { userMessage } from "@/lib/errors";
 import { revalidatePath } from "next/cache";
-import { getActiveChallenge, requireAdmin } from "@/lib/dal";
+import { requireOrganizer } from "@/lib/dal";
 import { parseForm, type ActionState } from "@/lib/forms";
 import {
   choiceSchema,
@@ -27,9 +27,7 @@ function refresh() {
 }
 
 export async function saveStoryAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireAdmin();
-  const challenge = await getActiveChallenge();
-  if (!challenge) return { error: "Aucun défi actif." };
+  const { challenge } = await requireOrganizer();
   const parsed = parseForm(storySchema, formData);
   if ("error" in parsed) return { error: parsed.error };
   try {
@@ -42,7 +40,7 @@ export async function saveStoryAction(_prev: ActionState, formData: FormData): P
 }
 
 export async function saveNodeAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireAdmin();
+  await requireOrganizer();
   const storyId = String(formData.get("storyId") ?? "");
   const id = String(formData.get("id") ?? "") || null;
   formData.delete("storyId");
@@ -60,7 +58,7 @@ export async function saveNodeAction(_prev: ActionState, formData: FormData): Pr
 }
 
 export async function deleteNodeAction(formData: FormData) {
-  await requireAdmin();
+  await requireOrganizer();
   const id = String(formData.get("nodeId") ?? "");
   await withFlash("/admin/story", async () => {
     if (id) await deleteNode(id);
@@ -69,7 +67,7 @@ export async function deleteNodeAction(formData: FormData) {
 }
 
 export async function setStartNodeAction(formData: FormData) {
-  await requireAdmin();
+  await requireOrganizer();
   const storyId = String(formData.get("storyId") ?? "");
   const nodeId = String(formData.get("nodeId") ?? "");
   await withFlash("/admin/story", async () => {
@@ -79,7 +77,7 @@ export async function setStartNodeAction(formData: FormData) {
 }
 
 export async function saveChoiceAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireAdmin();
+  await requireOrganizer();
   const nodeId = String(formData.get("nodeId") ?? "");
   const id = String(formData.get("id") ?? "") || null;
   formData.delete("nodeId");
@@ -97,7 +95,7 @@ export async function saveChoiceAction(_prev: ActionState, formData: FormData): 
 }
 
 export async function deleteChoiceAction(formData: FormData) {
-  await requireAdmin();
+  await requireOrganizer();
   const id = String(formData.get("choiceId") ?? "");
   await withFlash("/admin/story", async () => {
     if (id) await deleteChoice(id);
@@ -106,7 +104,7 @@ export async function deleteChoiceAction(formData: FormData) {
 }
 
 export async function resetTeamStoryAction(formData: FormData) {
-  await requireAdmin();
+  await requireOrganizer();
   const teamId = String(formData.get("teamId") ?? "");
   await withFlash("/admin/story", async () => {
     if (teamId) await resetTeamStory(teamId);

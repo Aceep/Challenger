@@ -2,40 +2,32 @@
 
 import { withFlash } from "@/lib/actions";
 import { GameError } from "@/lib/errors";
-import { getActiveChallenge, requireAdmin } from "@/lib/dal";
+import { requireOrganizer } from "@/lib/dal";
 import { deleteQuestion, pinQuestion, resolveQuestion, setupFaq, syncQuestions } from "@/lib/services/questions";
 
 const PATH = "/admin/faq";
 const REVALIDATE = ["/admin/faq", "/faq", "/admin"];
 const field = (f: FormData, k: string) => String(f.get(k) ?? "");
 
-async function challengeOrThrow() {
-  const challenge = await getActiveChallenge();
-  if (!challenge) throw new GameError("Aucun défi actif.");
-  return challenge;
-}
-
 /** Creates (or completes) the forum, the role and the admin role assignments. */
 export async function setupFaqAction() {
-  await requireAdmin();
+  const { challenge } = await requireOrganizer();
   await withFlash(
     PATH,
     async () => {
-      const challenge = await challengeOrThrow();
       const r = await setupFaq(challenge.id);
       if (r.problems.length) throw new GameError(`Installation incomplète : ${r.problems.join(" ")}`);
-      return `Forum prêt · rôle « Organisateurs » donné à ${r.admins} admin${r.admins > 1 ? "s" : ""}.`;
+      return `Forum prêt · rôle « Organisateurs » donné à ${r.admins} organisateur·ice${r.admins > 1 ? "s" : ""}.`;
     },
     REVALIDATE,
   );
 }
 
 export async function syncFaqAction() {
-  await requireAdmin();
+  const { challenge } = await requireOrganizer();
   await withFlash(
     PATH,
     async () => {
-      const challenge = await challengeOrThrow();
       const r = await syncQuestions(challenge.id, { force: true });
       const detached = r.detached ? ` ${r.detached} sujet${r.detached > 1 ? "s" : ""} supprimé${r.detached > 1 ? "s" : ""} sur Discord (question${r.detached > 1 ? "s" : ""} conservée${r.detached > 1 ? "s" : ""} sur le site).` : "";
       return `Synchronisation faite : ${r.threads} sujet${r.threads > 1 ? "s" : ""} relu${r.threads > 1 ? "s" : ""}, ${r.imported} message${r.imported > 1 ? "s" : ""} importé${r.imported > 1 ? "s" : ""}.${detached}`;
@@ -45,7 +37,7 @@ export async function syncFaqAction() {
 }
 
 export async function resolveQuestionAction(formData: FormData) {
-  const admin = await requireAdmin();
+  const { user: admin } = await requireOrganizer();
   const questionId = field(formData, "questionId");
   if (!questionId) return;
   await withFlash(
@@ -59,7 +51,7 @@ export async function resolveQuestionAction(formData: FormData) {
 }
 
 export async function pinQuestionAction(formData: FormData) {
-  const admin = await requireAdmin();
+  const { user: admin } = await requireOrganizer();
   const questionId = field(formData, "questionId");
   if (!questionId) return;
   const pinned = field(formData, "pinned") === "1";
@@ -74,7 +66,7 @@ export async function pinQuestionAction(formData: FormData) {
 }
 
 export async function deleteQuestionAction(formData: FormData) {
-  const admin = await requireAdmin();
+  const { user: admin } = await requireOrganizer();
   const questionId = field(formData, "questionId");
   if (!questionId) return;
   await withFlash(

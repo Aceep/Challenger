@@ -1,4 +1,4 @@
-import { getActiveChallenge, requireAdmin } from "@/lib/dal";
+import { requireOrganizer } from "@/lib/dal";
 import { prisma } from "@/lib/db";
 import { bookWeight, isComplete } from "@/lib/scoring/reading";
 import { getTeamBoard, listGridsAdmin } from "@/lib/services/bingo";
@@ -8,9 +8,8 @@ import { deleteGridAction, moveGridAction, placeTeamBookAction, removeTeamBookAc
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
 
 export default async function AdminBingoPage({ searchParams }: PageProps<"/admin/bingo">) {
-  await requireAdmin();
+  const { challenge } = await requireOrganizer();
   const params = await searchParams;
-  const challenge = await getActiveChallenge();
   const noBoard = { placeTeamBookAction: placeTeamBookAction.bind(null, ""), removeTeamBookAction: removeTeamBookAction.bind(null, "") };
   if (!challenge) {
     return (
