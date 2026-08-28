@@ -1,19 +1,34 @@
 import { getActiveChallenge, requireAdmin } from "@/lib/dal";
 import { prisma } from "@/lib/db";
 import { bookWeight, isComplete } from "@/lib/scoring/reading";
-import { listQuestsAdmin } from "@/lib/services/quests";
-import { QuestsAdminView } from "./QuestsAdminView";
-import { deleteQuestAction, saveQuestAction } from "./actions";
+import { listQuestsAdmin, listQuestsForTeam } from "@/lib/services/quests";
+import { QuestsAdminView, type TeamQuestProgress } from "./QuestsAdminView";
+import { attachQuestBookAction, deleteQuestAction, detachQuestBookAction, saveQuestAction } from "./actions";
 
 const dateFmt = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
 const toLocalInput = (d: Date | null) => (d ? new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16) : "");
 
 export default async function AdminQuestsPage({ searchParams }: PageProps<"/admin/quests">) {
   await requireAdmin();
   const params = await searchParams;
   const challenge = await getActiveChallenge();
-  const actions = { saveQuestAction, deleteQuestAction };
-  if (!challenge) return <QuestsAdminView quests={[]} teams={[]} hasChallenge={false} editingId={null} params={params} {...actions} />;
+  if (!challenge) {
+    return (
+      <QuestsAdminView
+        quests={[]}
+        teams={[]}
+        hasChallenge={false}
+        editingId={null}
+        params={params}
+        teamProgress={null}
+        saveQuestAction={saveQuestAction}
+        deleteQuestAction={deleteQuestAction}
+        attachQuestBookAction={attachQuestBookAction.bind(null, "")}
+        detachQuestBookAction={detachQuestBookAction.bind(null, "")}
+      />
+    );
+  }
 
   const [quests, teams, links, completions] = await Promise.all([
     listQuestsAdmin(challenge.id),
@@ -31,7 +46,36 @@ export default async function AdminQuestsPage({ searchParams }: PageProps<"/admi
     const key = `${l.questId}:${l.teamId}`;
     weights.set(key, [...(weights.get(key) ?? []), bookWeight(l.book.type)]);
   }
-  const edit = Array.isArray(params.edit) ? params.edit[0] : params.edit;
+  const edit = one(params.edit);
+
+  // Progress of one team (`?team=`), with the readings still free of any quest.
+  const selected = teams.find((t) => t.id === one(params.team)) ?? teams[0] ?? null;
+  let teamProgress: TeamQuestProgress | null = null;
+  if (selected) {
+    const [teamQuests, freeBooks] = await Promise.all([
+      listQuestsForTeam(challenge.id, selected.id),
+      prisma.book.findMany({
+        where: { teamId: selected.id, deletedAt: null, questBook: null },
+        orderBy: { finishedAt: "desc" },
+        include: { user: { select: { name: true } } },
+      }),
+    ]);
+    teamProgress = {
+      teamId: selected.id,
+      teamName: selected.name,
+      quests: teamQuests.map((q) => ({
+        id: q.id,
+        number: q.number,
+        title: q.title,
+        points: q.points,
+        open: q.open,
+        done: q.done,
+        progress: q.done ? 1 : q.progress,
+        linkedBooks: q.linkedBooks,
+      })),
+      freeBooks: freeBooks.map((b) => ({ id: b.id, label: `${b.user.name ?? "?"} — ${b.title}${b.type === "GRAPHIQUE" ? " (½)" : ""}` })),
+    };
+  }
 
   return (
     <QuestsAdminView
@@ -59,9 +103,13 @@ export default async function AdminQuestsPage({ searchParams }: PageProps<"/admi
       }))}
       teams={teams.map((t) => ({ id: t.id, name: teamName.get(t.id) ?? t.name }))}
       hasChallenge
-      editingId={edit ?? null}
+      editingId={edit || null}
       params={params}
-      {...actions}
+      teamProgress={teamProgress}
+      saveQuestAction={saveQuestAction}
+      deleteQuestAction={deleteQuestAction}
+      attachQuestBookAction={attachQuestBookAction.bind(null, selected?.id ?? "")}
+      detachQuestBookAction={detachQuestBookAction.bind(null, selected?.id ?? "")}
     />
   );
 }
