@@ -17,6 +17,7 @@ export type FaqQuestionRow = {
   messages: number;
   lastAnswer: { author: string; body: string } | null;
   discordUrl: string | null;
+  discordDeleted: boolean;
 };
 
 export type FaqListViewProps = {
