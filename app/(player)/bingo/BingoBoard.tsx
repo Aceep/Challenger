@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { placeBookAction, removeBookAction } from "./actions";
 
 export type BoardCell = {
@@ -22,9 +22,10 @@ type Props = {
 };
 
 export function BingoBoard({ title, size, cells, books, completedLines }: Props) {
-  const [selected, setSelected] = useState<BoardCell | null>(null);
-  // The server re-renders the board after an action: close the panel then.
-  useEffect(() => setSelected(null), [cells]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Derived from the latest props so the panel reflects the cell after an action.
+  const selected = cells.find((c) => c.id === selectedId) ?? null;
+  const setSelected = (c: BoardCell | null) => setSelectedId(c?.id ?? null);
   const done = cells.filter((c) => c.complete).length;
   const textSize = size >= 6 ? "text-[8px]" : size === 5 ? "text-[9px]" : "text-[10px]";
   const editableIds = new Set(books.map((b) => b.id));
