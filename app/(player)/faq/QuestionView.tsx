@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card, Eyebrow, KyleEmpty, Pill } from "@/components/ui";
 import { Flash } from "@/components/Flash";
 import { SubmitButton } from "@/components/ui/SubmitButton";
+import { AlertIcon, CheckIcon } from "@/components/ui/icons";
 import { StatusPill, type FaqStatus } from "./FaqListView";
 import { ResolveQuestionButton } from "./ResolveQuestionButton";
 import { DeleteQuestionButton } from "./DeleteQuestionButton";
@@ -55,7 +56,12 @@ export function QuestionView({ question: q, params, demo, replyAction, resolveAc
   return (
     <main className="flex flex-1 flex-col gap-4 p-5">
       <Flash params={params} />
-      {q.discordDeleted && <p className="flash warn">⚠️ Le sujet Discord de cette question a été supprimé : elle ne vit plus que sur le site.</p>}
+      {q.discordDeleted && (
+        <p className="flash warn">
+          <AlertIcon />
+          Le sujet Discord de cette question a été supprimé : elle ne vit plus que sur le site.
+        </p>
+      )}
       <header className="flex flex-col gap-2">
         <Link href={base} className="text-[13px] text-[color:var(--muted)]">
           ← FAQ
@@ -66,18 +72,22 @@ export function QuestionView({ question: q, params, demo, replyAction, resolveAc
         </div>
         <p className="text-xs text-[color:var(--muted)]">
           Posée par {q.author} · {dateFmt.format(q.createdAt)}
-          {q.pinned && " · 📌 en Questions fréquentes"}
+          {q.pinned && " · en Questions fréquentes"}
         </p>
       </header>
 
-      {q.body && <p className="chapter card">{q.body}</p>}
+      {q.body && (
+        <Card className="px-5 py-4.5">
+          <p className="chapter">{q.body}</p>
+        </Card>
+      )}
 
       <section className="flex flex-col gap-2.5">
         <Eyebrow>
           {q.messages.length} réponse{q.messages.length > 1 ? "s" : ""}
         </Eyebrow>
         {q.messages.length === 0 ? (
-          <KyleEmpty>Pas encore de réponse — l&apos;organisation a été prévenue sur Discord.</KyleEmpty>
+          <KyleEmpty>Pas encore de réponse — l’organisation a été prévenue sur Discord.</KyleEmpty>
         ) : (
           <ul className="list">
             {q.messages.map((m) => (
@@ -112,7 +122,10 @@ export function QuestionView({ question: q, params, demo, replyAction, resolveAc
           </SubmitButton>
         </form>
       ) : (
-        <p className="flash ok">✅ Question résolue : le sujet Discord est archivé.</p>
+        <p className="flash ok">
+          <CheckIcon />
+          Question résolue : le sujet Discord est archivé.
+        </p>
       )}
 
       <div className="flex flex-wrap items-center gap-2">
@@ -121,8 +134,8 @@ export function QuestionView({ question: q, params, demo, replyAction, resolveAc
           <form action={pinAction}>
             <input type="hidden" name="questionId" value={q.id} />
             <input type="hidden" name="pinned" value={q.pinned ? "0" : "1"} />
-            <SubmitButton className="btn small ghost" pendingLabel="…">
-              {q.pinned ? "Retirer des questions fréquentes" : "📌 Épingler en question fréquente"}
+            <SubmitButton className="btn sm ghost" pendingLabel="…">
+              {q.pinned ? "Retirer des questions fréquentes" : "Épingler en question fréquente"}
             </SubmitButton>
           </form>
         )}

@@ -15,7 +15,7 @@ export function DiscordMock() {
         </span>
         <div>
           <p className="who">
-            Léa <span className="at">aujourd&apos;hui à 21:04</span>
+            Léa <span className="at">aujourd’hui à 21:04</span>
           </p>
           <p className="cmd">
             <span>/ajouter-un-livre</span> titre : <em>Le Cœur des Ténèbres</em> pages : <em>512</em>
@@ -29,7 +29,7 @@ export function DiscordMock() {
         </span>
         <div>
           <p className="who">
-            Kyle <span className="badge">BOT</span> <span className="at">aujourd&apos;hui à 21:04</span>
+            Kyle <span className="badge">BOT</span> <span className="at">aujourd’hui à 21:04</span>
           </p>
           <p className="reply">
             ✅ <strong>Le Cœur des Ténèbres</strong> — 512 p. · roman

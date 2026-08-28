@@ -181,13 +181,13 @@ function Overlay({ step, index, total, go, close }: OverlayProps) {
           ))}
         </div>
         <div className="acts">
-          <button type="button" className="btn small ghost" onClick={() => go(index - 1)} disabled={index === 0}>
+          <button type="button" className="btn sm ghost" onClick={() => go(index - 1)} disabled={index === 0}>
             Précédent
           </button>
           <button type="button" className="skip" onClick={() => void close()}>
             Passer
           </button>
-          <button type="button" className="btn small" onClick={() => (last ? void close() : go(index + 1))}>
+          <button type="button" className="btn sm" onClick={() => (last ? void close() : go(index + 1))}>
             {last ? "C'est parti !" : "Suivant"}
           </button>
         </div>

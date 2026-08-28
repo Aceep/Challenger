@@ -77,7 +77,7 @@ function QuestionCard({ q, href }: { q: FaqQuestionRow; href: string }) {
 export function FaqListView({ questions, hasChallenge, forumConfigured, creating, params, demo, askQuestionAction }: FaqListViewProps) {
   const base = demo ? "/demo/faq" : "/faq";
   const pinned = questions.filter((q) => q.pinned);
-  const rest = questions.filter((q) => !q.pinned);
+  const rest = questions.filter((q) => !q.pinned);
 
   return (
     <main className="flex flex-1 flex-col gap-5 p-5">
@@ -103,7 +103,7 @@ export function FaqListView({ questions, hasChallenge, forumConfigured, creating
                   <li key={q.id}>
                     <Card className="quest" style={{ border: "1.5px solid var(--kyle-deep)" }}>
                       <div className="head">
-                        <p className="n">📌 {q.title}</p>
+                        <p className="n">{q.title}</p>
                         <StatusPill status={q.status} />
                       </div>
                       {q.lastAnswer ? (
@@ -112,7 +112,7 @@ export function FaqListView({ questions, hasChallenge, forumConfigured, creating
                           <p className="text-xs text-[color:var(--muted)]">— {q.lastAnswer.author}</p>
                         </>
                       ) : (
-                        <p className="text-sm text-[color:var(--muted)]">Pas encore de réponse de l&apos;organisation.</p>
+                        <p className="text-sm text-[color:var(--muted)]">Pas encore de réponse de l’organisation.</p>
                       )}
                       <p className="text-[13px]">
                         <Link href={`${base}/${q.id}`} className="underline">
@@ -129,7 +129,7 @@ export function FaqListView({ questions, hasChallenge, forumConfigured, creating
           <section className="flex flex-col gap-2.5">
             <Eyebrow>Toutes les questions</Eyebrow>
             {rest.length === 0 ? (
-              <KyleEmpty>Aucune question pour l&apos;instant — pose la première !</KyleEmpty>
+              <KyleEmpty>Aucune question pour l’instant — pose la première !</KyleEmpty>
             ) : (
               <ul className="list">
                 {rest.map((q) => (
