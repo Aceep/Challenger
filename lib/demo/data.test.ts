@@ -10,6 +10,7 @@ import {
   DEMO_LEDGER,
   DEMO_MEMBERS,
   DEMO_MY_BOOKS,
+  DEMO_READINGS_ADMIN,
   DEMO_TEAM,
 } from "./data";
 
@@ -20,6 +21,16 @@ describe("données de démo", () => {
     for (const b of DEMO_BOOKS) {
       expect(b.points, b.title).toBe(readingPoints(b.pages));
       expect(b.type, b.title).toBe(effectiveType(b.pages, DEMO_DECLARED_GRAPHIC[b.id]));
+    }
+  });
+
+  it("applique le même barème aux lectures de la supervision admin", () => {
+    expect(DEMO_READINGS_ADMIN.some((b) => b.deleted)).toBe(true);
+    for (const b of DEMO_READINGS_ADMIN) {
+      expect(b.points, b.title).toBe(readingPoints(b.pages));
+      expect(b.type, b.title).toBe(effectiveType(b.pages, b.declaredGraphic));
+      expect(b.questHalf, b.title).toBe(b.type === "GRAPHIQUE");
+      expect(b.cellHalf, b.title).toBe(b.cellLabel !== null && b.type === "GRAPHIQUE");
     }
   });
 

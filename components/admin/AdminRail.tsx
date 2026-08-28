@@ -17,6 +17,7 @@ const GROUPS = [
   {
     group: "Contenu",
     items: [
+      { href: "/admin/readings", label: "📚 Lectures" },
       { href: "/admin/bingo", label: "🎯 Bingo" },
       { href: "/admin/quests", label: "🗺️ Quêtes" },
       { href: "/admin/story", label: "📖 Histoire" },
