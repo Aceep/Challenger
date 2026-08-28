@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Kyle } from "@/components/ui/Kyle";
+import { SparkIcon } from "@/components/ui/icons";
 import { tourHref, type TourId } from "@/lib/tour/steps";
 
 /** Discreet "this is fake data" strip shown on every demo screen. */
@@ -12,14 +13,15 @@ export function DemoBanner({ tour }: { tour?: TourId }) {
       </span>
       <span className="flex items-center gap-3">
         {tour && (
-          <Link href={tourHref(tour, 0, "/demo")} className="underline">
-            ✨ Visite guidée
+          <Link href={tourHref(tour, 0, "/demo")} className="inline-flex items-center gap-1.5 underline">
+            <SparkIcon className="ico-sm" />
+            Visite guidée
           </Link>
         )}
         <Link href="/" className="underline">
           Accueil
         </Link>
-        <Link href="/login" className="btn small">
+        <Link href="/login" className="btn sm">
           Se connecter avec Discord
         </Link>
       </span>

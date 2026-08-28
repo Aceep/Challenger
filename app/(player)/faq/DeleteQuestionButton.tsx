@@ -22,8 +22,15 @@ export function DeleteQuestionButton({
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button type="button" className={iconOnly ? "icon-btn" : "btn small ghost"} onClick={() => setOpen(true)} aria-label="Supprimer la question" title="Supprimer">
-        {iconOnly ? <TrashIcon /> : "🗑️ Supprimer"}
+      <button type="button" className={iconOnly ? "icon-btn" : "btn sm ghost"} onClick={() => setOpen(true)} aria-label="Supprimer la question" title="Supprimer">
+        {iconOnly ? (
+          <TrashIcon />
+        ) : (
+          <>
+            <TrashIcon />
+            Supprimer
+          </>
+        )}
       </button>
       {open && (
         <Modal title="Supprimer la question" onClose={() => setOpen(false)} width={520}>

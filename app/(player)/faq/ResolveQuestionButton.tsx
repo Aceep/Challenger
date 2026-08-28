@@ -3,14 +3,16 @@
 import { useState } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { SubmitButton } from "@/components/ui/SubmitButton";
+import { CheckIcon } from "@/components/ui/icons";
 
 /** « Marquer résolue » behind a confirmation: resolving archives the Discord thread. */
 export function ResolveQuestionButton({ questionId, action }: { questionId: string; action: (formData: FormData) => Promise<void> }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button type="button" className="btn small ghost" onClick={() => setOpen(true)}>
-        ✅ Marquer résolue
+      <button type="button" className="btn sm ghost" onClick={() => setOpen(true)}>
+        <CheckIcon />
+        Marquer résolue
       </button>
       {open && (
         <Modal title="Marquer la question comme résolue" onClose={() => setOpen(false)} width={520}>
@@ -25,7 +27,7 @@ export function ResolveQuestionButton({ questionId, action }: { questionId: stri
               <form action={action}>
                 <input type="hidden" name="questionId" value={questionId} />
                 <SubmitButton className="btn" pendingLabel="Clôture…">
-                  Oui, c&apos;est résolu
+                  Oui, c’est résolu
                 </SubmitButton>
               </form>
             </div>
