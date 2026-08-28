@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { SubmitButton } from "@/components/ui/SubmitButton";
 import { BingoCell, Pill } from "@/components/ui";
 
 export type BoardCell = {
@@ -133,9 +134,9 @@ export function BingoBoard({ title, size, cells, books, completedLines, order, t
                 </select>
               </label>
               <div className="flex gap-2">
-                <button type="submit" className="btn small flex-1">
+                <SubmitButton className="btn small flex-1" pendingLabel="Enregistrement…">
                   Valider
-                </button>
+                </SubmitButton>
                 <button type="button" onClick={() => setSelectedId(null)} className="btn small ghost">
                   Fermer
                 </button>

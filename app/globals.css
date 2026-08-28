@@ -1126,3 +1126,37 @@
   .player-shell .list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .player-shell .bingo-layout { grid-template-columns: minmax(0, 1fr) 400px; }
 }
+
+/* --- loading: skeletons and spinners ---------------------------------------- */
+.skel {
+  display: block;
+  border-radius: 8px;
+  background: var(--surface-2);
+  background-image: linear-gradient(90deg, var(--surface-2) 0%, var(--surface) 50%, var(--surface-2) 100%);
+  background-size: 200% 100%;
+  animation: skel-shimmer 1.4s ease-in-out infinite;
+}
+.spinner {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  vertical-align: -0.15em;
+}
+button[aria-busy="true"] {
+  opacity: 0.7;
+  cursor: progress;
+}
+@keyframes skel-shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skel, .spinner { animation: none; }
+}
