@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Card, Eyebrow, KyleEmpty, Pill } from "@/components/ui";
+import { Flash } from "@/components/Flash";
 import { DataTable } from "@/components/ui/DataTable";
 import { fmtDelta, fmtPoints } from "@/lib/format";
 
@@ -19,15 +20,18 @@ export type DashboardViewProps = {
     links: string;
     deleted: boolean;
   }[];
+  /** `?ok=` / `?error=` — where switching edition from the rail lands. */
+  params?: Record<string, string | string[] | undefined>;
   demo?: boolean;
 };
 
 /** Admin dashboard — pure view, reused by /demo/admin. */
-export function DashboardView({ challenge, kpis, todo, leaderboard, bot, recentBooks, demo }: DashboardViewProps) {
+export function DashboardView({ challenge, kpis, todo, leaderboard, bot, recentBooks, params, demo }: DashboardViewProps) {
   const p = (path: string) => (demo ? `/demo${path}` : path);
 
   return (
     <>
+      {params && <Flash params={params} />}
       <div className="topline">
         <h1>Tableau de bord</h1>
         {challenge ? (
