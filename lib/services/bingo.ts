@@ -133,7 +133,8 @@ const fillsOf = (teamId: string) => ({
 });
 
 export async function getTeamBoard(teamId: string) {
-  const grid = await prisma.$transaction((tx) => activeGridForTeam(tx, teamId));
+  // Fast path: the active grid already exists (one read); the transaction only runs to open the first / next grid.
+  const grid = (await prisma.teamGrid.findFirst({ where: { teamId, completedAt: null }, include: { grid: true } }))?.grid ?? (await prisma.$transaction((tx) => activeGridForTeam(tx, teamId)));
   const team = await prisma.team.findUniqueOrThrow({ where: { id: teamId } });
   const [total, history] = await Promise.all([
     prisma.bingoGrid.count({ where: { challengeId: team.challengeId } }),

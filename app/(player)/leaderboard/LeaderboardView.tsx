@@ -36,7 +36,7 @@ export function LeaderboardView({ challengeName, rows, myTeamId, finished, demo 
 
   return (
     <main className="flex flex-1 flex-col gap-3 p-5">
-      {!demo && <LiveRefresh seconds={10} />}
+      {!demo && <LiveRefresh seconds={20} />}
       <header>
         <h1>{finished ? "Classement final" : "Classement"}</h1>
         <p className="text-[13px] text-[color:var(--muted)]">{challengeName} · publié chaque dimanche 20 h</p>

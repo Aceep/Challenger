@@ -14,6 +14,9 @@ declare module "next-auth" {
   }
 }
 
+/** How long a JWT keeps its role before being refreshed from the database. */
+const ROLE_TTL_MS = 5 * 60_000;
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   providers: [Discord],
@@ -37,17 +40,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       });
       return invite ? true : "/login?error=NotInvited";
     },
-    async jwt({ token, user, account }) {
+    async jwt({ token, user, account, trigger }) {
       if (user?.id) token.id = user.id;
       if (account?.provider === "discord") token.discordId = account.providerAccountId;
-      // Always re-read role/discordId so admin promotions and invite
-      // consumption take effect without a re-login.
-      const dbUser = await prisma.user.findUnique({
-        where: { id: token.id as string },
-        select: { role: true, discordId: true },
-      });
-      token.role = dbUser?.role ?? "PLAYER";
-      token.discordId = dbUser?.discordId ?? token.discordId;
+      // Re-read role/discordId at most every 5 minutes (admin promotions and
+      // invite consumption take effect within that delay, or on re-login),
+      // instead of one database round trip per request.
+      const checkedAt = typeof token.checkedAt === "number" ? token.checkedAt : 0;
+      const stale = Date.now() - checkedAt > ROLE_TTL_MS;
+      if (stale || trigger === "update" || user || account) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { role: true, discordId: true },
+        });
+        token.role = dbUser?.role ?? "PLAYER";
+        token.discordId = dbUser?.discordId ?? token.discordId;
+        token.checkedAt = Date.now();
+      }
       return token;
     },
     session({ session, token }) {

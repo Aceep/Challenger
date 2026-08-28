@@ -11,6 +11,7 @@ export function Kyle({ width = 48, className = "", alt = "" }: { width?: number;
       width={Math.round(width)}
       height={Math.round(width / RATIO)}
       className={`shrink-0 ${className}`}
+      sizes={`${Math.round(width)}px`}
       priority={width >= 200}
       role={alt ? undefined : "presentation"}
     />

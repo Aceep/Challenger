@@ -13,7 +13,7 @@ import {
   setUserRole,
 } from "@/lib/services/admin";
 
-const REVALIDATE = ["/admin", "/"];
+const REVALIDATE = ["/admin", "/home", "/team", "/leaderboard"];
 function refresh() {
   revalidatePath("/admin", "layout");
   revalidatePath("/home", "layout");
