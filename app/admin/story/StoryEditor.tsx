@@ -291,7 +291,7 @@ export function NodeList({ story, quests, actions }: { story: EditorStory; quest
                   <span className="fx">
                     {[...c.effectLabels, c.lockedByQuestTitle ? `débloqué par « ${c.lockedByQuestTitle} »` : ""].filter(Boolean).join(" · ")}
                     {" → "}
-                    {c.targetTitle ?? "fin"}
+                    {c.targetTitle ?? <span style={{ color: "var(--brick)" }}>⚠️ impasse : aucun chapitre suivant</span>}
                   </span>
                   <button type="button" onClick={() => setEditingChoice(c.id)} className="text-xs underline">
                     Modifier

@@ -177,6 +177,12 @@ async function openVoteIfReady(teamId: string, nodeId: string, challengeId: stri
   if (unmetConditions(node, progress).length > 0) return null;
   const already = await prisma.vote.findFirst({ where: { teamId, nodeId, status: { not: "RESOLVED" } } });
   if (already) return already;
+  // A vote already resolved on this chapter since the team arrived here means the winning choice
+  // had no next chapter (dead end): do not reopen the same vote every deadline — the chapter waits
+  // for the admin to give the choice a target.
+  const arrival = await prisma.storyVisit.findFirst({ where: { teamId, nodeId }, orderBy: { arrivedAt: "desc" } });
+  const settled = await prisma.vote.findFirst({ where: { teamId, nodeId, status: "RESOLVED", createdAt: { gte: arrival?.arrivedAt ?? new Date(0) } } });
+  if (settled) return null;
   return prisma.vote.create({ data: { teamId, nodeId, deadline: new Date(Date.now() + (node.voteHours ?? voteHours) * 3600_000) } });
 }
 
