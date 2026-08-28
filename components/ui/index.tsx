@@ -225,7 +225,8 @@ export function BingoCell({
       title={`${label} — ${prompt}`}
       className={cx("cell", state === "done" && "done", state === "half" && "half", selected && "sel")}
     >
-      <span className="p line-clamp-3">{prompt}</span>
+      <span className="k" aria-hidden="true">{label}</span>
+      <span className="p">{prompt}</span>
       {note ? <span className="n">{note}</span> : null}
     </button>
   );

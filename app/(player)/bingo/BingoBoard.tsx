@@ -50,7 +50,16 @@ export function BingoBoard({ title, size, cells, books, completedLines, order, t
             state={c.complete ? "done" : c.weight > 0 ? "half" : "free"}
             selected={selectedId === c.id}
             onClick={() => setSelectedId(c.id)}
-            note={c.books.length ? c.books.map((b) => `${b.owner} — ${b.title}`).join(" + ") : undefined}
+            note={
+              c.books.length
+                ? c.books.map((b) => (
+                    <span key={b.id}>
+                      {b.owner} — {b.title}
+                      {b.type === "GRAPHIQUE" ? " ½" : ""}
+                    </span>
+                  ))
+                : undefined
+            }
           />
         ))}
       </div>
