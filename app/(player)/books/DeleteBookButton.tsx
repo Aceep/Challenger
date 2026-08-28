@@ -30,7 +30,7 @@ export function DeleteBookButton({ bookId, title, points, hasLinks, action }: Pr
             <ul className="list-inside list-disc text-[14px] text-[color:var(--muted)]">
               <li>{points > 0 ? `Les ${points.toLocaleString("fr-FR")} points qu’elle a rapportés sont retirés à l’équipe.` : "Elle n’avait pas rapporté de points."}</li>
               {hasLinks && <li>La case et/ou la quête qu&apos;elle validait repassent « en attente » (l&apos;autre moitié reste acquise).</li>}
-              <li>Un·e capitaine ou un·e admin pourra encore la voir dans l'historique.</li>
+              <li>Un·e capitaine ou un·e admin pourra encore la voir dans l&apos;historique.</li>
             </ul>
             <form action={action} className="flex flex-wrap justify-end gap-2">
               <input type="hidden" name="bookId" value={bookId} />
