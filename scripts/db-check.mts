@@ -8,7 +8,15 @@ neonConfig.webSocketConstructor = ws;
 const p = new PrismaClient({ adapter: new PrismaNeon({ connectionString: process.env.DATABASE_URL! }) });
 
 const [users, invites, books, events] = await Promise.all([
-  p.user.findMany({ select: { name: true, role: true, discordId: true, membership: { select: { teamId: true } } } }),
+  p.user.findMany({
+    select: {
+      name: true,
+      isSuperAdmin: true,
+      discordId: true,
+      memberships: { select: { challengeId: true, role: true } },
+      teamMemberships: { select: { challengeId: true, teamId: true } },
+    },
+  }),
   p.invite.findMany({ select: { discordId: true, usedAt: true, role: true } }),
   p.book.findMany({ select: { title: true, pages: true } }),
   p.pointEvent.findMany({ select: { source: true, amount: true, label: true } }),

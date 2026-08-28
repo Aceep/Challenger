@@ -826,7 +826,7 @@ export const DEMO_ADMIN_PLAYERS: PlayerRow[] = [
   { id: "demo-user-nour", name: "Nour", discordId: "402911870034211187", teamId: "demo-team-herissons", teamName: "Les Hérissons", isCaptain: true, role: "PLAYER", books: 9, isMe: false },
   { id: "demo-user-marc", name: "Marc", discordId: "135118374829104196", teamId: "demo-team-renards", teamName: "Les Renards", isCaptain: true, role: "PLAYER", books: 1, isMe: false },
   { id: "demo-user-lea", name: "Léa", discordId: "881122334455660342", teamId: "demo-team-renards", teamName: "Les Renards", isCaptain: false, role: "PLAYER", books: 4, isMe: false },
-  { id: "demo-user-alycia", name: "Alycia", discordId: "135118374829104197", teamId: "", teamName: null, isCaptain: false, role: "ADMIN", books: 0, isMe: true },
+  { id: "demo-user-alycia", name: "Alycia", discordId: "135118374829104197", teamId: "", teamName: null, isCaptain: false, role: "ORGANIZER", books: 0, isMe: true },
   { id: "demo-user-tom", name: "Tom", discordId: "552033445566777781", teamId: "demo-team-loutres", teamName: "Les Loutres", isCaptain: true, role: "PLAYER", books: 6, isMe: false },
 ];
 
