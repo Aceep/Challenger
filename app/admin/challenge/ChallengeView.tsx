@@ -1,4 +1,5 @@
 import { Card, Eyebrow, Pill } from "@/components/ui";
+import { DataTable } from "@/components/ui/DataTable";
 import type { ActionState } from "@/lib/forms";
 import { ChallengeForm, type ChallengeValues } from "./ChallengeForm";
 
@@ -36,29 +37,20 @@ export function ChallengeView({ challenge, editions, saveChallengeAction }: Chal
       <div className="two">
         <Card>
           <Eyebrow>Éditions</Eyebrow>
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Édition</th>
-                <th>Période</th>
-                <th>Statut</th>
+          <DataTable head={["Édition", "Période", "Statut"]}>
+            {editions.map((e) => (
+              <tr key={e.id}>
+                <td>
+                  <span className="dot" style={{ background: e.color }} />
+                  {e.name}
+                </td>
+                <td>{e.period}</td>
+                <td>
+                  <Pill tone={STATUS[e.status].tone}>{STATUS[e.status].label}</Pill>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {editions.map((e) => (
-                <tr key={e.id}>
-                  <td>
-                    <span className="dot" style={{ background: e.color }} />
-                    {e.name}
-                  </td>
-                  <td>{e.period}</td>
-                  <td>
-                    <Pill tone={STATUS[e.status].tone}>{STATUS[e.status].label}</Pill>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+            ))}
+          </DataTable>
           <p className="mt-2.5 text-[13px] text-[color:var(--muted)]">
             Pour ouvrir une nouvelle édition, videz le formulaire ci-dessus (aucun identifiant) et enregistrez : passer une édition en « actif » termine la
             précédente.

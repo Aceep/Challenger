@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Card, KyleEmpty, Pill, ProgressBar } from "@/components/ui";
+import { DataTable } from "@/components/ui/DataTable";
 import { Flash } from "@/components/Flash";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { PencilIcon, TrashIcon } from "@/components/ui/icons";
@@ -95,65 +96,58 @@ export function QuestsAdminView({
       ) : (
         <>
           <Card>
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>N°</th>
-                  <th>Quête</th>
-                  <th className="text-right">Points</th>
-                  <th>Fenêtre</th>
-                  <th>Cible</th>
-                  {teams.map((t) => (
-                    <th key={t.id} className="text-center">
-                      {t.name}
-                    </th>
-                  ))}
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {quests.map((q) => (
-                  <tr key={q.id}>
-                    <td className="num">#{q.number}</td>
-                    <td>
-                      <strong>{q.title}</strong> {q.fromStory && <Pill tone="no">issue de l&apos;histoire</Pill>}
-                    </td>
-                    <td className="num text-right">{q.points}</td>
-                    <td>{q.window}</td>
-                    <td>{q.target}</td>
-                    {teams.map((t) => {
-                      const st = q.progress.find((p) => p.teamId === t.id)?.state ?? "none";
-                      const focused = teamProgress?.teamId === t.id && selectedQuestId === q.id;
-                      return (
-                        <td key={t.id} className="text-center">
-                          <Link
-                            href={`${base}?team=${t.id}&quest=${q.id}`}
-                            scroll={false}
-                            className={`progress-cell ${st} ${focused ? "focused" : ""}`}
-                            title={`${t.name} — ${st === "done" ? "validée" : st === "half" ? "à moitié (½)" : "pas commencée"} · voir le détail`}
-                          >
-                            {st === "done" ? "✅" : st === "half" ? "½" : "—"}
-                          </Link>
-                        </td>
-                      );
-                    })}
-                    <td className="whitespace-nowrap">
-                      <span className="inline-flex gap-1.5">
-                        <Link href={`${base}?edit=${q.id}`} scroll={false} className="icon-btn" title="Modifier" aria-label={`Modifier la quête #${q.number}`}>
-                          <PencilIcon />
+            <DataTable
+              head={[
+                "N°",
+                "Quête",
+                { label: "Points", className: "text-right" },
+                "Fenêtre",
+                "Cible",
+                ...teams.map((t) => ({ label: t.name, className: "text-center" })),
+                "",
+              ]}
+            >
+              {quests.map((q) => (
+                <tr key={q.id}>
+                  <td className="num">#{q.number}</td>
+                  <td>
+                    <strong>{q.title}</strong> {q.fromStory && <Pill tone="no">issue de l&apos;histoire</Pill>}
+                  </td>
+                  <td className="num text-right">{q.points}</td>
+                  <td>{q.window}</td>
+                  <td>{q.target}</td>
+                  {teams.map((t) => {
+                    const st = q.progress.find((p) => p.teamId === t.id)?.state ?? "none";
+                    const focused = teamProgress?.teamId === t.id && selectedQuestId === q.id;
+                    return (
+                      <td key={t.id} className="matrix text-center">
+                        <Link
+                          href={`${base}?team=${t.id}&quest=${q.id}`}
+                          scroll={false}
+                          className={`progress-cell ${st} ${focused ? "focused" : ""}`}
+                          title={`${t.name} — ${st === "done" ? "validée" : st === "half" ? "à moitié (½)" : "pas commencée"} · voir le détail`}
+                        >
+                          {st === "done" ? "✅" : st === "half" ? "½" : "—"}
                         </Link>
-                        <form action={deleteQuestAction} className="inline">
-                          <input type="hidden" name="questId" value={q.id} />
-                          <button className="icon-btn danger" title="Supprimer" aria-label={`Supprimer la quête #${q.number}`}>
-                            <TrashIcon />
-                          </button>
-                        </form>
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      </td>
+                    );
+                  })}
+                  <td className="whitespace-nowrap">
+                    <span className="inline-flex gap-1.5">
+                      <Link href={`${base}?edit=${q.id}`} scroll={false} className="icon-btn" title="Modifier" aria-label={`Modifier la quête #${q.number}`}>
+                        <PencilIcon />
+                      </Link>
+                      <form action={deleteQuestAction} className="inline">
+                        <input type="hidden" name="questId" value={q.id} />
+                        <button className="icon-btn danger" title="Supprimer" aria-label={`Supprimer la quête #${q.number}`}>
+                          <TrashIcon />
+                        </button>
+                      </form>
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </DataTable>
           </Card>
 
           <p className="text-[13px] text-[color:var(--muted)]">
