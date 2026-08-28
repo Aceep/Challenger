@@ -1,6 +1,8 @@
 import { InteractionResponseType, InteractionType, verifyKey } from "discord-interactions";
 import { after, NextResponse } from "next/server";
+import { cancelBookPending, chooseBookOption, openBookModal, saveBookPending, submitBookModal, type FlowCtx, type InteractionReply } from "@/lib/discord/book-flow";
 import { readingConfirmation } from "@/lib/discord/cards";
+import { BOOK_MODAL_ID, NONE, modalValues, parseBookId } from "@/lib/discord/components";
 import { announceGridChange, announceRankChange, announceReading, announceResolution, syncVoteMessage } from "@/lib/discord/events";
 import { userMessage } from "@/lib/errors";
 import { fmtPoints } from "@/lib/format";
@@ -25,14 +27,33 @@ const reply = (type: number, data?: unknown) => NextResponse.json({ type, data }
 const ephemeral = (content: string) => reply(InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE, { content, flags: 64 });
 const publicReply = (content: string) => reply(InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE, { content });
 const choices = (list: { name: string; value: string }[]) => reply(InteractionResponseType.APPLICATION_COMMAND_AUTOCOMPLETE_RESULT, { choices: list });
+/** The « J'ai fini un livre » handlers already return a complete response body. */
+const fromFlow = (r: InteractionReply) => NextResponse.json(r);
 
 type Option = { name: string; value: string | number | boolean; focused?: boolean };
+/** A modal row and its (possibly nested) text inputs, as MODAL_SUBMIT sends them back. */
+type ModalRow = { type: number; components?: { type: number; custom_id?: string; value?: string; components?: ModalRow["components"] }[] };
 type Interaction = {
+  id: string;
   type: number;
+  token: string;
+  application_id?: string;
   channel_id?: string;
   /** The Discord server the command was typed in: it decides which challenge answers. */
   guild_id?: string;
-  data?: { name?: string; custom_id?: string; options?: Option[] };
+  data?: {
+    name?: string;
+    custom_id?: string;
+    /** 2 = button, 3 = string select. */
+    component_type?: number;
+    /** String-select selections. */
+    values?: string[];
+    options?: Option[];
+    /** MODAL_SUBMIT payload. */
+    components?: ModalRow[];
+  };
+  /** The message the component was attached to (an ephemeral one is never fetchable). */
+  message?: { id: string; flags?: number };
   member?: { user: { id: string; username: string } };
   user?: { id: string; username: string };
 };
@@ -80,6 +101,16 @@ export async function POST(request: Request) {
   const inAdventure = !!adventureChannel && interaction.channel_id === adventureChannel;
   const adventureOnly = () =>
     ephemeral(adventureChannel ? `L'histoire se joue dans le salon aventure de ton équipe (<#${adventureChannel}>).` : "Ton équipe n'a pas encore de salon aventure configuré.");
+  const ctx: FlowCtx = {
+    actor,
+    user,
+    username: discordUser.username,
+    challenge,
+    team,
+    channelId: interaction.channel_id ?? null,
+    inTeamChannel,
+    libraryChannel,
+  };
 
   try {
     // --- Autocomplete --------------------------------------------------------
@@ -93,9 +124,22 @@ export async function POST(request: Request) {
       return choices([]);
     }
 
-    // --- Vote buttons -------------------------------------------------------
+    // --- Buttons and dropdowns ----------------------------------------------
     if (interaction.type === InteractionType.MESSAGE_COMPONENT) {
-      const [kind, voteId, choiceId] = (interaction.data?.custom_id ?? "").split(":");
+      const customId = interaction.data?.custom_id ?? "";
+      // « J'ai fini un livre » owns the `book:*` namespace; the votes keep `vote:*`.
+      const book = parseBookId(customId);
+      if (book) {
+        if (!inTeamChannel) return teamChannelOnly();
+        if (book.action === "new") return fromFlow(await openBookModal(ctx));
+        if (!book.pendingId) return ephemeral("Bouton inconnu.");
+        if (book.action === "save") return fromFlow(await saveBookPending(ctx, book.pendingId));
+        if (book.action === "cancel") return fromFlow(await cancelBookPending(ctx, book.pendingId));
+        // type / quest / cell — a string select, whose selection only exists in `data.values`.
+        const value = interaction.data?.values?.[0] ?? NONE;
+        return fromFlow(await chooseBookOption(ctx, book.action, book.pendingId, value));
+      }
+      const [kind, voteId, choiceId] = customId.split(":");
       if (kind !== "vote" || !voteId || !choiceId) return ephemeral("Bouton inconnu.");
       if (!inAdventure) return adventureOnly();
       const result = await castBallot(voteId, user.id, choiceId);
@@ -104,6 +148,13 @@ export async function POST(request: Request) {
         if (result) await announceResolution(result);
       });
       return ephemeral(result ? "Vote enregistré — le vote est clos !" : "Vote enregistré ✅");
+    }
+
+    // --- Modal « Une lecture de plus » --------------------------------------
+    if (interaction.type === InteractionType.MODAL_SUBMIT) {
+      if ((interaction.data?.custom_id ?? "") !== BOOK_MODAL_ID) return ephemeral("Formulaire inconnu.");
+      if (!inTeamChannel) return teamChannelOnly();
+      return fromFlow(await submitBookModal(ctx, modalValues(interaction.data)));
     }
 
     // --- Slash commands -----------------------------------------------------
