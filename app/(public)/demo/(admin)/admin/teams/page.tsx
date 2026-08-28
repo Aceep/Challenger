@@ -18,6 +18,7 @@ export default async function DemoAdminTeamsPage({ searchParams }: PageProps<"/d
       deleteTeamAction={action}
       setCaptainAction={action}
       setDeputyAction={action}
+      publishGuideAction={action}
     />
   );
 }
