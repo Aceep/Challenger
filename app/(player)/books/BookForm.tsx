@@ -1,15 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
+import { fmtPoints } from "@/lib/format";
 import type { ActionState } from "@/lib/forms";
+import { effectiveType, readingPoints } from "@/lib/scoring/reading";
 
 export type BookFormValues = {
   id?: string;
   title: string;
   author: string;
   pages: number | "";
-  isGraphic: boolean;
+  type: "ROMAN" | "GRAPHIQUE";
   finishedAt: string;
   questId: string;
   cellId: string;
@@ -25,20 +27,27 @@ type Props = {
   currentCell?: { value: string; name: string } | null;
   title: string;
   submitLabel: string;
+  /** Sunday verification window is open (non-admins cannot write). */
+  locked?: string | null;
 };
 
 const field =
   "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base dark:border-slate-700 dark:bg-slate-900";
 
-export function BookForm({ action, values, quests, cells, currentQuest, currentCell, title, submitLabel }: Props) {
+export function BookForm({ action, values, quests, cells, currentQuest, currentCell, title, submitLabel, locked }: Props) {
   const [state, formAction, pending] = useActionState(action, null);
+  const [pages, setPages] = useState<number | "">(values.pages);
+  const [type, setType] = useState(values.type);
   const today = new Date().toISOString().slice(0, 10);
   const questOptions = currentQuest && !quests.some((q) => q.value === currentQuest.value) ? [currentQuest, ...quests] : quests;
   const cellOptions = currentCell && !cells.some((c) => c.value === currentCell.value) ? [currentCell, ...cells] : cells;
+  const effective = pages ? effectiveType(pages, type === "GRAPHIQUE") : type;
+  const preview = pages ? readingPoints(pages) : 0;
 
   return (
     <main className="flex flex-1 flex-col gap-4 p-5">
       <h1 className="text-2xl font-bold">{title}</h1>
+      {locked && <p className="rounded-md bg-amber-100 p-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">{locked}</p>}
       <form action={formAction} className="flex flex-col gap-4">
         {values.id && <input type="hidden" name="bookId" value={values.id} />}
         <label className="flex flex-col gap-1 text-sm font-medium">
@@ -51,19 +60,38 @@ export function BookForm({ action, values, quests, cells, currentQuest, currentC
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
           Nombre de pages
-          <input name="pages" type="number" inputMode="numeric" min={1} max={5000} required defaultValue={values.pages} className={field} />
-          <span className="text-xs font-normal text-slate-500">Moins de 150 pages : les pages comptent moitié pour les points.</span>
-        </label>
-        <label className="flex items-start gap-3 rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700">
-          <input name="isGraphic" type="checkbox" defaultChecked={values.isGraphic} className="mt-0.5 h-5 w-5" />
-          <span>
-            <span className="font-medium">Graphique (BD, manga, roman graphique)</span>
-            <br />
-            <span className="text-xs text-slate-500">Compte pour ½ livre dans les quêtes et le bingo : il en faut deux pour valider.</span>
+          <input
+            name="pages"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={5000}
+            required
+            defaultValue={values.pages}
+            onChange={(e) => setPages(e.target.value ? Number(e.target.value) : "")}
+            className={field}
+          />
+          <span className="text-xs font-normal text-slate-500">
+            Édition la plus avantageuse (hors gros caractères) ; livre audio = pagination papier.
+            {pages ? ` → ${fmtPoints(preview)} pt${preview >= 2 ? "s" : ""}` : ""}
           </span>
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Valide une quête de lecture (optionnel)
+          Type
+          <select name="type" value={type} onChange={(e) => setType(e.target.value as "ROMAN" | "GRAPHIQUE")} className={field}>
+            <option value="ROMAN">Roman</option>
+            <option value="GRAPHIQUE">Graphique (BD, manga, roman graphique)</option>
+          </select>
+          <span className="text-xs font-normal text-slate-500">
+            {effective === "GRAPHIQUE"
+              ? pages && pages < 150 && type === "ROMAN"
+                ? "Moins de 150 pages : compté comme graphique (points ÷ 2, ½ quête et ½ case)."
+                : "Un graphique vaut ½ quête et ½ case : il en faut deux pour valider."
+              : "Un roman valide seul une quête et/ou une case."}
+          </span>
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-medium">
+          Valide une quête (optionnel)
           <select name="questId" defaultValue={values.questId} className={field}>
             <option value="">— aucune —</option>
             {questOptions.map((q) => (
@@ -74,7 +102,7 @@ export function BookForm({ action, values, quests, cells, currentQuest, currentC
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Remplit une case du bingo d&apos;équipe (optionnel)
+          Valide une case du bingo d&apos;équipe (optionnel)
           <select name="cellId" defaultValue={values.cellId} className={field}>
             <option value="">— aucune —</option>
             {cellOptions.map((c) => (
@@ -83,6 +111,9 @@ export function BookForm({ action, values, quests, cells, currentQuest, currentC
               </option>
             ))}
           </select>
+          <span className="text-xs font-normal text-slate-500">
+            En cochant une quête ou une case, tu attestes avoir commencé la lecture après la parution de la grille (ou lu moins de la moitié d&apos;un roman).
+          </span>
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
           Terminé le
@@ -93,7 +124,7 @@ export function BookForm({ action, values, quests, cells, currentQuest, currentC
           <p className="rounded-md bg-red-100 p-3 text-sm text-red-800 dark:bg-red-950 dark:text-red-200">{state.error}</p>
         )}
 
-        <button type="submit" disabled={pending} className="rounded-xl bg-indigo-600 py-3 text-lg font-semibold text-white disabled:opacity-60">
+        <button type="submit" disabled={pending || !!locked} className="rounded-xl bg-indigo-600 py-3 text-lg font-semibold text-white disabled:opacity-60">
           {pending ? "Enregistrement…" : submitLabel}
         </button>
         <Link href="/books" className="text-center text-sm text-slate-500 underline">

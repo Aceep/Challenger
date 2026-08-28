@@ -24,3 +24,13 @@ describe("canEditBook", () => {
     expect(editDeadline(book)).toEqual(at(60));
   });
 });
+
+describe("editDeadline pauses during the Sunday verification window", () => {
+  // Sunday 2026-09-06, 18:30 Paris = 16:30 UTC (CEST).
+  const sundayBook = { userId: "u1", createdAt: new Date("2026-09-06T16:30:00Z") };
+  it("extends the window by the closure (18:30 + 30 min active + 2 h paused → 21:30 Paris)", () => {
+    expect(editDeadline(sundayBook)).toEqual(new Date("2026-09-06T19:30:00Z"));
+    expect(canEditBook(sundayBook, player("u1"), new Date("2026-09-06T19:20:00Z"))).toBe(true);
+    expect(canEditBook(sundayBook, player("u1"), new Date("2026-09-06T19:31:00Z"))).toBe(false);
+  });
+});

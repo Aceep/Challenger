@@ -5,10 +5,9 @@ import { saveQuestAction } from "./actions";
 
 export type QuestFormValues = {
   id?: string;
+  number?: number;
   title: string;
   description: string;
-  type: "TEAM" | "INDIVIDUAL";
-  kind: "ACTION" | "LECTURE";
   points: number;
   openAt: string;
   closeAt: string;
@@ -24,27 +23,17 @@ export function QuestForm({ quest, teams, onDone }: { quest?: QuestFormValues; t
   return (
     <form action={action} className="grid gap-3 rounded-xl bg-white p-4 shadow-sm sm:grid-cols-2 dark:bg-slate-900">
       {quest?.id && <input type="hidden" name="id" value={quest.id} />}
-      <label className="flex flex-col gap-1 text-sm font-medium sm:col-span-2">
+      <label className="flex flex-col gap-1 text-sm font-medium">
+        Numéro
+        <input name="number" type="number" min={1} defaultValue={quest?.number ?? ""} placeholder="auto" className={field} />
+      </label>
+      <label className="flex flex-col gap-1 text-sm font-medium">
         Titre
         <input name="title" required defaultValue={quest?.title ?? ""} className={field} />
       </label>
       <label className="flex flex-col gap-1 text-sm font-medium sm:col-span-2">
         Description
         <textarea name="description" rows={3} defaultValue={quest?.description ?? ""} className={field} />
-      </label>
-      <label className="flex flex-col gap-1 text-sm font-medium">
-        Type
-        <select name="type" defaultValue={quest?.type ?? "INDIVIDUAL"} className={field}>
-          <option value="INDIVIDUAL">Individuelle (chaque joueur·euse)</option>
-          <option value="TEAM">Équipe (une fois, validée par le·la capitaine)</option>
-        </select>
-      </label>
-      <label className="flex flex-col gap-1 text-sm font-medium">
-        Validation
-        <select name="kind" defaultValue={quest?.kind ?? "ACTION"} className={field}>
-          <option value="ACTION">Action (bouton « Fait ! », sur l&apos;honneur)</option>
-          <option value="LECTURE">Lecture (en rattachant un livre, ou deux graphiques)</option>
-        </select>
       </label>
       <label className="flex flex-col gap-1 text-sm font-medium">
         Points

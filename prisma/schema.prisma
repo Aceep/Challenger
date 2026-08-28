@@ -26,13 +26,14 @@ model User {
   role          Role      @default(PLAYER)
   createdAt     DateTime  @default(now())
 
-  accounts   Account[]
-  sessions   Session[]
-  membership TeamMember?
-  captainOf  Team[]      @relation("TeamCaptain")
-  books      Book[]
-  questCompletions QuestCompletion[]
-  ballots    VoteBallot[]
+  accounts    Account[]
+  sessions    Session[]
+  membership  TeamMember?
+  captainOf   Team[]       @relation("TeamCaptain")
+  books       Book[]
+  editedBooks Book[]       @relation("BookEditor")
+  deputyOf    Team[]       @relation("TeamDeputy")
+  ballots     VoteBallot[]
 }
 
 model Account {
@@ -92,6 +93,8 @@ model Challenge {
   bingoFullBonus          Int             @default(100)
   discordGuildId          String?
   discordGeneralChannelId String?
+  /// Last Sunday leaderboard post (catch-up logic)
+  lastWeeklyPostAt        DateTime?
   createdAt               DateTime        @default(now())
 
   teams      Team[]
@@ -102,21 +105,28 @@ model Challenge {
 }
 
 model Team {
-  id               String   @id @default(cuid())
-  challengeId      String
-  name             String
-  color            String   @default("#6366f1")
-  captainId        String?
-  /// Team channel for story votes and announcements
-  discordChannelId String?
+  id                      String   @id @default(cuid())
+  challengeId             String
+  name                    String
+  color                   String   @default("#6366f1")
+  captainId               String?
+  /// Adjoint: second in the story tie-break cascade
+  deputyId                String?
+  /// Jokers bought so far (jokers deferred, field prepared)
+  jokersUsed              Int      @default(0)
+  /// Team "aventure" channel for story votes and announcements
+  discordChannelId        String?
   /// Team "librairie" channel where /ajouter-un-livre and /modifier-un-livre are allowed
   discordLibraryChannelId String?
-  createdAt        DateTime @default(now())
+  createdAt               DateTime @default(now())
 
-  challenge   Challenge    @relation(fields: [challengeId], references: [id], onDelete: Cascade)
-  captain     User?        @relation("TeamCaptain", fields: [captainId], references: [id])
-  members     TeamMember[]
-  invites     Invite[]
+  challenge        Challenge         @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  captain          User?             @relation("TeamCaptain", fields: [captainId], references: [id])
+  deputy           User?             @relation("TeamDeputy", fields: [deputyId], references: [id])
+  members          TeamMember[]
+  books            Book[]
+  grids            TeamGrid[]
+  invites          Invite[]
   pointEvents      PointEvent[]
   modifiers        Modifier[]
   bingoFills       BingoFill[]
@@ -158,46 +168,79 @@ model Invite {
   @@unique([challengeId, discordId])
 }
 
+/// ROMAN = full credit; GRAPHIQUE = half points (<150 p.) and ½ credit for quests/cells.
+enum BookType {
+  ROMAN
+  GRAPHIQUE
+}
+
+/// A reading ("lecture"). Team is frozen at creation; points are computed and stored.
 model Book {
-  id         String   @id @default(cuid())
-  userId     String
-  title      String
-  author     String
-  pages      Int
-  /// BD / manga / roman graphique: counts as half a book for quests and bingo cells.
-  isGraphic  Boolean  @default(false)
-  finishedAt DateTime @default(now())
-  createdAt  DateTime @default(now())
+  id          String    @id @default(cuid())
+  userId      String
+  /// Frozen at creation: a team change never moves points retroactively.
+  teamId      String?
+  title       String
+  author      String
+  pages       Int
+  /// Declared by the player (BD, manga, roman graphique).
+  isGraphic   Boolean   @default(false)
+  /// Effective type: GRAPHIQUE when declared or when pages < 150.
+  type        BookType  @default(ROMAN)
+  /// Reading points, computed once and stored (rules may evolve).
+  points      Decimal   @default(0) @db.Decimal(6, 1)
+  finishedAt  DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now()) @updatedAt
+  updatedById String?
+  /// Soft delete (needed for cell/quest rollback history)
+  deletedAt   DateTime?
 
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team        Team?        @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  updatedBy   User?        @relation("BookEditor", fields: [updatedById], references: [id], onDelete: SetNull)
   pointEvents PointEvent[]
   bingoFill   BingoFill?
   questBook   QuestBook?
 
   @@index([userId])
+  @@index([teamId, deletedAt])
 }
 
 // ---------------------------------------------------------------------------
-// Bingo — one grid definition per scope; fills are per player or per team
+// Bingo — an ordered series of grids shared by all teams; each team plays one
+// grid at a time and unlocks the next once every cell is validated.
 // ---------------------------------------------------------------------------
-
-enum BingoScope {
-  PLAYER
-  TEAM
-}
 
 model BingoGrid {
-  id          String     @id @default(cuid())
+  id          String   @id @default(cuid())
   challengeId String
-  scope       BingoScope
+  /// Position in the series (1, 2, 3…)
+  order       Int
   title       String
-  size        Int        @default(5)
-  createdAt   DateTime   @default(now())
+  size        Int      @default(5)
+  createdAt   DateTime @default(now())
 
   challenge Challenge   @relation(fields: [challengeId], references: [id], onDelete: Cascade)
   cells     BingoCell[]
+  fills     BingoFill[]
+  teamGrids TeamGrid[]
 
-  @@unique([challengeId, scope])
+  @@unique([challengeId, order])
+}
+
+/// A team's progression on a grid: opened when it becomes active, completed when all cells are validated.
+model TeamGrid {
+  id          String    @id @default(cuid())
+  teamId      String
+  gridId      String
+  openedAt    DateTime  @default(now())
+  completedAt DateTime?
+
+  team Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  grid BingoGrid @relation(fields: [gridId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, gridId])
 }
 
 model BingoCell {
@@ -217,44 +260,36 @@ model BingoCell {
 model BingoFill {
   id        String   @id @default(cuid())
   cellId    String
+  gridId    String
   bookId    String   @unique
   teamId    String
   createdAt DateTime @default(now())
 
   cell BingoCell @relation(fields: [cellId], references: [id], onDelete: Cascade)
+  grid BingoGrid @relation(fields: [gridId], references: [id], onDelete: Cascade)
   book Book      @relation(fields: [bookId], references: [id], onDelete: Cascade)
   team Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
   @@index([cellId, teamId])
+  @@index([gridId, teamId])
 }
 
 // ---------------------------------------------------------------------------
-// Quests — honor-system missions, team-wide or per player
+// Quests — team-level reading prompts, validated by attaching readings
 // ---------------------------------------------------------------------------
-
-enum QuestType {
-  TEAM
-  INDIVIDUAL
-}
 
 enum QuestOrigin {
   ADMIN
   STORY
 }
 
-/// ACTION = validated with a button (honor system); LECTURE = completed by attaching book(s).
-enum QuestKind {
-  ACTION
-  LECTURE
-}
-
 model Quest {
   id           String      @id @default(cuid())
   challengeId  String
+  /// Display number (#1, #2…) used in commands
+  number       Int
   title        String
   description  String      @default("")
-  type         QuestType
-  kind         QuestKind   @default(ACTION)
   points       Int
   openAt       DateTime?
   closeAt      DateTime?
@@ -268,10 +303,10 @@ model Quest {
   completions QuestCompletion[]
   books       QuestBook[]
 
-  @@index([challengeId])
+  @@unique([challengeId, number])
 }
 
-/// A book attached to a LECTURE quest. One quest per book.
+/// A reading attached to a quest (½ credit per graphique). One quest per reading.
 model QuestBook {
   id        String   @id @default(cuid())
   questId   String
@@ -287,20 +322,17 @@ model QuestBook {
   @@index([questId, userId])
 }
 
-/// Exactly one of userId (individual) / teamId (team) is set.
+/// A quest validated by a team (derived from attached readings; kept for the ledger).
 model QuestCompletion {
   id            String   @id @default(cuid())
   questId       String
-  userId        String?
-  teamId        String?
+  teamId        String
   completedById String
   createdAt     DateTime @default(now())
 
   quest Quest @relation(fields: [questId], references: [id], onDelete: Cascade)
-  user  User? @relation(fields: [userId], references: [id], onDelete: Cascade)
-  team  Team? @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  team  Team  @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
-  @@unique([questId, userId])
   @@unique([questId, teamId])
 }
 
@@ -309,13 +341,13 @@ model QuestCompletion {
 // ---------------------------------------------------------------------------
 
 model Story {
-  id             String   @id @default(cuid())
-  challengeId    String   @unique
-  title          String
+  id          String   @id @default(cuid())
+  challengeId String   @unique
+  title       String
   /// Hours a vote stays open before auto-resolution
-  voteHours      Int      @default(48)
-  startNodeId    String?
-  createdAt      DateTime @default(now())
+  voteHours   Int      @default(48)
+  startNodeId String?
+  createdAt   DateTime @default(now())
 
   challenge Challenge   @relation(fields: [challengeId], references: [id], onDelete: Cascade)
   nodes     StoryNode[]
@@ -332,13 +364,17 @@ model StoryNode {
   requiredQuestId    String?
   requiredBingoLines Int?
   requiredPoints     Int?
+  /// Vote duration override (hours); falls back to Story.voteHours
+  voteHours          Int?
+  /// Choice applied when the vote expires without a result
+  defaultChoiceId    String?
 
-  story       Story         @relation(fields: [storyId], references: [id], onDelete: Cascade)
-  choices     StoryChoice[] @relation("NodeChoices")
-  incoming    StoryChoice[] @relation("ChoiceTarget")
-  teamStates  TeamStoryState[]
-  votes       Vote[]
-  visits      StoryVisit[]
+  story      Story            @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  choices    StoryChoice[]    @relation("NodeChoices")
+  incoming   StoryChoice[]    @relation("ChoiceTarget")
+  teamStates TeamStoryState[]
+  votes      Vote[]
+  visits     StoryVisit[]
 
   @@index([storyId, sortOrder])
 }
@@ -354,8 +390,8 @@ model StoryChoice {
   effects         Json    @default("[]")
   sortOrder       Int     @default(0)
 
-  node    StoryNode  @relation("NodeChoices", fields: [nodeId], references: [id], onDelete: Cascade)
-  target  StoryNode? @relation("ChoiceTarget", fields: [targetNodeId], references: [id], onDelete: SetNull)
+  node    StoryNode    @relation("NodeChoices", fields: [nodeId], references: [id], onDelete: Cascade)
+  target  StoryNode?   @relation("ChoiceTarget", fields: [targetNodeId], references: [id], onDelete: SetNull)
   ballots VoteBallot[]
   votes   Vote[]
 
@@ -372,11 +408,11 @@ model TeamStoryState {
 }
 
 model StoryVisit {
-  id        String   @id @default(cuid())
-  teamId    String
-  nodeId    String
+  id          String   @id @default(cuid())
+  teamId      String
+  nodeId      String
   choiceLabel String?
-  arrivedAt DateTime @default(now())
+  arrivedAt   DateTime @default(now())
 
   team Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
   node StoryNode @relation(fields: [nodeId], references: [id], onDelete: Cascade)
@@ -390,6 +426,14 @@ enum VoteStatus {
   RESOLVED
 }
 
+/// Tie-break cascade: captain (5 h) → deputy (5 h) → any member + admin confirmation
+enum TieStage {
+  NONE
+  CAPTAIN
+  DEPUTY
+  ANY
+}
+
 model Vote {
   id               String     @id @default(cuid())
   teamId           String
@@ -397,6 +441,11 @@ model Vote {
   status           VoteStatus @default(OPEN)
   deadline         DateTime
   resultChoiceId   String?
+  tieStage         TieStage   @default(NONE)
+  tieSince         DateTime?
+  /// Choice proposed by a member at stage ANY, pending admin confirmation
+  pendingChoiceId  String?
+  pendingById      String?
   /// Rival team chosen by the captain for hostile/alliance effects
   targetTeamId     String?
   discordMessageId String?
@@ -450,19 +499,19 @@ enum PointSource {
 }
 
 model PointEvent {
-  id        String      @id @default(cuid())
-  teamId    String
-  userId    String?
-  source    PointSource
+  id         String      @id @default(cuid())
+  teamId     String
+  userId     String?
+  source     PointSource
   /// Final amount after multipliers, may be negative (undo, steal)
-  amount    Int
+  amount     Decimal     @db.Decimal(8, 1)
   /// Amount before multiplier, for audit
-  baseAmount Int
-  multiplier Float      @default(1)
-  label     String
-  bookId    String?
-  refId     String?
-  createdAt DateTime    @default(now())
+  baseAmount Decimal     @db.Decimal(8, 1)
+  multiplier Float       @default(1)
+  label      String
+  bookId     String?
+  refId      String?
+  createdAt  DateTime    @default(now())
 
   team Team  @relation(fields: [teamId], references: [id], onDelete: Cascade)
   book Book? @relation(fields: [bookId], references: [id], onDelete: SetNull)
@@ -483,4 +532,10 @@ model Modifier {
   team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
   @@index([teamId, startAt, endAt])
+}
+
+/// Idempotency marks for bot announcements (window open/close, weekly post, dormant reminders…).
+model BotEvent {
+  key       String   @id
+  createdAt DateTime @default(now())
 }

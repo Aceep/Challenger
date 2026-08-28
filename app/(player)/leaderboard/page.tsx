@@ -1,5 +1,6 @@
 import { LiveRefresh } from "@/components/LiveRefresh";
 import { getActiveChallenge, getCurrentPlayer } from "@/lib/dal";
+import { fmtPoints } from "@/lib/format";
 import { getLeaderboard } from "@/lib/services/leaderboard";
 
 const MEDALS = ["🥇", "🥈", "🥉"];
@@ -31,7 +32,7 @@ export default async function LeaderboardPage() {
         <section className="rounded-2xl bg-gradient-to-br from-amber-200 to-amber-400 p-5 text-center text-amber-950 shadow">
           <p className="text-sm uppercase tracking-wide">Vainqueur</p>
           <p className="text-3xl font-black">🏆 {rows[0].name}</p>
-          <p className="text-sm">{rows[0].points} pts · {rows[0].books} livres</p>
+          <p className="text-sm">{fmtPoints(rows[0].points)} pts · {rows[0].books} romans</p>
         </section>
       )}
       <ol className="flex flex-col gap-2">
@@ -43,14 +44,17 @@ export default async function LeaderboardPage() {
             }`}
             style={{ borderLeftColor: r.color }}
           >
-            <span className="w-8 text-center text-xl">{MEDALS[r.rank - 1] ?? r.rank}</span>
+            <span className="w-8 text-center text-xl" title={rows.filter((o) => o.rank === r.rank).length > 1 ? "ex æquo" : undefined}>{MEDALS[r.rank - 1] ?? r.rank}</span>
             <div className="min-w-0 flex-1">
-              <p className="truncate font-semibold">{r.name}</p>
+              <p className="truncate font-semibold">
+                {r.name}
+                {rows.filter((o) => o.rank === r.rank).length > 1 && <span className="ml-1 text-xs font-normal text-slate-500">ex æquo</span>}
+              </p>
               <p className="text-xs text-slate-500">
-                {r.members} membre{r.members > 1 ? "s" : ""} · {r.books} livre{r.books > 1 ? "s" : ""} · {r.graphics} graphique{r.graphics > 1 ? "s" : ""}
+                {r.members} membre{r.members > 1 ? "s" : ""} · {r.books} roman{r.books > 1 ? "s" : ""} · {r.graphics} graphique{r.graphics > 1 ? "s" : ""}
               </p>
             </div>
-            <span className="text-lg font-bold">{r.points} pts</span>
+            <span className="text-lg font-bold">{fmtPoints(r.points)} pts</span>
           </li>
         ))}
       </ol>

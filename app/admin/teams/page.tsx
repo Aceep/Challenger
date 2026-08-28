@@ -1,7 +1,7 @@
 import { getActiveChallenge } from "@/lib/dal";
 import { listTeamsWithMembers } from "@/lib/services/admin";
 import { TeamForm } from "./TeamForm";
-import { deleteTeamAction, setCaptainAction, updateTeamAction } from "./actions";
+import { deleteTeamAction, setCaptainAction, setDeputyAction, updateTeamAction } from "./actions";
 
 const field =
   "rounded-lg border border-slate-300 bg-white px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-900";
@@ -25,7 +25,7 @@ export default async function AdminTeamsPage() {
                   <input type="hidden" name="teamId" value={t.id} />
                   <input name="name" defaultValue={t.name} required className={`${field} font-semibold`} />
                   <input name="color" type="color" defaultValue={t.color} className="h-8 w-12 cursor-pointer rounded" />
-                  <input name="discordChannelId" defaultValue={t.discordChannelId ?? ""} placeholder="Salon histoire/votes (id)" className={field} />
+                  <input name="discordChannelId" defaultValue={t.discordChannelId ?? ""} placeholder="Salon aventure (id)" className={field} />
                   <input name="discordLibraryChannelId" defaultValue={t.discordLibraryChannelId ?? ""} placeholder="Salon librairie (id)" className={field} />
                   <button className="text-sm underline">Enregistrer</button>
                 </form>
@@ -38,6 +38,7 @@ export default async function AdminTeamsPage() {
                     <span key={m.userId} className="rounded-full bg-slate-100 px-2 py-0.5 dark:bg-slate-800">
                       {m.user.name ?? m.user.discordId}
                       {t.captainId === m.userId && " ⭐"}
+                      {t.deputyId === m.userId && " 🎖️"}
                     </span>
                   ))}
                 </div>
@@ -49,6 +50,21 @@ export default async function AdminTeamsPage() {
                       Capitaine{" "}
                       <select name="userId" defaultValue={t.captainId ?? ""} className={field}>
                         <option value="">— aucun —</option>
+                        {t.members.map((m) => (
+                          <option key={m.userId} value={m.userId}>
+                            {m.user.name ?? m.user.discordId}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button className="underline">OK</button>
+                  </form>
+                  <form action={setDeputyAction} className="flex items-center gap-2 text-sm">
+                    <input type="hidden" name="teamId" value={t.id} />
+                    <label>
+                      Adjoint·e{" "}
+                      <select name="userId" defaultValue={t.deputyId ?? ""} className={field}>
+                        <option value="">— aucun·e —</option>
                         {t.members.map((m) => (
                           <option key={m.userId} value={m.userId}>
                             {m.user.name ?? m.user.discordId}

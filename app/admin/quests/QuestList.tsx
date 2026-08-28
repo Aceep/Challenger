@@ -19,9 +19,9 @@ export function QuestList({ quests, teams }: { quests: Row[]; teams: { id: strin
         ) : (
           <li key={q.id} className="flex items-start justify-between gap-3 rounded-xl bg-white p-4 shadow-sm dark:bg-slate-900">
             <div className="min-w-0">
-              <p className="font-semibold">{q.title}</p>
+              <p className="font-semibold">#{q.number} — {q.title}</p>
               <p className="text-xs text-slate-500">
-                {q.type === "TEAM" ? "Équipe" : "Individuelle"} · {q.kind === "LECTURE" ? "📖 lecture" : "🎯 action"} · {q.points} pts
+                {q.points} pts
                 {q.targetTeamName && ` · réservée à ${q.targetTeamName}`}
                 {q.closeAt && ` · ferme le ${q.closeAt.replace("T", " ")}`}
                 {q.origin === "STORY" && " · issue de l'histoire"} · {q.completions} validation{q.completions > 1 ? "s" : ""}

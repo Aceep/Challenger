@@ -111,8 +111,8 @@ export async function announceQuest(questId: string) {
   await postMessage(channel, {
     embeds: [
       {
-        title: `🗺️ Nouvelle quête : ${q.title}`,
-        description: `${q.description || ""}\n\n${q.type === "TEAM" ? "Quête d'équipe" : "Quête individuelle"} · **${q.points} pts**${q.closeAt ? ` · jusqu'au <t:${Math.floor(q.closeAt.getTime() / 1000)}:F>` : ""}`,
+        title: `🗺️ Nouvelle quête #${q.number} : ${q.title}`,
+        description: `${q.description || ""}\n\nQuête d'équipe, à valider avec une lecture (option *quete* de \`/ajouter-un-livre\`) · **${q.points} pts**${q.closeAt ? ` · jusqu'au <t:${Math.floor(q.closeAt.getTime() / 1000)}:F>` : ""}`,
         color: COLOR.quest,
         url: `${appUrl()}/quests`,
       },
@@ -126,5 +126,21 @@ export async function announceRankChange(challengeId: string, before: { teamId: 
   const challenge = await prisma.challenge.findUnique({ where: { id: challengeId } });
   await postMessage(challenge?.discordGeneralChannelId, {
     embeds: [{ title: "🏆 Changement de leader !", description: `**${after[0].name}** passe devant **${before[0].name}**.`, color: COLOR.rank, url: `${appUrl()}/leaderboard` }],
+  });
+}
+
+/** Posted in the team's aventure channel when it finishes a grid (and the next one opens). */
+export async function announceGridChange(teamId: string, grid: { completed: true; next: { order: number; title: string } | null }) {
+  const team = await prisma.team.findUnique({ where: { id: teamId } });
+  if (!team) return;
+  await postMessage(team.discordChannelId, {
+    embeds: [
+      {
+        title: "🏆 Grille de bingo terminée !",
+        description: grid.next ? `Toutes les cases sont validées. La grille ${grid.next.order} « ${grid.next.title} » est ouverte : à vous de jouer !` : "Toutes les cases sont validées — et c'était la dernière grille. Bravo !",
+        color: COLOR.rank,
+        url: `${appUrl()}/bingo`,
+      },
+    ],
   });
 }
