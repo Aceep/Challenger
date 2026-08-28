@@ -12,6 +12,7 @@ export default async function DemoAdminChallengePage({ searchParams }: PageProps
       params={params}
       saveChallengeAction={demoStateAction}
       setupDiscordAction={demoAction.bind(null, "/demo/admin/challenge")}
+      switchAction={demoAction.bind(null, "/demo/admin/challenge")}
       demo
     />
   );
