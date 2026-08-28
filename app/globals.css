@@ -1162,3 +1162,48 @@ button[aria-busy="true"] {
 @media (prefers-reduced-motion: reduce) {
   .skel, .spinner { animation: none; }
 }
+
+/* --- modal ------------------------------------------------------------------ */
+.modal {
+  border: 0;
+  border-radius: 18px;
+  padding: 0;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+  max-height: calc(100dvh - 32px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.modal:not([open]) { display: none; }
+.modal::backdrop { background: rgba(20, 21, 24, 0.55); backdrop-filter: blur(2px); }
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 22px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.modal-head h2 { font-size: 20px; }
+.modal-x {
+  border: 0;
+  background: var(--surface-2);
+  color: var(--muted);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-weight: 800;
+}
+.modal-x:hover { color: var(--ink); }
+.modal-body { padding: 18px 22px 22px; overflow-y: auto; }
+.modal-confirm {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(20, 21, 24, 0.45);
+}
+.modal-confirm .card { max-width: 420px; border: 1.5px solid var(--kyle-deep); }
