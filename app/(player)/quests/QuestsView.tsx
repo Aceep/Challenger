@@ -1,4 +1,5 @@
-import { Button, Card, Eyebrow, KyleEmpty, Pill, ProgressBar } from "@/components/ui";
+import { Button, Card, KyleEmpty, PageTitle, Pill, ProgressBar, SectionHeading } from "@/components/ui";
+import { PlusIcon } from "@/components/ui/icons";
 
 export type QuestRow = {
   id: string;
@@ -28,42 +29,50 @@ export type QuestsViewProps = {
 const dateFmt = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
 function QuestCard({ q, teamColor, prefix, canAdd }: { q: QuestRow; teamColor: string; prefix: string; canAdd: boolean }) {
-  const style = q.fromStory ? { border: `1.5px solid ${teamColor}` } : undefined;
   return (
     <li>
-      <Card className={`quest ${q.open ? "" : "opacity-70"}`} style={style}>
+      <Card
+        tier="flat"
+        className={`quest ${q.fromStory ? "story" : ""} ${q.open ? "" : "closed"}`}
+        style={q.fromStory ? ({ "--team": teamColor } as React.CSSProperties) : undefined}
+      >
         <div className="head">
           <p className="n">
             <span className="no">#{q.number}</span>
             {q.title}
           </p>
           {q.done ? (
-            <Pill tone="ok">validée</Pill>
+            <Pill stamp tone="ok">
+              validée
+            </Pill>
           ) : q.fromStory ? (
-            <Pill tone="no">imposée par l&apos;histoire</Pill>
+            <Pill stamp tone="no">
+              imposée par l’histoire
+            </Pill>
           ) : !q.open && q.openAt ? (
             <Pill tone="type">ouvre le {dateFmt.format(q.openAt)}</Pill>
           ) : canAdd ? (
-            <Button href={`${prefix}/books/new`} small>
-              + Lecture
+            <Button href={`${prefix}/books/new`} size="sm">
+              <PlusIcon />
+              Lecture
             </Button>
           ) : null}
         </div>
         {q.open && <ProgressBar ratio={q.progress} half={q.progress > 0 && q.progress < 1} />}
         {q.linkedBooks.length > 0 ? (
-          <p className={`text-xs font-bold ${q.done ? "text-[color:var(--olive)]" : "text-[color:var(--muted)]"}`}>
-            {q.linkedBooks.map((b) => `${b.owner} — ${b.title}${b.type === "GRAPHIQUE" ? " (½)" : ""}`).join(" / ")}
-            {q.done ? ` · +${q.points} pts` : " · en attente de la seconde moitié"}
+          <p className="meta" style={q.done ? { color: "var(--olive-ink)" } : undefined}>
+            {q.linkedBooks.map((b) => `${b.owner} — ${b.title}${b.type === "GRAPHIQUE" ? " ½" : ""}`).join(" / ")}
+            {q.done ? ` · +${q.points} pts` : " · en attente de la seconde moitié"}
           </p>
         ) : (
-          <p className="text-xs text-[color:var(--muted)]">
-            {q.points} pts
+          <p className="meta">
+            {q.points} pts
             {q.forMyTeam && " · spéciale pour ton équipe"}
-            {q.closeAt && ` · jusqu'au ${dateFmt.format(q.closeAt)}`}
+            {q.closeAt && ` · jusqu’au ${dateFmt.format(q.closeAt)}`}
             {q.open && " · se valide avec un roman, ou deux graphiques"}
           </p>
         )}
-        {q.description && <p className="whitespace-pre-line text-sm text-[color:var(--muted)]">{q.description}</p>}
+        {q.description && <p className="meta whitespace-pre-line">{q.description}</p>}
       </Card>
     </li>
   );
@@ -76,8 +85,8 @@ export function QuestsView({ quests, hasChallenge, hasTeam, teamColor, demo }: Q
   const closed = quests.filter((q) => !q.open);
 
   return (
-    <main className="flex flex-1 flex-col gap-5 p-5">
-      <h1>Quêtes</h1>
+    <main className="flex flex-1 flex-col gap-6 p-5">
+      <PageTitle>Quêtes</PageTitle>
       <div data-tour="quests-list">
         {!hasChallenge ? (
           <KyleEmpty>Aucun défi actif.</KyleEmpty>
@@ -93,8 +102,8 @@ export function QuestsView({ quests, hasChallenge, hasTeam, teamColor, demo }: Q
       </div>
 
       {closed.length > 0 && (
-        <section className="flex flex-col gap-2.5">
-          <Eyebrow>Fermées / à venir</Eyebrow>
+        <section className="section">
+          <SectionHeading>Fermées / à venir</SectionHeading>
           <ul className="list">
             {closed.map((q) => (
               <QuestCard key={q.id} q={q} teamColor={teamColor} prefix={prefix} canAdd={false} />

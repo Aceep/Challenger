@@ -2,9 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { Kyle } from "@/components/ui/Kyle";
+import { AlertIcon, CloseIcon } from "@/components/ui/icons";
 import { Confetti } from "@/components/Confetti";
 
-const WIN = /ligne de bingo|grille terminée|validée ✅/;
+const WIN = /ligne de bingo|grille terminée|validée/;
+
+/**
+ * Service messages are shared with the Discord bot, where emoji carry the tone.
+ * On screen the toast draws its own icon, so they are dropped here rather than
+ * in `lib/services` — the wording is untouched.
+ */
+const DECORATION = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]\s?/gu;
 
 /**
  * Action feedback: slides in, Kyle reacts (hop on success, shake on error), success
@@ -33,9 +41,10 @@ export function Toast({ tone, text }: { tone: "ok" | "err"; text: string }) {
       <span className={`kyle-react ${tone === "ok" ? "hop" : "shake"}`} aria-hidden>
         <Kyle width={34} />
       </span>
-      <span className="flex-1">{tone === "err" ? "⚠️ " : ""}{text}</span>
+      {tone === "err" && <AlertIcon />}
+      <span className="flex-1">{text.replace(DECORATION, "").trim()}</span>
       <button type="button" onClick={() => setShown(false)} className="toast-x" aria-label="Fermer le message">
-        ✕
+        <CloseIcon />
       </button>
       {win && <Confetti />}
     </div>

@@ -38,7 +38,7 @@ export async function breakTieAction(formData: FormData) {
   await withFlash("/story", async () => {
     const result = await breakTie(voteId, user.id, choiceId);
     if (result) after(() => announceResolution(result));
-    return result ? "Égalité tranchée." : "Choix proposé, en attente de la confirmation d'un·e admin.";
+    return result ? "Égalité tranchée." : "Choix proposé, en attente de la confirmation d’un·e admin.";
   }, PATHS);
 }
 
