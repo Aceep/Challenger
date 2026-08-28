@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import { announceDormant, announceResolution, announceTieStage, announceWeekly, announceWindow } from "@/lib/discord/events";
 import { once } from "@/lib/services/bot-events";
+import { purgeExpiredPendingReadings } from "@/lib/services/pending-reading";
 import { syncQuestions } from "@/lib/services/questions";
 import { advanceTieStages, dormantTeams, resolveExpiredVotes } from "@/lib/services/story";
 import { dueSundayKey, isVerificationWindow, parisClock, parisInstant, sundayKey } from "@/lib/time/paris";
@@ -29,6 +30,7 @@ export async function runTick(now = new Date(), onlyChallengeId?: string) {
     tieStages: 0,
     dormant: 0,
     synced: 0,
+    pending: 0,
   };
   const { weekday, hour } = parisClock(now);
 
@@ -71,6 +73,13 @@ export async function runTick(now = new Date(), onlyChallengeId?: string) {
     } catch (e) {
       console.error("[faq] sync failed", challenge.id, e);
     }
+  }
+
+  // Discord « J'ai fini un livre » forms nobody came back to (never fatal).
+  try {
+    out.pending = await purgeExpiredPendingReadings(now);
+  } catch (e) {
+    console.error("[pending] purge failed", e);
   }
   return out;
 }
