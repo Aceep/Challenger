@@ -1,8 +1,9 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { SLASH_COMMANDS } from "@/lib/discord/commands";
-import { libraryWelcomeMessage, welcomeMessage } from "@/lib/discord/help";
+import { welcomeMessage } from "@/lib/discord/help";
 import { channelSlug, generalOverwrites, hexToInt, teamOverwrites } from "@/lib/discord/permissions";
+import { publishTeamGuide } from "@/lib/services/team-guide";
 import {
   addMemberRole,
   createChannel,
@@ -236,11 +237,21 @@ export async function setupGuild(challengeId: string): Promise<SetupSummary> {
   return out;
 }
 
-type WelcomeTeam = { id: string; name: string; color: string; discordChannelId: string | null; discordLibraryChannelId: string | null };
+type WelcomeTeam = {
+  id: string;
+  challengeId: string;
+  name: string;
+  color: string;
+  discordChannelId: string | null;
+  discordLibraryChannelId: string | null;
+  discordGuideMessageId: string | null;
+};
 
 /**
- * Posts and pins Kyle's welcome in the team salons. Idempotent through
- * `BotEvent`, so re-running the setup never duplicates it.
+ * Posts and pins Kyle's welcome in the team salons: the *aventure* one is
+ * posted once (`BotEvent`), the *librairie* one is the guide card, whose
+ * idempotency mark is `Team.discordGuideMessageId` — an organiser can refresh
+ * it at will from Admin › Équipes.
  */
 export async function postWelcome(team: WelcomeTeam): Promise<boolean> {
   const color = hexToInt(team.color);
@@ -255,14 +266,15 @@ export async function postWelcome(team: WelcomeTeam): Promise<boolean> {
         if (id) await pinMessage(channelId, id);
       })) || posted;
   }
-  if (team.discordLibraryChannelId) {
-    const channelId = team.discordLibraryChannelId;
-    posted =
-      (await once(`welcome-library:${team.id}:${channelId}`, async () => {
-        const embed = libraryWelcomeMessage(team);
-        const id = await postMessage(channelId, { embeds: [{ ...embed, color }] });
-        if (id) await pinMessage(channelId, id);
-      })) || posted;
+  if (team.discordLibraryChannelId && !team.discordGuideMessageId) {
+    // Best-effort like the rest of the bootstrap: a Discord hiccup must not
+    // abort the setup, the organiser can retry with « Publier le guide ».
+    try {
+      await publishTeamGuide(team.challengeId, team.id);
+      posted = true;
+    } catch (e) {
+      console.error(`[discord] guide de ${team.name}`, e);
+    }
   }
   return posted;
 }

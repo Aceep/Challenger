@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Card, KyleEmpty, Pill } from "@/components/ui";
 import { DataTable } from "@/components/ui/DataTable";
+import { SubmitButton } from "@/components/ui/SubmitButton";
 import { Flash } from "@/components/Flash";
 import { teamDiscordReady } from "@/lib/discord/permissions";
 import { fmtPoints } from "@/lib/format";
@@ -21,6 +22,8 @@ export type AdminTeamRow = {
   libraryChannel: string | null;
   /** Discord role carried by the team members (created by the bot setup). */
   discordRole: string | null;
+  /** The pinned guide card is published in the librairie. */
+  guidePublished: boolean;
   gridLabel: string;
   points: number;
 };
@@ -37,6 +40,7 @@ export type TeamsViewProps = {
   deleteTeamAction: (formData: FormData) => Promise<void>;
   setCaptainAction: (formData: FormData) => Promise<void>;
   setDeputyAction: (formData: FormData) => Promise<void>;
+  publishGuideAction: (formData: FormData) => Promise<void>;
 };
 
 /** Admin › Équipes — pure view, reused by /demo/admin. */
@@ -51,6 +55,7 @@ export function TeamsView({
   deleteTeamAction,
   setCaptainAction,
   setDeputyAction,
+  publishGuideAction,
 }: TeamsViewProps) {
   const base = demo ? "/demo/admin/teams" : "/admin/teams";
   const editing = teams.find((t) => t.id === editingId) ?? null;
@@ -89,20 +94,35 @@ export function TeamsView({
                   <td>{t.captain ?? <Pill tone="no">à nommer</Pill>}</td>
                   <td>{t.deputy ?? <Pill tone="no">à nommer</Pill>}</td>
                   <td>
-                    {teamDiscordReady({ discordRoleId: t.discordRole, discordChannelId: t.adventureChannel, discordLibraryChannelId: t.libraryChannel }) ? (
-                      <Pill tone="ok">rôle et salons ✓</Pill>
-                    ) : (
-                      <Link href={demo ? "/demo/admin/challenge" : "/admin/challenge"} className="underline">
-                        <Pill tone="no">à configurer</Pill>
-                      </Link>
-                    )}
+                    <div className="flex flex-wrap items-center gap-1">
+                      {teamDiscordReady({ discordRoleId: t.discordRole, discordChannelId: t.adventureChannel, discordLibraryChannelId: t.libraryChannel }) ? (
+                        <Pill tone="ok">rôle et salons ✓</Pill>
+                      ) : (
+                        <Link href={demo ? "/demo/admin/challenge" : "/admin/challenge"} className="underline">
+                          <Pill tone="no">à configurer</Pill>
+                        </Link>
+                      )}
+                      {t.guidePublished && (
+                        <Pill tone="ok" xs>
+                          guide publié
+                        </Pill>
+                      )}
+                    </div>
                   </td>
                   <td className="num">{t.gridLabel}</td>
                   <td className="num text-right font-extrabold">{fmtPoints(t.points)}</td>
                   <td>
-                    <Link href={`${base}?edit=${t.id}`} className="underline">
-                      Modifier
-                    </Link>
+                    <div className="flex flex-col items-start gap-2">
+                      <Link href={`${base}?edit=${t.id}`} className="underline">
+                        Modifier
+                      </Link>
+                      <form action={publishGuideAction}>
+                        <input type="hidden" name="teamId" value={t.id} />
+                        <SubmitButton className="btn small ghost whitespace-nowrap" pendingLabel="Publication…" disabled={!t.libraryChannel}>
+                          Publier le guide
+                        </SubmitButton>
+                      </form>
+                    </div>
                   </td>
                 </tr>
               ))}

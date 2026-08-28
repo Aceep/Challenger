@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { helpSections, helpText, libraryWelcomeMessage, welcomeMessage } from "./help";
+import { helpSections, helpText, welcomeMessage } from "./help";
 
 const TEAM = { name: "Les Hérissons", discordChannelId: "111", discordLibraryChannelId: "222" };
 
@@ -34,6 +34,7 @@ describe("aide et messages d'accueil", () => {
     expect(m.title).toContain("Les Hérissons");
     expect(m.description.length).toBeLessThanOrEqual(4096);
     expect(m.description).toContain("/ajouter-un-livre");
+    expect(m.description).toContain("J\u2019ai fini un livre");
     expect(m.description).toContain("<#222>");
   });
 
@@ -41,11 +42,5 @@ describe("aide et messages d'accueil", () => {
     const m = welcomeMessage({ name: "Kyle", discordChannelId: null, discordLibraryChannelId: null });
     expect(m.description.length).toBeLessThanOrEqual(4096);
     expect(m.description).not.toContain("<#");
-  });
-
-  it("rappelle les commandes dans la librairie", () => {
-    const m = libraryWelcomeMessage(TEAM);
-    expect(m.description).toContain("/ajouter-un-livre");
-    expect(m.description.length).toBeLessThanOrEqual(4096);
   });
 });

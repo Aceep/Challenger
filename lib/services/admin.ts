@@ -58,7 +58,7 @@ export const teamSchema = z.object({
 });
 
 /** Refuses to touch a team of another edition. */
-async function assertTeamOf(challengeId: string, teamId: string) {
+export async function assertTeamOf(challengeId: string, teamId: string) {
   const team = await prisma.team.findUnique({ where: { id: teamId }, select: { challengeId: true } });
   if (!team || team.challengeId !== challengeId) throw new GameError("Cette équipe n'appartient pas à ce défi");
 }

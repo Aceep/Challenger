@@ -822,6 +822,7 @@ export const DEMO_ADMIN_TEAMS: AdminTeamRow[] = DEMO_TEAMS.map((t, i) => ({
   libraryChannel: t.id === "demo-team-hiboux" ? null : `#librairie-${slug(t.id)}`,
   // Les Hiboux are the "not configured yet" case: no library salon, no role.
   discordRole: t.id === "demo-team-hiboux" ? null : `@${t.name}`,
+  guidePublished: t.id !== "demo-team-hiboux",
   gridLabel: i < 2 ? "2 / 4" : "1 / 4",
   points: t.points,
 }));
