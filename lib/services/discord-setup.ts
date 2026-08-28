@@ -276,7 +276,7 @@ export async function postWelcome(team: WelcomeTeam): Promise<boolean> {
 export async function syncMemberRoles(userId: string, challengeId: string): Promise<void> {
   try {
     if (!process.env.DISCORD_BOT_TOKEN) return;
-    const [user, member] = await Promise.all([
+    const [user, challengeMember] = await Promise.all([
       prisma.user.findUnique({ where: { id: userId }, select: { discordId: true } }),
       prisma.challengeMember.findUnique({ where: { challengeId_userId: { challengeId, userId } }, select: { role: true } }),
     ]);
@@ -292,7 +292,7 @@ export async function syncMemberRoles(userId: string, challengeId: string): Prom
     const want = new Set<string>();
     const mine = teams.find((t) => t.id === membership?.teamId);
     if (mine?.discordRoleId) want.add(mine.discordRoleId);
-    if (member?.role === "ORGANIZER" && challenge.discordAdminRoleId) want.add(challenge.discordAdminRoleId);
+    if (challengeMember?.role === "ORGANIZER" && challenge.discordAdminRoleId) want.add(challenge.discordAdminRoleId);
     if (managed.size === 0) return;
 
     const member = await getGuildMember(guildId, user.discordId);

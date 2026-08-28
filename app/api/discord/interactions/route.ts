@@ -1,6 +1,5 @@
 import { InteractionResponseType, InteractionType, verifyKey } from "discord-interactions";
 import { after, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
 import { announceGridChange, announceRankChange, announceResolution, syncVoteMessage } from "@/lib/discord/events";
 import { userMessage } from "@/lib/errors";
 import { fmtPoints } from "@/lib/format";
@@ -8,6 +7,7 @@ import { helpText } from "@/lib/discord/help";
 import { cellChoices, editableBookChoices, questChoices } from "@/lib/services/autocomplete";
 import { bookPatchSchema, bookSchema, deleteBook, describeResult, logBook, updateBook, type BookResult } from "@/lib/services/books";
 import { getLeaderboard, withLeaderWatch } from "@/lib/services/leaderboard";
+import { resolveDiscordActor } from "@/lib/services/membership";
 import { listQuestsForTeam } from "@/lib/services/quests";
 import { askQuestion } from "@/lib/services/questions";
 import { castBallot, getTeamStoryView } from "@/lib/services/story";
@@ -28,18 +28,14 @@ type Option = { name: string; value: string | number | boolean; focused?: boolea
 type Interaction = {
   type: number;
   channel_id?: string;
+  /** The Discord server the command was typed in: it decides which challenge answers. */
+  guild_id?: string;
   data?: { name?: string; custom_id?: string; options?: Option[] };
   member?: { user: { id: string; username: string } };
   user?: { id: string; username: string };
 };
 
 const appUrl = () => process.env.AUTH_URL ?? "https://challenger-aceepkyle.vercel.app";
-
-async function playerFromDiscord(discordId: string) {
-  const user = await prisma.user.findUnique({ where: { discordId }, include: { membership: { include: { team: { include: { challenge: true } } } } } });
-  if (!user) return null;
-  return { user, team: user.membership?.team ?? null };
-}
 
 function describe(username: string, r: BookResult, verb: string) {
   const head = `📚 **${username}** ${verb} *${r.book.title}* (${r.book.pages} p., ${r.book.type === "GRAPHIQUE" ? "graphique" : "roman"})${r.points ? ` → ${r.points > 0 ? "+" : ""}${fmtPoints(r.points)} pts` : ""}`;
@@ -63,18 +59,22 @@ export async function POST(request: Request) {
     return new NextResponse("bad request", { status: 400 });
   }
   if (interaction.type === InteractionType.PING) return NextResponse.json({ type: InteractionResponseType.PONG });
-  if (interaction.type !== InteractionType.APPLICATION_COMMAND_AUTOCOMPLETE) after(() => tickOnActivity());
+  const isAutocomplete = interaction.type === InteractionType.APPLICATION_COMMAND_AUTOCOMPLETE;
 
   const discordUser = interaction.member?.user ?? interaction.user;
   if (!discordUser) return ephemeral("Utilisateur inconnu.");
-  const player = await playerFromDiscord(discordUser.id);
-  if (!player) {
-    if (interaction.type === InteractionType.APPLICATION_COMMAND_AUTOCOMPLETE) return choices([]);
+  // The server decides the tenant: same bot, one challenge per Discord guild.
+  const resolved = await resolveDiscordActor(discordUser.id, interaction.guild_id ?? null);
+  if (resolved.kind !== "ok") {
+    if (isAutocomplete) return choices([]);
     if (interaction.data?.name === "help") return ephemeral(helpText(null));
+    if (resolved.kind === "no-challenge") return ephemeral("Ce serveur Discord n'est relié à aucun défi.");
+    if (resolved.kind === "not-member") return ephemeral("Tu n'es pas inscrit·e à ce défi : demande une invitation aux organisateur·ices.");
     return ephemeral(`Tu n'es pas encore inscrit·e : connecte-toi d'abord sur ${appUrl()}`);
   }
-  const { user, team } = player;
-  const actor = { id: user.id, role: user.role, teamId: team?.id ?? null, isCaptain: team?.captainId === user.id };
+  const { user, challenge, role, team } = resolved.actor;
+  if (!isAutocomplete) after(() => tickOnActivity(challenge.id));
+  const actor = { id: user.id, role, challengeId: challenge.id, teamId: team?.id ?? null, isCaptain: team?.captainId === user.id };
   const opts = Object.fromEntries((interaction.data?.options ?? []).map((o) => [o.name, o.value]));
   const libraryChannel = team?.discordLibraryChannelId ?? team?.discordChannelId ?? null;
   const inTeamChannel = !!libraryChannel && interaction.channel_id === libraryChannel;
@@ -87,11 +87,11 @@ export async function POST(request: Request) {
 
   try {
     // --- Autocomplete --------------------------------------------------------
-    if (interaction.type === InteractionType.APPLICATION_COMMAND_AUTOCOMPLETE) {
+    if (isAutocomplete) {
       const focused = interaction.data?.options?.find((o) => o.focused);
       const q = String(focused?.value ?? "");
       if (!team) return choices([]);
-      if (focused?.name === "quete") return choices(await questChoices(team.challengeId, team.id, q));
+      if (focused?.name === "quete") return choices(await questChoices(challenge.id, team.id, q));
       if (focused?.name === "case") return choices(await cellChoices(team.id, q));
       if (focused?.name === "livre") return choices(await editableBookChoices(actor, q));
       return choices([]);
@@ -125,8 +125,8 @@ export async function POST(request: Request) {
           cellId: opts.case ?? "",
         });
         if (!parsed.success) return ephemeral(`Paramètres invalides : ${parsed.error.issues[0]?.message}`);
-        const { result, before, after: top } = await withLeaderWatch(team?.challengeId, () => logBook(actor, parsed.data));
-        if (team) after(() => announceRankChange(team.challengeId, before, top));
+        const { result, before, after: top } = await withLeaderWatch(challenge.id, () => logBook(actor, parsed.data));
+        if (team) after(() => announceRankChange(challenge.id, before, top));
         if (team && result.cell?.grid) after(() => announceGridChange(team.id, result.cell!.grid!));
         return publicReply(describe(discordUser.username, result, "a terminé"));
       }
@@ -135,8 +135,8 @@ export async function POST(request: Request) {
         const bookId = String(opts.livre ?? "");
         if (!bookId) return ephemeral("Choisis un livre dans la liste.");
         if (opts.supprimer === true) {
-          const { before, after: top } = await withLeaderWatch(team?.challengeId, () => deleteBook(actor, bookId));
-          if (team) after(() => announceRankChange(team.challengeId, before, top));
+          const { before, after: top } = await withLeaderWatch(challenge.id, () => deleteBook(actor, bookId));
+          if (team) after(() => announceRankChange(challenge.id, before, top));
           return publicReply(`🗑️ **${discordUser.username}** a supprimé une lecture.`);
         }
         const patch = bookPatchSchema.safeParse({
@@ -149,21 +149,19 @@ export async function POST(request: Request) {
         });
         if (!patch.success) return ephemeral(`Paramètres invalides : ${patch.error.issues[0]?.message}`);
         if (Object.keys(patch.data).length === 0) return ephemeral("Indique au moins un champ à modifier.");
-        const { result, before, after: top } = await withLeaderWatch(team?.challengeId, () => updateBook(actor, bookId, patch.data));
-        if (team) after(() => announceRankChange(team.challengeId, before, top));
+        const { result, before, after: top } = await withLeaderWatch(challenge.id, () => updateBook(actor, bookId, patch.data));
+        if (team) after(() => announceRankChange(challenge.id, before, top));
         if (team && result.cell?.grid) after(() => announceGridChange(team.id, result.cell!.grid!));
         return publicReply(describe(discordUser.username, result, "a modifié"));
       }
       case "score": {
-        const challenge = team?.challenge ?? (await prisma.challenge.findFirst({ where: { status: "ACTIVE" } }));
-        if (!challenge) return ephemeral("Aucun défi actif.");
         const rows = await getLeaderboard(challenge.id);
         const medals = ["🥇", "🥈", "🥉"];
         return publicReply(`🏆 **Classement — ${challenge.name}**\n${rows.map((r) => `${medals[r.rank - 1] ?? `${r.rank}.`} **${r.name}**${rows.filter((o) => o.rank === r.rank).length > 1 ? " (ex æquo)" : ""} — ${fmtPoints(r.points)} pts (${r.books} romans, ${r.graphics} graphiques)`).join("\n")}`);
       }
       case "quete": {
         if (!team) return ephemeral("Rejoins une équipe d'abord.");
-        const quests = (await listQuestsForTeam(team.challengeId, team.id)).filter((q) => q.open);
+        const quests = (await listQuestsForTeam(challenge.id, team.id)).filter((q) => q.open);
         if (!quests.length) return ephemeral("Aucune quête ouverte.");
         return ephemeral(
           `🗺️ **Quêtes ouvertes — ${team.name}**\n${quests
@@ -184,7 +182,7 @@ export async function POST(request: Request) {
         );
       }
       case "question": {
-        const result = await askQuestion({ userId: user.id, title: String(opts.titre ?? ""), detail: opts.detail === undefined ? "" : String(opts.detail) });
+        const result = await askQuestion({ userId: user.id, challengeId: challenge.id, title: String(opts.titre ?? ""), detail: opts.detail === undefined ? "" : String(opts.detail) });
         return ephemeral(
           result.threadUrl
             ? `❓ Question publiée : ${result.threadUrl}`
