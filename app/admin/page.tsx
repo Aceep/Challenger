@@ -1,5 +1,6 @@
 import { getActiveChallenge, requireAdmin } from "@/lib/dal";
 import { prisma } from "@/lib/db";
+import { teamDiscordReady } from "@/lib/discord/permissions";
 import { cellLabel } from "@/lib/services/bingo";
 import { getLeaderboard } from "@/lib/services/leaderboard";
 import { num } from "@/lib/services/points";
@@ -50,16 +51,30 @@ export default async function AdminHome() {
     prisma.botEvent.findFirst({ where: { key: { startsWith: "weekly:" } }, orderBy: { createdAt: "desc" } }),
   ]);
 
-  const [rows, ties, dormant, pointSum] = challenge
+  const [rows, ties, dormant, pointSum, discordTeams] = challenge
     ? await Promise.all([
         getLeaderboard(challenge.id),
         tiedVotes(now),
         dormantTeams(7, now),
         prisma.pointEvent.aggregate({ where: { createdAt: { gte: challenge.startAt, lte: challenge.endAt } }, _sum: { amount: true } }),
+        prisma.team.findMany({ where: { challengeId: challenge.id }, select: { discordRoleId: true, discordChannelId: true, discordLibraryChannelId: true } }),
       ])
-    : [[], [], [], null];
+    : [[], [], [], null, []];
+
+  const discordMissing = discordTeams.filter((t) => !teamDiscordReady(t)).length;
 
   const todo: DashboardViewProps["todo"] = [
+    ...(challenge && discordMissing > 0
+      ? [
+          {
+            id: "discord",
+            tone: "no" as const,
+            icon: "🤖",
+            text: `Discord : ${discordMissing} équipe${discordMissing > 1 ? "s" : ""} sans rôle ni salons.`,
+            href: "/admin/challenge",
+          },
+        ]
+      : []),
     ...ties.map((t) => ({
       id: `tie-${t.id}`,
       tone: "wait" as const,

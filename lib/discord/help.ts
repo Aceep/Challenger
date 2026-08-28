@@ -56,3 +56,43 @@ export function helpText(team: { discordChannelId: string | null; discordLibrary
   });
   return `${sections.map((s) => `**${s.title}**\n${s.lines.map((l) => `• ${l}`).join("\n")}`).join("\n\n")}\n\n🌐 Tout est aussi sur le site : ${APP_URL()} (aide : ${APP_URL()}/help)`;
 }
+
+export type TeamChannels = { name: string; discordChannelId: string | null; discordLibraryChannelId: string | null };
+
+/** Discord's embed description limit. */
+const EMBED_LIMIT = 4096;
+
+const mention = (id: string | null, fallback: string) => (id ? `<#${id}>` : fallback);
+
+/**
+ * Kyle's pinned welcome, posted once per team in its *aventure* salon by the
+ * guild bootstrap. Kept under Discord's 4096-character embed limit.
+ */
+export function welcomeMessage(team: TeamChannels): { title: string; description: string } {
+  const adventure = mention(team.discordChannelId, "le salon *aventure*");
+  const library = mention(team.discordLibraryChannelId, "le salon *librairie*");
+  const intro = [
+    `Moi c'est **Kyle**, la mascotte du défi — jaune, dinosaure, et intraitable sur les ½ crédits.`,
+    `Vous avez deux salons : ${adventure} pour votre histoire, les votes et mes annonces, et ${library} pour déclarer vos lectures.`,
+    `Une lecture terminée ? **/ajouter-un-livre** dans ${library}, ou sur le site.`,
+    "",
+    helpText(team),
+  ].join("\n");
+  const description = intro.length > EMBED_LIMIT ? `${intro.slice(0, EMBED_LIMIT - 60).trimEnd()}\n\n🌐 La suite sur ${APP_URL()}/help` : intro;
+  return { title: `👋 Bienvenue chez ${team.name} !`, description };
+}
+
+/** The short pinned reminder posted in the *librairie* salon. */
+export function libraryWelcomeMessage(team: TeamChannels): { title: string; description: string } {
+  return {
+    title: `📚 La librairie ${team.name}`,
+    description: [
+      "C'est ici qu'on déclare ses lectures :",
+      "• **/ajouter-un-livre** titre · auteur · pages · type · quête · case",
+      "• **/modifier-un-livre** pour corriger ou supprimer (1 h après l'ajout, puis le·la capitaine)",
+      "",
+      `Points : **pages ÷ 10** ; moins de 150 pages : moitié (149 p. → 7,5 pts).`,
+      `Toutes les règles : **/help** ou ${APP_URL()}/help`,
+    ].join("\n"),
+  };
+}

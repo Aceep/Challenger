@@ -22,6 +22,7 @@ import type { AdminReadingRow } from "@/app/admin/readings/ReadingsView";
 import type { EditorStory } from "@/app/admin/story/StoryEditor";
 import type { TeamStoryRow } from "@/app/admin/story/StoryAdminView";
 import type { AdminTeamRow } from "@/app/admin/teams/TeamsView";
+import { botInviteUrl, discordSetupState } from "@/lib/discord/permissions";
 
 // ---------------------------------------------------------------------------
 // Édition et équipes
@@ -641,9 +642,20 @@ export const DEMO_ADMIN_TEAMS: AdminTeamRow[] = DEMO_TEAMS.map((t, i) => ({
   deputyId: t.deputy ? MEMBERS_BY_TEAM[t.id][1].id : "",
   adventureChannel: `#aventure-${slug(t.id)}`,
   libraryChannel: t.id === "demo-team-hiboux" ? null : `#librairie-${slug(t.id)}`,
+  // Les Hiboux are the "not configured yet" case: no library salon, no role.
+  discordRole: t.id === "demo-team-hiboux" ? null : `@${t.name}`,
   gridLabel: i < 2 ? "2 / 4" : "1 / 4",
   points: t.points,
 }));
+
+/** Setup state of the Discord server shown on /demo/admin/challenge. */
+export const DEMO_DISCORD_SETUP = {
+  ...discordSetupState(
+    { discordGuildId: DEMO_CHALLENGE_FORM.discordGuildId, discordAdminRoleId: "1542450110112501761", discordGeneralChannelId: DEMO_CHALLENGE_FORM.discordGeneralChannelId },
+    DEMO_ADMIN_TEAMS.map((t) => ({ discordRoleId: t.discordRole, discordChannelId: t.adventureChannel, discordLibraryChannelId: t.libraryChannel })),
+  ),
+  inviteUrl: botInviteUrl("1542446033106698260", DEMO_CHALLENGE_FORM.discordGuildId),
+};
 
 export const DEMO_ADMIN_PLAYERS: PlayerRow[] = [
   { id: "demo-user-nour", name: "Nour", discordId: "402911870034211187", teamId: "demo-team-herissons", teamName: "Les Hérissons", isCaptain: true, role: "PLAYER", books: 9, isMe: false },

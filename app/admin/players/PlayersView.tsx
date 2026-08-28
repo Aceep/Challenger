@@ -110,7 +110,7 @@ export function PlayersView({
           </table>
         </Card>
 
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4" data-tour="players-invites">
           {hasChallenge ? <InviteForm teams={teams} action={createInviteAction} /> : <KyleEmpty>Active un défi pour inviter des joueurs.</KyleEmpty>}
           <Card>
             <Eyebrow>Invitations en attente ({invites.length})</Eyebrow>

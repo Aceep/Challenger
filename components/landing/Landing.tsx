@@ -41,13 +41,20 @@ export function Landing({ editions }: { editions: LandingEdition[] }) {
             dont votre équipe est le héros — tout se passe sur Discord et ici.
           </p>
           <div className="actions">
-            <Link href="/demo" className="btn">
+            <Link href="/demo?tour=player&step=0" className="btn">
+              ✨ Visite guidée avec Kyle
+            </Link>
+            <Link href="/demo" className="btn ghost">
               Voir la démo joueur
             </Link>
-            <Link href="/demo/admin" className="btn ghost">
-              Voir la démo organisateur
-            </Link>
           </div>
+          <p className="text-[13px] text-[color:var(--muted)]">
+            Organisateur ?{" "}
+            <Link href="/demo/admin?tour=admin&step=0" className="underline">
+              Visite organisateur
+            </Link>{" "}
+            · ou <Link href="/demo/admin" className="underline">la démo complète</Link>.
+          </p>
         </div>
         <div className="mascot">
           <Kyle width={320} className="relative w-[min(320px,80%)]" alt="Kyle, le dinosaure jaune d'Aceep&Kyle" />
