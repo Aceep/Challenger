@@ -1,7 +1,9 @@
 import "server-only";
 import { prisma } from "@/lib/db";
+import { readingCard } from "@/lib/discord/cards";
 import { editMessage, postMessage, type MessageButton } from "@/lib/discord/rest";
 import { fmtPoints } from "@/lib/format";
+import { once } from "@/lib/services/bot-events";
 import { getLeaderboard } from "@/lib/services/leaderboard";
 import { getTeamChapterStatus, type ResolutionSummary } from "@/lib/services/story";
 
@@ -10,7 +12,13 @@ const COLOR = { story: 0x6366f1, quest: 0xd97706, rank: 0x16a34a, effect: 0xdc26
 
 async function channelsFor(teamId: string) {
   const team = await prisma.team.findUnique({ where: { id: teamId }, include: { challenge: true } });
-  return { team: team?.discordChannelId ?? null, general: team?.challenge.discordGeneralChannelId ?? null, name: team?.name ?? "?" };
+  return {
+    team: team?.discordChannelId ?? null,
+    library: team?.discordLibraryChannelId ?? null,
+    general: team?.challenge.discordGeneralChannelId ?? null,
+    name: team?.name ?? "?",
+    color: team?.color ?? null,
+  };
 }
 
 /** Vote opened or updated: post/edit the team-channel message with buttons and named tally. */
@@ -58,6 +66,40 @@ export async function syncVoteMessage(voteId: string) {
     const id = await postMessage(vote.team.discordChannelId, message);
     if (id) await prisma.vote.update({ where: { id: vote.id }, data: { discordMessageId: id } });
   }
+}
+
+/**
+ * The public card of a reading, in the team's librairie (fallback: aventure).
+ *
+ * A creation is announced at most once — the web action and the Discord flow
+ * may both fire it for the same book. An edit is announced every time.
+ */
+export async function announceReading(bookId: string, o: { kind: "new" | "update"; points: number; detail: string }) {
+  const book = await prisma.book.findUnique({
+    where: { id: bookId },
+    include: {
+      user: { select: { name: true } },
+      team: { select: { name: true, color: true, discordChannelId: true, discordLibraryChannelId: true } },
+    },
+  });
+  if (!book || book.deletedAt || !book.team) return;
+  const channel = book.team.discordLibraryChannelId ?? book.team.discordChannelId;
+  if (!channel) return;
+  const embed = readingCard({
+    reader: book.user.name ?? "Quelqu’un",
+    teamName: book.team.name,
+    teamColor: book.team.color,
+    title: book.title,
+    author: book.author,
+    pages: book.pages,
+    type: book.type,
+    points: o.points,
+    detail: o.detail,
+    kind: o.kind,
+  });
+  // `once()` marks before running: a Discord outage silently skips the card rather than retrying it.
+  if (o.kind === "new") await once(`reading-card:${bookId}`, () => postMessage(channel, { embeds: [embed] }).then(() => {}));
+  else await postMessage(channel, { embeds: [embed] });
 }
 
 /** Vote resolved: close the vote message, announce in team channel, and effects on rivals in general. */

@@ -1,11 +1,12 @@
 import { InteractionResponseType, InteractionType, verifyKey } from "discord-interactions";
 import { after, NextResponse } from "next/server";
-import { announceGridChange, announceRankChange, announceResolution, syncVoteMessage } from "@/lib/discord/events";
+import { readingConfirmation } from "@/lib/discord/cards";
+import { announceGridChange, announceRankChange, announceReading, announceResolution, syncVoteMessage } from "@/lib/discord/events";
 import { userMessage } from "@/lib/errors";
 import { fmtPoints } from "@/lib/format";
 import { helpText } from "@/lib/discord/help";
 import { cellChoices, editableBookChoices, questChoices } from "@/lib/services/autocomplete";
-import { bookPatchSchema, bookSchema, deleteBook, describeResult, logBook, updateBook, type BookResult } from "@/lib/services/books";
+import { bookPatchSchema, bookSchema, deleteBook, describeResult, logBook, updateBook } from "@/lib/services/books";
 import { getLeaderboard, withLeaderWatch } from "@/lib/services/leaderboard";
 import { resolveDiscordActor } from "@/lib/services/membership";
 import { listQuestsForTeam } from "@/lib/services/quests";
@@ -18,11 +19,12 @@ import { tickOnActivity } from "@/lib/services/tick";
  * Discord signs every request with the app's public key; anything unsigned is rejected.
  */
 
-const ephemeral = (content: string) =>
-  NextResponse.json({ type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE, data: { content, flags: 64 } });
-const publicReply = (content: string) => NextResponse.json({ type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE, data: { content } });
-const choices = (list: { name: string; value: string }[]) =>
-  NextResponse.json({ type: InteractionResponseType.APPLICATION_COMMAND_AUTOCOMPLETE_RESULT, data: { choices: list } });
+/** One interaction response. `data` carries more than text (embeds, components) for the richer branches. */
+const reply = (type: number, data?: unknown) => NextResponse.json({ type, data });
+/** Flag 64 = only the caller sees it. */
+const ephemeral = (content: string) => reply(InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE, { content, flags: 64 });
+const publicReply = (content: string) => reply(InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE, { content });
+const choices = (list: { name: string; value: string }[]) => reply(InteractionResponseType.APPLICATION_COMMAND_AUTOCOMPLETE_RESULT, { choices: list });
 
 type Option = { name: string; value: string | number | boolean; focused?: boolean };
 type Interaction = {
@@ -36,12 +38,6 @@ type Interaction = {
 };
 
 const appUrl = () => process.env.AUTH_URL ?? "https://challenger-aceepkyle.vercel.app";
-
-function describe(username: string, r: BookResult, verb: string) {
-  const head = `📚 **${username}** ${verb} *${r.book.title}* (${r.book.pages} p., ${r.book.type === "GRAPHIQUE" ? "graphique" : "roman"})${r.points ? ` → ${r.points > 0 ? "+" : ""}${fmtPoints(r.points)} pts` : ""}`;
-  const rest = describeResult(r, false);
-  return rest ? `${head}\n${rest}` : head;
-}
 
 export async function POST(request: Request) {
   const signature = request.headers.get("x-signature-ed25519") ?? "";
@@ -128,7 +124,10 @@ export async function POST(request: Request) {
         const { result, before, after: top } = await withLeaderWatch(challenge.id, () => logBook(actor, parsed.data));
         if (team) after(() => announceRankChange(challenge.id, before, top));
         if (team && result.cell?.grid) after(() => announceGridChange(team.id, result.cell!.grid!));
-        return publicReply(describe(discordUser.username, result, "a terminé"));
+        // The public trace is the reading card, posted once per book whatever the surface.
+        const detail = describeResult(result, false);
+        if (team) after(() => announceReading(result.book.id, { kind: "new", points: result.points, detail }));
+        return ephemeral(readingConfirmation({ title: result.book.title, points: result.points, detail, kind: "new" }));
       }
       case "modifier-un-livre": {
         if (!inTeamChannel) return teamChannelOnly();
@@ -152,7 +151,9 @@ export async function POST(request: Request) {
         const { result, before, after: top } = await withLeaderWatch(challenge.id, () => updateBook(actor, bookId, patch.data));
         if (team) after(() => announceRankChange(challenge.id, before, top));
         if (team && result.cell?.grid) after(() => announceGridChange(team.id, result.cell!.grid!));
-        return publicReply(describe(discordUser.username, result, "a modifié"));
+        const detail = describeResult(result, false);
+        if (team) after(() => announceReading(result.book.id, { kind: "update", points: result.points, detail }));
+        return ephemeral(readingConfirmation({ title: result.book.title, points: result.points, detail, kind: "update" }));
       }
       case "score": {
         const rows = await getLeaderboard(challenge.id);
