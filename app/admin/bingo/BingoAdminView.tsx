@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BingoBoard, type BoardCell } from "@/app/(player)/bingo/BingoBoard";
 import { Card, Eyebrow, KyleEmpty, Pill } from "@/components/ui";
+import { DataTable } from "@/components/ui/DataTable";
 import { Flash } from "@/components/Flash";
 import type { ActionState } from "@/lib/forms";
 import { GridForm, type GridValues } from "./GridForm";
@@ -89,62 +90,49 @@ export function BingoAdminView({
       ) : (
         <>
           <Card>
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Ordre</th>
-                  <th>Grille</th>
-                  <th>Taille</th>
-                  {teams.map((t) => (
-                    <th key={t.id}>{t.name}</th>
+            <DataTable head={["Ordre", "Grille", "Taille", ...teams.map((t) => t.name), ""]}>
+              {grids.map((g, i) => (
+                <tr key={g.id}>
+                  <td className="num">{g.order}</td>
+                  <td>
+                    <strong>{g.title}</strong>
+                  </td>
+                  <td className="num">
+                    {g.size} × {g.size}
+                  </td>
+                  {g.teams.map((t) => (
+                    <td key={t.teamId} className="matrix">
+                      {t.completed ? <Pill tone="ok">terminée</Pill> : t.cells ? <MiniGrid cells={t.cells} size={g.size} /> : <Pill tone="type">pas ouverte</Pill>}
+                    </td>
                   ))}
-                  <th />
+                  <td className="whitespace-nowrap">
+                    <form action={moveGridAction} className="inline">
+                      <input type="hidden" name="gridId" value={g.id} />
+                      <input type="hidden" name="direction" value="up" />
+                      <button disabled={i === 0} className="disabled:opacity-30" title="Monter">
+                        ↑
+                      </button>
+                    </form>{" "}
+                    <form action={moveGridAction} className="inline">
+                      <input type="hidden" name="gridId" value={g.id} />
+                      <input type="hidden" name="direction" value="down" />
+                      <button disabled={i === grids.length - 1} className="disabled:opacity-30" title="Descendre">
+                        ↓
+                      </button>
+                    </form>{" "}
+                    ·{" "}
+                    <Link href={`${base}?edit=${g.id}`} className="underline">
+                      Modifier
+                    </Link>{" "}
+                    ·{" "}
+                    <form action={deleteGridAction} className="inline">
+                      <input type="hidden" name="gridId" value={g.id} />
+                      <button className="text-[color:var(--brick)] underline">Supprimer</button>
+                    </form>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {grids.map((g, i) => (
-                  <tr key={g.id}>
-                    <td className="num">{g.order}</td>
-                    <td>
-                      <strong>{g.title}</strong>
-                    </td>
-                    <td className="num">
-                      {g.size} × {g.size}
-                    </td>
-                    {g.teams.map((t) => (
-                      <td key={t.teamId}>
-                        {t.completed ? <Pill tone="ok">terminée</Pill> : t.cells ? <MiniGrid cells={t.cells} size={g.size} /> : <Pill tone="type">pas ouverte</Pill>}
-                      </td>
-                    ))}
-                    <td className="whitespace-nowrap">
-                      <form action={moveGridAction} className="inline">
-                        <input type="hidden" name="gridId" value={g.id} />
-                        <input type="hidden" name="direction" value="up" />
-                        <button disabled={i === 0} className="disabled:opacity-30" title="Monter">
-                          ↑
-                        </button>
-                      </form>{" "}
-                      <form action={moveGridAction} className="inline">
-                        <input type="hidden" name="gridId" value={g.id} />
-                        <input type="hidden" name="direction" value="down" />
-                        <button disabled={i === grids.length - 1} className="disabled:opacity-30" title="Descendre">
-                          ↓
-                        </button>
-                      </form>{" "}
-                      ·{" "}
-                      <Link href={`${base}?edit=${g.id}`} className="underline">
-                        Modifier
-                      </Link>{" "}
-                      ·{" "}
-                      <form action={deleteGridAction} className="inline">
-                        <input type="hidden" name="gridId" value={g.id} />
-                        <button className="text-[color:var(--brick)] underline">Supprimer</button>
-                      </form>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+              ))}
+            </DataTable>
           </Card>
 
           {editing ? (
