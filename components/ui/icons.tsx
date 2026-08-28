@@ -316,6 +316,25 @@ export function MoonIcon(p: SVGProps<SVGSVGElement>) {
   );
 }
 
+/** Disclosure caret of the edition switcher (rotated by CSS when open). */
+export function ChevronDownIcon(p: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base(p)}>
+      <path d="m6 9.5 6 6 6-6" />
+    </svg>
+  );
+}
+
+/** Two arrows trading places: change edition. */
+export function SwapIcon(p: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base(p)}>
+      <path d="M4 8.5h13M13.5 5 17 8.5 13.5 12" />
+      <path d="M20 15.5H7M10.5 12 7 15.5 10.5 19" />
+    </svg>
+  );
+}
+
 /* --- medals --------------------------------------------------------------- */
 
 /**

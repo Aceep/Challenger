@@ -15,6 +15,7 @@ import {
   QuestIcon,
   SettingsIcon,
   StoryIcon,
+  SwapIcon,
   TeamIcon,
   TrophyIcon,
 } from "@/components/ui/icons";
@@ -37,7 +38,16 @@ const MORE: readonly Item[] = [
 ];
 
 /** Five tabs plus a « Plus » menu (Classement, Équipe, Aide, Administration). */
-export function BottomNav({ base = "", isAdmin = false }: { base?: string; isAdmin?: boolean }) {
+export function BottomNav({
+  base = "",
+  isAdmin = false,
+  edition,
+}: {
+  base?: string;
+  isAdmin?: boolean;
+  /** Current edition, spelled out on the first line of the « Plus » sheet. */
+  edition?: { name: string; canSwitch: boolean };
+}) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const more: Item[] = [
@@ -53,6 +63,23 @@ export function BottomNav({ base = "", isAdmin = false }: { base?: string; isAdm
         <div className="fixed inset-0 z-20 bg-black/30" onClick={() => setOpen(false)} aria-hidden>
           <div className="mx-auto w-full max-w-lg px-3" style={{ position: "absolute", left: 0, right: 0, bottom: 86 }}>
             <div className="sheet" role="menu" onClick={(e) => e.stopPropagation()}>
+              {edition &&
+                (edition.canSwitch ? (
+                  <Link href={`${base}/help#edition`} className="sheet-edition" onClick={() => setOpen(false)}>
+                    <SwapIcon className="ico" />
+                    <span>
+                      Édition&#8239;: <strong>{edition.name}</strong>
+                    </span>
+                    <em>Changer</em>
+                  </Link>
+                ) : (
+                  <p className="sheet-edition" aria-current="true">
+                    <SwapIcon className="ico" />
+                    <span>
+                      Édition&#8239;: <strong>{edition.name}</strong>
+                    </span>
+                  </p>
+                ))}
               {more.map(({ href, label, Icon }) => (
                 <Link
                   key={href}
