@@ -35,9 +35,10 @@ export function SkeletonList({ n = 4, lines = 2 }: { n?: number; lines?: number 
 }
 
 /** Page-level wrapper: announces loading to assistive tech once. */
-export function SkeletonPage({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+export function SkeletonPage({ children, className = "", gap = 5 }: { children: React.ReactNode; className?: string; gap?: 3 | 4 | 5 | 6 }) {
+  const gapClass = gap === 3 ? "gap-3" : gap === 4 ? "gap-4" : gap === 6 ? "gap-6" : "gap-5";
   return (
-    <main className={`flex flex-1 flex-col gap-5 p-5 ${className}`} aria-busy="true" aria-live="polite">
+    <main className={`flex flex-1 flex-col ${gapClass} p-5 ${className}`} aria-busy="true" aria-live="polite">
       {children}
       <span className="sr-only">Chargement…</span>
     </main>

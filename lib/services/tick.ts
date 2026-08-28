@@ -1,6 +1,8 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { announceDormant, announceResolution, announceTieStage, announceWeekly, announceWindow } from "@/lib/discord/events";
+import { once } from "@/lib/services/bot-events";
+import { syncQuestions } from "@/lib/services/questions";
 import { advanceTieStages, dormantTeams, resolveExpiredVotes } from "@/lib/services/story";
 import { dueSundayKey, isVerificationWindow, parisClock, parisInstant, sundayKey } from "@/lib/time/paris";
 
@@ -12,18 +14,9 @@ import { dueSundayKey, isVerificationWindow, parisClock, parisInstant, sundayKey
  * recorded in BotEvent so it is posted once.
  */
 
-/** Runs `fn` once per `key` (no-op when already done). */
-async function once(key: string, fn: () => Promise<void>) {
-  const done = await prisma.botEvent.findUnique({ where: { key } });
-  if (done) return false;
-  await prisma.botEvent.create({ data: { key } });
-  await fn();
-  return true;
-}
-
 export async function runTick(now = new Date()) {
   const challenge = await prisma.challenge.findFirst({ where: { status: "ACTIVE" } });
-  const out = { window: [] as string[], weekly: null as string | null, resolved: 0, tieStages: 0, dormant: 0 };
+  const out = { window: [] as string[], weekly: null as string | null, resolved: 0, tieStages: 0, dormant: 0, synced: 0 };
   if (!challenge) return out;
   const live = challenge.startAt <= now && now <= new Date(challenge.endAt.getTime() + 86_400_000);
   const { weekday, hour } = parisClock(now);
@@ -55,6 +48,13 @@ export async function runTick(now = new Date()) {
   }
   for (const d of await dormantTeams(7, now)) {
     if (await once(`dormant:${d.teamId}:${d.nodeId}:${sundayKey(now)}`, () => announceDormant(d))) out.dormant++;
+  }
+
+  // FAQ: pull back the replies typed inside Discord (throttled, never fatal).
+  try {
+    out.synced = (await syncQuestions(challenge.id)).imported;
+  } catch (e) {
+    console.error("[faq] sync failed", e);
   }
   return out;
 }

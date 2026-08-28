@@ -17,12 +17,12 @@ export function Landing({ editions }: { editions: LandingEdition[] }) {
     <main className="landing">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <span className="flex items-center gap-2 font-display text-[18px] font-black">
-          <Kyle width={25} alt="Kyle, la mascotte d'Aceep&Kyle" />
+          <Kyle width={25} alt="Kyle, la mascotte d’Aceep&Kyle" />
           Aceep&amp;Kyle
         </span>
         <span className="flex items-center gap-3">
           <ThemeToggle />
-          <Link href="/login" className="btn small">
+          <Link href="/login" className="btn sm">
             Se connecter
           </Link>
         </span>
@@ -37,20 +37,27 @@ export function Landing({ editions }: { editions: LandingEdition[] }) {
             Gagnez <em>ensemble.</em>
           </h1>
           <p className="lead">
-            Chaque page lue rapporte des points à votre équipe. Remplissez un bingo à plusieurs, validez des quêtes, et choisissez la suite d&apos;une histoire
+            Chaque page lue rapporte des points à votre équipe. Remplissez un bingo à plusieurs, validez des quêtes, et choisissez la suite d’une histoire
             dont votre équipe est le héros — tout se passe sur Discord et ici.
           </p>
           <div className="actions">
-            <Link href="/demo" className="btn">
+            <Link href="/demo?tour=player&step=0" className="btn">
+              Visite guidée avec Kyle
+            </Link>
+            <Link href="/demo" className="btn ghost">
               Voir la démo joueur
             </Link>
-            <Link href="/demo/admin" className="btn ghost">
-              Voir la démo organisateur
-            </Link>
           </div>
+          <p className="text-[13px] text-[color:var(--muted)]">
+            Organisateur ?{" "}
+            <Link href="/demo/admin?tour=admin&step=0" className="underline">
+              Visite organisateur
+            </Link>{" "}
+            · ou <Link href="/demo/admin" className="underline">la démo complète</Link>.
+          </p>
         </div>
         <div className="mascot">
-          <Kyle width={320} className="relative w-[min(320px,80%)]" alt="Kyle, le dinosaure jaune d'Aceep&Kyle" />
+          <Kyle width={320} className="relative w-[min(320px,80%)]" alt="Kyle, le dinosaure jaune d’Aceep&Kyle" />
         </div>
       </section>
 
@@ -61,7 +68,7 @@ export function Landing({ editions }: { editions: LandingEdition[] }) {
             <span className="big">pages ÷ 10</span>
             <h3>Lire</h3>
             <p>
-              412 pages → 41,2 points pour l&apos;équipe. Sous 150 pages, une lecture compte comme un graphique : moitié des points, mais elle compte quand même.
+              412 pages → 41,2 points pour l’équipe. Sous 150 pages, une lecture compte comme un graphique : moitié des points, mais elle compte quand même.
             </p>
           </Card>
           <Card>
@@ -73,7 +80,7 @@ export function Landing({ editions }: { editions: LandingEdition[] }) {
           </Card>
           <Card>
             <span className="big">3 votes</span>
-            <h3>L&apos;histoire</h3>
+            <h3>L’histoire</h3>
             <p>
               Chaque chapitre se termine par un choix voté sur Discord ou sur le site. Les choix ont de vrais effets : bonus, quêtes surprises, alliances… ou
               coups bas.
@@ -103,13 +110,13 @@ export function Landing({ editions }: { editions: LandingEdition[] }) {
           <h2>Comment ça marche</h2>
           <ol>
             <li>
-              <strong>L&apos;organisateur crée l&apos;édition</strong> : dates, barème, grilles de bingo, quêtes, histoire, salons Discord.
+              <strong>L’organisateur crée l’édition</strong> : dates, barème, grilles de bingo, quêtes, histoire, salons Discord.
             </li>
             <li>
               <strong>Les joueurs sont invités</strong> par leur identifiant Discord et rejoignent une équipe.
             </li>
             <li>
-              <strong>On lit, on déclare</strong> : <code>/ajouter-un-livre</code> dans la librairie de l&apos;équipe, ou ici.
+              <strong>On lit, on déclare</strong> : <code>/ajouter-un-livre</code> dans la librairie de l’équipe, ou ici.
             </li>
             <li>
               <strong>Le dimanche 19 h – 21 h</strong>, les capitaines vérifient ; le classement tombe à 20 h.
@@ -120,7 +127,7 @@ export function Landing({ editions }: { editions: LandingEdition[] }) {
           <p className="eyebrow">Sur le honneur, mais cadré</p>
           <p>
             Pas de validation manuelle des lectures : les points arrivent tout de suite. Les capitaines ont une fenêtre hebdomadaire pour vérifier, chaque
-            lecture garde l&apos;historique de ses modifications, et les points sont un livre de comptes que personne ne peut réécrire.
+            lecture garde l’historique de ses modifications, et les points sont un livre de comptes que personne ne peut réécrire.
           </p>
           <KyleEmpty card={false}>Kyle veille sur le règlement. Il est jaune, mais il ne plaisante pas avec les ½ crédits.</KyleEmpty>
         </Card>

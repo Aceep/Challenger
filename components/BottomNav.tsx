@@ -8,6 +8,7 @@ import {
   BingoIcon,
   BooksIcon,
   CloseIcon,
+  FaqIcon,
   HelpIcon,
   HomeIcon,
   MenuIcon,
@@ -31,6 +32,7 @@ const ITEMS: readonly Item[] = [
 const MORE: readonly Item[] = [
   { href: "/leaderboard", label: "Classement", Icon: TrophyIcon },
   { href: "/team", label: "Mon équipe", Icon: TeamIcon },
+  { href: "/faq", label: "FAQ", Icon: FaqIcon },
   { href: "/help", label: "Aide & règles", Icon: HelpIcon },
 ];
 

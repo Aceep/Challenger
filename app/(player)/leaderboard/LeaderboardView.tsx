@@ -57,7 +57,7 @@ export function LeaderboardView({ challengeName, rows, myTeamId, finished, demo 
         </section>
       )}
 
-      <ol className="list">
+      <ol className="list" data-tour="leaderboard-list">
         {rows.map((r) => (
           <RankRow
             key={r.teamId}

@@ -101,6 +101,17 @@ export function HelpIcon(p: SVGProps<SVGSVGElement>) {
   );
 }
 
+/** Speech bubble with a question mark — the FAQ. */
+export function FaqIcon(p: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base(p)}>
+      <path d="M4 5.5h16v11H12l-4.5 3.5v-3.5H4z" />
+      <path d="M10 9.3a2.1 2.1 0 1 1 2.9 1.9c-.6.3-.9.8-.9 1.4" />
+      <circle cx="12" cy="14.4" r=".55" fill="currentColor" />
+    </svg>
+  );
+}
+
 /** Sliders. */
 export function SettingsIcon(p: SVGProps<SVGSVGElement>) {
   return (

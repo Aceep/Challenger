@@ -3,7 +3,9 @@
 import { withFlash } from "@/lib/actions";
 import { userMessage } from "@/lib/errors";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { getActiveChallenge, requireAdmin } from "@/lib/dal";
+import { syncMemberRoles } from "@/lib/services/discord-setup";
 import { parseForm, type ActionState } from "@/lib/forms";
 import {
   assignUserToTeam,
@@ -48,7 +50,11 @@ export async function assignTeamAction(formData: FormData) {
   const userId = String(formData.get("userId") ?? "");
   const teamId = String(formData.get("teamId") ?? "") || null;
   await withFlash("/admin/players", async () => {
-    if (userId) await assignUserToTeam(userId, teamId);
+    if (userId) {
+      await assignUserToTeam(userId, teamId);
+      // Swap the Discord team role (the old one is removed) once the page answered.
+      after(() => syncMemberRoles(userId));
+    }
     return "Équipe mise à jour.";
   }, REVALIDATE);
 }
@@ -61,6 +67,7 @@ export async function setRoleAction(formData: FormData) {
   if (userId === admin.id && role === "PLAYER") return; // never demote yourself
   await withFlash("/admin/players", async () => {
     await setUserRole(userId, role);
+    after(() => syncMemberRoles(userId));
     return "Rôle mis à jour.";
   }, REVALIDATE);
 }

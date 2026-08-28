@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { CountUp } from "@/components/ui/CountUp";
-import type { ComponentProps, ReactNode } from "react";
+import type { ComponentProps, HTMLAttributes, ReactNode } from "react";
 import { fmtDelta, fmtPoints } from "@/lib/format";
 import { ArrowRightIcon, CheckIcon, Medal } from "./icons";
 import { Kyle } from "./Kyle";
@@ -19,6 +19,7 @@ export function Button({
   small,
   className,
   href,
+  "data-tour": dataTour,
   ...props
 }: {
   variant?: Variant;
@@ -26,23 +27,27 @@ export function Button({
   /** Kept for the admin screens, same thing as `size="sm"`. */
   small?: boolean;
   href?: string;
+  /** Spotlight target for Kyle's guided tour. */
+  "data-tour"?: string;
 } & Omit<ComponentProps<"button">, "ref">) {
   const scale = small || size === "sm" ? "sm" : size === "lg" ? "lg" : "";
   const cls = cx("btn", variantClass[variant], scale, className);
   if (href) {
     return (
-      <Link href={href} className={cls}>
+      <Link href={href} className={cls} data-tour={dataTour}>
         {props.children}
       </Link>
     );
   }
-  return <button {...props} className={cls} />;
+  return <button {...props} data-tour={dataTour} className={cls} />;
 }
 
 /**
  * `card` is a panel, `flat` a row on the paper, `raised` a sheet lifted a
  * little, `sheet` the yellow-edged working panel. `interactive` adds the hover
  * lift — only for something the whole of which is clickable.
+ *
+ * Extra props are forwarded to the element (used for `data-tour` targets).
  */
 export function Card({
   tier = "card",
@@ -51,6 +56,7 @@ export function Card({
   children,
   style,
   as: As = "div",
+  ...rest
 }: {
   tier?: "card" | "flat" | "raised" | "sheet";
   interactive?: boolean;
@@ -58,10 +64,10 @@ export function Card({
   children: ReactNode;
   style?: React.CSSProperties;
   as?: "div" | "section" | "li" | "article";
-}) {
+} & Omit<HTMLAttributes<HTMLElement>, "className" | "children" | "style">) {
   const base = tier === "sheet" ? "sheet" : cx("card", tier !== "card" && tier);
   return (
-    <As className={cx(base, interactive && "is-interactive", className)} style={style}>
+    <As {...rest} className={cx(base, interactive && "is-interactive", className)} style={style}>
       {children}
     </As>
   );
@@ -200,6 +206,7 @@ export function ScoreCard({
   rankLine,
   href = "/team",
   linkLabel = "Équipe",
+  "data-tour": dataTour,
 }: {
   teamName: string;
   teamColor: string;
@@ -208,9 +215,11 @@ export function ScoreCard({
   rankLine?: ReactNode;
   href?: string;
   linkLabel?: string;
+  /** Spotlight target for Kyle's guided tour. */
+  "data-tour"?: string;
 }) {
   return (
-    <section className="score" style={{ borderTopColor: teamColor }}>
+    <section className="score" data-tour={dataTour} style={{ borderTopColor: teamColor }}>
       <div className="flex items-baseline justify-between gap-3">
         <span className="eyebrow" style={{ color: teamColor }}>
           {teamName}

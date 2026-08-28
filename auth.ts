@@ -1,7 +1,9 @@
 import NextAuth, { type DefaultSession } from "next-auth";
 import Discord from "next-auth/providers/discord";
 import { PrismaAdapter } from "@auth/prisma-adapter";
+import { after } from "next/server";
 import { prisma } from "@/lib/db";
+import { syncMemberRoles } from "@/lib/services/discord-setup";
 import type { Role } from "@/lib/generated/prisma/enums";
 
 declare module "next-auth" {
@@ -89,6 +91,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           }
         }
       });
+
+      // Give the new member their Discord roles once the transaction is committed.
+      const id = user.id;
+      after(() => syncMemberRoles(id));
     },
   },
 });

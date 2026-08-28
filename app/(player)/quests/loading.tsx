@@ -1,0 +1,5 @@
+import { QuestsSkeleton } from "@/components/ui/skeletons";
+
+export default function Loading() {
+  return <QuestsSkeleton />;
+}

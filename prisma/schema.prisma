@@ -24,16 +24,20 @@ model User {
   image         String?
   discordId     String?   @unique
   role          Role      @default(PLAYER)
+  /// First login guided tour: set once Kyle's visit is finished or skipped.
+  onboardedAt   DateTime?
   createdAt     DateTime  @default(now())
 
-  accounts    Account[]
-  sessions    Session[]
-  membership  TeamMember?
-  captainOf   Team[]       @relation("TeamCaptain")
-  books       Book[]
-  editedBooks Book[]       @relation("BookEditor")
-  deputyOf    Team[]       @relation("TeamDeputy")
-  ballots     VoteBallot[]
+  accounts         Account[]
+  sessions         Session[]
+  membership       TeamMember?
+  captainOf        Team[]            @relation("TeamCaptain")
+  books            Book[]
+  editedBooks      Book[]            @relation("BookEditor")
+  deputyOf         Team[]            @relation("TeamDeputy")
+  ballots          VoteBallot[]
+  questions        Question[]
+  questionMessages QuestionMessage[]
 }
 
 model Account {
@@ -95,6 +99,14 @@ model Challenge {
   bingoFullBonus          Int             @default(100)
   discordGuildId          String?
   discordGeneralChannelId String?
+  /// Forum channel ("faq") where every question becomes a thread
+  discordFaqChannelId     String?
+  /// Role pinged on every new question ("Organisateurs")
+  discordAdminRoleId      String?
+  /// Ids of the forum tags: { open, answered, resolved }
+  discordFaqTags          Json?
+  /// Last FAQ poll of the forum threads (throttle)
+  faqSyncedAt             DateTime?
   /// Last Sunday leaderboard post (catch-up logic)
   lastWeeklyPostAt        DateTime?
   createdAt               DateTime        @default(now())
@@ -104,6 +116,7 @@ model Challenge {
   bingoGrids BingoGrid[]
   quests     Quest[]
   story      Story?
+  questions  Question[]
 }
 
 model Team {
@@ -120,6 +133,8 @@ model Team {
   discordChannelId        String?
   /// Team "librairie" channel where /ajouter-un-livre and /modifier-un-livre are allowed
   discordLibraryChannelId String?
+  /// Discord role carried by the team members, created by the bot setup.
+  discordRoleId           String?
   createdAt               DateTime @default(now())
 
   challenge        Challenge         @relation(fields: [challengeId], references: [id], onDelete: Cascade)
@@ -534,6 +549,62 @@ model Modifier {
   team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
   @@index([teamId, startAt, endAt])
+}
+
+// ---------------------------------------------------------------------------
+// FAQ — every question is a thread in the Discord "faq" forum, mirrored here
+// ---------------------------------------------------------------------------
+
+enum QuestionStatus {
+  OPEN
+  ANSWERED
+  RESOLVED
+}
+
+model Question {
+  id                   String         @id @default(cuid())
+  challengeId          String
+  authorId             String
+  title                String
+  /// Optional detail typed with the question
+  body                 String         @default("")
+  status               QuestionStatus @default(OPEN)
+  /// Highlighted in the "Questions fréquentes" section (admins only)
+  pinned               Boolean        @default(false)
+  /// Thread of the Discord forum mirroring this question
+  discordThreadId      String?        @unique
+  /// Cursor of the incremental REST poll of that thread
+  lastDiscordMessageId String?
+  /// Set when the forum thread was found deleted on Discord (site-only from then on)
+  discordDeletedAt     DateTime?
+  createdAt            DateTime       @default(now())
+  resolvedAt           DateTime?
+  updatedAt            DateTime       @default(now()) @updatedAt
+
+  challenge Challenge         @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  author    User              @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  messages  QuestionMessage[]
+
+  @@index([challengeId, status])
+}
+
+/// A reply, written on the site or typed in the Discord thread (imported by the poll).
+model QuestionMessage {
+  id               String   @id @default(cuid())
+  questionId       String
+  /// Set when the author is a known player; null for a Discord-only account
+  authorId         String?
+  discordUserId    String?
+  discordUserName  String?
+  discordMessageId String?  @unique
+  body             String
+  isAdmin          Boolean  @default(false)
+  createdAt        DateTime @default(now())
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  author   User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([questionId, createdAt])
 }
 
 /// Idempotency marks for bot announcements (window open/close, weekly post, dormant reminders…).

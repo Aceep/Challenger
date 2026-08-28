@@ -83,7 +83,7 @@ export function StoryView({
         {node.title}
       </PageTitle>
 
-      <Card className="px-5 py-4.5">
+      <Card className="px-5 py-4.5" data-tour="story-chapter">
         <p className="chapter">{node.body}</p>
       </Card>
 
