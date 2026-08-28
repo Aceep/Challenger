@@ -1,7 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import type { ChallengeRole } from "@/lib/generated/prisma/enums";
-import { pickChallengeForGuild, pickCurrentMembership } from "@/lib/tenancy/select";
+import { pickChallengeForGuild, pickCurrentMembership, sortByRelevance } from "@/lib/tenancy/select";
 
 /**
  * Tenancy: who belongs to which challenge, with which role.
@@ -26,7 +26,43 @@ export function listMemberships(userId: string) {
   });
 }
 
-export type Membership = Awaited<ReturnType<typeof listMemberships>>[number];
+type ChallengeRow = Awaited<ReturnType<typeof listMemberships>>[number]["challenge"];
+
+/**
+ * An edition the person may work in: one they belong to, plus — for a
+ * super-admin — every other edition, which they organise without being a
+ * member (`member: false`).
+ */
+export type Switchable = { challenge: ChallengeRow; role: ChallengeRole; member: boolean };
+
+/** The membership `getCurrentPlayer` works with — a switchable edition, seen as one. */
+export type Membership = { challengeId: string; role: ChallengeRole; challenge: ChallengeRow; member: boolean };
+
+/**
+ * The single source of truth for « which editions may be the current one, and
+ * which ones can I switch to ». Memberships first, then — for the platform
+ * owner — every edition as ORGANIZER; merged by id, most relevant first.
+ */
+export async function listSwitchableChallenges(userId: string): Promise<Switchable[]> {
+  const [user, memberships] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId }, select: { isSuperAdmin: true } }),
+    listMemberships(userId),
+  ]);
+
+  const byId = new Map<string, Switchable>();
+  for (const m of memberships) byId.set(m.challengeId, { challenge: m.challenge, role: m.role, member: true });
+
+  if (user?.isSuperAdmin) {
+    for (const challenge of await prisma.challenge.findMany()) {
+      // The platform owner organises every edition, including those they play in.
+      const known = byId.get(challenge.id);
+      if (known) known.role = "ORGANIZER";
+      else byId.set(challenge.id, { challenge, role: "ORGANIZER", member: false });
+    }
+  }
+
+  return sortByRelevance([...byId.values()]);
+}
 
 /** The person's role in that challenge, or null when they do not belong to it. */
 export async function roleIn(userId: string, challengeId: string): Promise<ChallengeRole | null> {
@@ -40,10 +76,16 @@ export async function roleIn(userId: string, challengeId: string): Promise<Chall
 
 /**
  * The challenge the person is currently working in: the one they asked for
- * (cookie) when they belong to it, otherwise their most relevant edition.
+ * (cookie) when it is open to them, otherwise their most relevant edition.
+ * Same list as the edition switcher, so a super-admin without any membership
+ * still lands on an edition.
  */
 export async function currentMembershipFor(userId: string, preferredId?: string | null): Promise<Membership | null> {
-  return pickCurrentMembership(await listMemberships(userId), preferredId);
+  const switchable = await listSwitchableChallenges(userId);
+  return pickCurrentMembership(
+    switchable.map((s) => ({ challengeId: s.challenge.id, role: s.role, challenge: s.challenge, member: s.member })),
+    preferredId,
+  );
 }
 
 /** The person's team inside that challenge (at most one), or null. */
