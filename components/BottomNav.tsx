@@ -15,7 +15,8 @@ const ITEMS = [
 const MORE = [
   { href: "/leaderboard", label: "Classement", icon: "🏆" },
   { href: "/team", label: "Mon équipe", icon: "🎽" },
-  { href: "/help", label: "Aide & règles", icon: "❓" },
+  { href: "/faq", label: "FAQ", icon: "❓" },
+  { href: "/help", label: "Règles", icon: "📖" },
 ] as const;
 
 /** Five tabs plus a « Plus » menu (Classement, Équipe, Aide, Administration). */
