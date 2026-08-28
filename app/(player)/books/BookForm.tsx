@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useActionState, useState } from "react";
+import { PageTitle, Pill } from "@/components/ui";
+import { AlertIcon, SearchIcon } from "@/components/ui/icons";
 import { fmtPoints } from "@/lib/format";
 import type { ActionState } from "@/lib/forms";
 import { effectiveType, readingPoints } from "@/lib/scoring/reading";
@@ -48,9 +50,14 @@ export function BookForm({ action, values, quests, cells, currentQuest, currentC
 
   const Shell = embedded ? "div" : "main";
   return (
-    <Shell className={embedded ? "flex flex-col gap-4" : "flex flex-1 flex-col gap-4 p-5"}>
-      {!embedded && <h1>{title}</h1>}
-      {locked && <p className="flash warn">🔍 {locked}</p>}
+    <Shell className={embedded ? "flex flex-col gap-4" : "flex flex-1 flex-col gap-5 p-5"}>
+      {!embedded && <PageTitle>{title}</PageTitle>}
+      {locked && (
+        <p className="flash warn">
+          <SearchIcon />
+          {locked}
+        </p>
+      )}
       <form action={formAction} className="flex flex-col gap-4" data-book-form>
         {values.id && <input type="hidden" name="bookId" value={values.id} />}
         <label className="field">
@@ -78,9 +85,9 @@ export function BookForm({ action, values, quests, cells, currentQuest, currentC
             {pages ? (
               <>
                 {" → "}
-                <strong className="text-[color:var(--ink)]">
+                <Pill stamp xs tone="ok">
                   {fmtPoints(preview)} pt{preview >= 2 ? "s" : ""}
-                </strong>
+                </Pill>
               </>
             ) : null}
           </span>
@@ -129,17 +136,22 @@ export function BookForm({ action, values, quests, cells, currentQuest, currentC
           <input name="finishedAt" type="date" defaultValue={values.finishedAt || today} max={today} />
         </label>
 
-        {state?.error && <p className="flash err">⚠️ {state.error}</p>}
+        {state?.error && (
+          <p className="flash err">
+            <AlertIcon />
+            {state.error}
+          </p>
+        )}
 
-        <button type="submit" disabled={pending || !!locked} className="btn text-[17px]">
+        <button type="submit" disabled={pending || !!locked} className="btn lg">
           {pending ? "Enregistrement…" : submitLabel}
         </button>
         {embedded ? (
-          <button type="button" onClick={onCancel} className="text-center text-[13px] text-[color:var(--muted)] underline">
+          <button type="button" onClick={onCancel} className="btn ghost">
             Annuler
           </button>
         ) : (
-          <Link href={`${prefix}/books`} className="text-center text-[13px] text-[color:var(--muted)]">
+          <Link href={`${prefix}/books`} className="btn ghost">
             Annuler
           </Link>
         )}
