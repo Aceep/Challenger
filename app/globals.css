@@ -354,46 +354,88 @@
   }
 
   .book {
-    display: flex;
-    gap: 12px;
-    align-items: flex-start;
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr);
+    gap: 14px;
+    padding: 0;
+    overflow: hidden;
+    height: 100%;
+    min-height: 118px;
   }
   .book .cover {
-    width: 40px;
-    height: 56px;
-    border-radius: 5px;
-    flex: none;
+    height: 100%;
+    border-radius: 0;
+  }
+  .book .body {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 12px 12px 10px 0;
+    min-width: 0;
+  }
+  .book .head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
   }
   .book .t {
     font-weight: 800;
+    line-height: 1.25;
   }
   .book .s {
     font-size: 13px;
     color: var(--muted);
   }
   .book .pts {
-    margin-left: auto;
     font-family: var(--font-display);
     font-weight: 900;
     font-size: 20px;
     white-space: nowrap;
+    line-height: 1.1;
   }
   .book .links {
     font-size: 12px;
     color: var(--olive);
     font-weight: 700;
   }
-  .book .actions {
+  .book .foot {
+    margin-top: auto;
     display: flex;
-    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
     gap: 10px;
-    font-size: 12px;
-    margin-top: 4px;
-    align-items: center;
+    padding-top: 6px;
   }
-  .book .actions a,
-  .book .actions button {
+  .book .note {
+    font-size: 11.5px;
     color: var(--muted);
+  }
+  .book .actions {
+    display: inline-flex;
+    gap: 6px;
+    flex: none;
+  }
+  .icon-btn {
+    display: inline-grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    border: 1.5px solid var(--line);
+    background: var(--surface);
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .icon-btn:hover {
+    color: var(--ink);
+    border-color: var(--kyle-deep);
+    background: var(--hi);
+  }
+  .icon-btn.danger:hover {
+    color: var(--brick);
+    border-color: var(--brick);
+    background: color-mix(in srgb, var(--brick) 10%, transparent);
   }
 
   .bingo-grid {
@@ -1110,7 +1152,7 @@
   .player-shell .bottomnav .more-btn { display: none; }
   .player-shell main { padding: 36px 44px; gap: 22px; max-width: 1180px; width: 100%; margin: 0 auto; }
   .player-shell main.home, .player-shell main.story, .player-shell main.help { max-width: 980px; }
-  .player-shell .list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
+  .player-shell .list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: stretch; }
   .player-shell main.home { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; }
   .player-shell main.home > :first-child,
   .player-shell main.home > .flash,
