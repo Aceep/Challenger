@@ -1,4 +1,5 @@
 import { Card, Eyebrow, KyleEmpty } from "@/components/ui";
+import { SubmitButton } from "@/components/ui/SubmitButton";
 import { Flash } from "@/components/Flash";
 import { LiveRefresh } from "@/components/LiveRefresh";
 
@@ -112,7 +113,7 @@ export function StoryView({
                   ))}
                 </select>
               </label>
-              <button className="btn small">Confirmer la cible</button>
+              <SubmitButton className="btn small" pendingLabel="Envoi…">Confirmer la cible</SubmitButton>
             </form>
           ) : (
             <p className="text-sm text-[color:var(--muted)]">Le·la capitaine doit désigner l&apos;équipe visée.</p>
@@ -138,7 +139,7 @@ export function StoryView({
                   <form key={c.id} action={breakTieAction}>
                     <input type="hidden" name="voteId" value={vote.id} />
                     <input type="hidden" name="choiceId" value={c.id} />
-                    <button className="btn small">Trancher : {c.label}</button>
+                    <SubmitButton className="btn small">Trancher : {c.label}</SubmitButton>
                   </form>
                 ))}
             </div>
@@ -148,12 +149,12 @@ export function StoryView({
               <form action={confirmTieAction}>
                 <input type="hidden" name="voteId" value={vote.id} />
                 <input type="hidden" name="accept" value="1" />
-                <button className="btn small">Confirmer</button>
+                <SubmitButton className="btn small">Confirmer</SubmitButton>
               </form>
               <form action={confirmTieAction}>
                 <input type="hidden" name="voteId" value={vote.id} />
                 <input type="hidden" name="accept" value="0" />
-                <button className="btn small ghost">Refuser</button>
+                <SubmitButton className="btn small ghost">Refuser</SubmitButton>
               </form>
             </div>
           )}
@@ -173,7 +174,7 @@ export function StoryView({
             <form key={c.id} action={voteAction}>
               <input type="hidden" name="voteId" value={vote.id} />
               <input type="hidden" name="choiceId" value={c.id} />
-              <button disabled={c.locked} className={`choice ${vote.myChoiceId === c.id ? "mine" : ""} ${c.locked ? "locked" : ""}`}>
+              <SubmitButton disabled={c.locked} className={`choice ${vote.myChoiceId === c.id ? "mine" : ""} ${c.locked ? "locked" : ""}`}>
                 <span className="l">
                   {c.locked && "🔒 "}
                   {c.label}
@@ -181,7 +182,7 @@ export function StoryView({
                 {c.lockReason && <span className="v">{c.lockReason}</span>}
                 {c.effects.length > 0 && <span className="e">{c.effects.join(" · ")}</span>}
                 {c.votes.length > 0 && <span className="v">Votes : {c.votes.join(", ")}</span>}
-              </button>
+              </SubmitButton>
             </form>
           ))}
           {allies.length > 0 && (
