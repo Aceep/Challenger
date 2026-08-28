@@ -6,6 +6,7 @@
  * (pages ÷ 10, halved under 150 p.) — `lib/demo/data.test.ts` checks it.
  */
 
+import type { EditionOption } from "@/components/EditionSwitcher";
 import type { BookRow } from "@/app/(player)/books/BooksView";
 import type { BoardCell } from "@/app/(player)/bingo/BingoBoard";
 import type { FaqQuestionRow } from "@/app/(player)/faq/FaqListView";
@@ -767,6 +768,18 @@ export const DEMO_EDITIONS = [
   { id: DEMO_CHALLENGE.id, name: DEMO_CHALLENGE.name, color: DEMO_CHALLENGE.color, period: "5 sept. → 31 oct. 2026", status: "ACTIVE" as const },
   { id: DEMO_ARCHIVE.id, name: DEMO_ARCHIVE.name, color: DEMO_ARCHIVE.color, period: "6 sept. → 31 oct. 2025", status: "FINISHED" as const },
 ];
+
+/** The same editions seen by the switcher — Alycia organises both of them. */
+export const DEMO_EDITION_OPTIONS: EditionOption[] = DEMO_EDITIONS.map((e) => ({
+  id: e.id,
+  name: e.name,
+  color: e.color,
+  status: e.status,
+  role: "ORGANIZER",
+}));
+
+/** The edition the demo shells are showing. */
+export const DEMO_CURRENT_EDITION = { id: DEMO_CHALLENGE.id, name: DEMO_CHALLENGE.name, color: DEMO_CHALLENGE.color, role: "ORGANIZER" as const };
 
 const MEMBERS_BY_TEAM: Record<string, { id: string; name: string }[]> = {
   "demo-team-herissons": [

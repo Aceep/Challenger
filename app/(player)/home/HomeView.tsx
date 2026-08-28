@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Button, Card, KyleEmpty, PageTitle, ScoreCard, Stat } from "@/components/ui";
+import { Flash } from "@/components/Flash";
 import { FlagIcon, LogoutIcon, PlusIcon, SearchIcon, TargetIcon, VoteIcon } from "@/components/ui/icons";
 import { fmtPoints } from "@/lib/format";
 
@@ -17,6 +18,8 @@ export type HomeViewProps = {
     vote: { chapter: string; deadline: Date } | null;
     pendingCells: { label: string; missing: string }[];
   };
+  /** `?ok=` / `?error=` — where switching edition lands its confirmation. */
+  params?: Record<string, string | string[] | undefined>;
   demo?: boolean;
   /** Real app only: the sign-out Server Action. */
   signOutAction?: () => Promise<void>;
@@ -35,15 +38,17 @@ function remaining(deadline: Date, now: Date) {
 }
 
 /** Player home screen — pure view, reused by /demo. */
-export function HomeView({ userName, team, challengeName, challengeOver, score, rank, stats, week, demo, signOutAction }: HomeViewProps) {
+export function HomeView({ userName, team, challengeName, challengeOver, score, rank, stats, week, params, demo, signOutAction }: HomeViewProps) {
   const p = (path: string) => (demo ? `/demo${path}` : path);
   const now = new Date();
   const readings = stats.romans + stats.graphiques;
 
   return (
     <main className="home flex flex-1 flex-col gap-6 p-5">
+      {params && <Flash params={params} />}
       <PageTitle
         className="page-head"
+        kicker={challengeName ? <p className="eyebrow">{challengeName}</p> : undefined}
         action={
           signOutAction ? (
             <form action={signOutAction}>
