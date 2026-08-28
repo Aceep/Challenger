@@ -1165,6 +1165,9 @@ button[aria-busy="true"] {
 
 /* --- modal ------------------------------------------------------------------ */
 .modal {
+  position: fixed;
+  inset: 0;
+  margin: auto;
   border: 0;
   border-radius: 18px;
   padding: 0;
