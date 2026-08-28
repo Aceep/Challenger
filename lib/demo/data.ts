@@ -470,7 +470,6 @@ export const DEMO_LEADERBOARD: LeaderboardRowView[] = [
 
 export const DEMO_HOME: Omit<HomeViewProps, "demo"> = {
   userName: DEMO_PLAYER.name,
-  isAdmin: false,
   team: { name: DEMO_TEAM.name, color: DEMO_TEAM.color },
   challengeName: DEMO_CHALLENGE.name,
   challengeOver: false,
