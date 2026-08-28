@@ -871,8 +871,9 @@
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 4;
     padding-right: 14px;
-    overflow-wrap: anywhere;
-    hyphens: auto;
+    /* Break a word only when it cannot fit, so « couverture » stays whole. */
+    overflow-wrap: break-word;
+    hyphens: manual;
   }
   .cell .n {
     font-weight: 700;

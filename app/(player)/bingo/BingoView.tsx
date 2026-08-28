@@ -1,4 +1,5 @@
-import { Eyebrow, KyleEmpty } from "@/components/ui";
+import { KyleEmpty, PageTitle, SectionHeading } from "@/components/ui";
+import { CheckIcon } from "@/components/ui/icons";
 import { Flash } from "@/components/Flash";
 import { BingoBoard, type BoardCell } from "./BingoBoard";
 
@@ -23,8 +24,8 @@ export function BingoView({ grid, total, history, books, bonus, hasTeam, params,
   const justValidated = okText?.match(/case ([A-Z]\d+) validée/)?.[1] ?? null;
   if (!hasTeam) {
     return (
-      <main className="flex flex-1 flex-col gap-4 p-5">
-        <h1>Bingo</h1>
+      <main className="flex flex-1 flex-col gap-5 p-5">
+        <PageTitle>Bingo</PageTitle>
         <KyleEmpty>Rejoins une équipe pour jouer au bingo.</KyleEmpty>
       </main>
     );
@@ -48,25 +49,29 @@ export function BingoView({ grid, total, history, books, bonus, hasTeam, params,
         />
       ) : (
         <>
-          <h1>Bingo d&apos;équipe</h1>
-          <KyleEmpty>{total === 0 ? "La première grille n'est pas encore prête." : `Les ${total} grilles sont terminées 🏆`}</KyleEmpty>
+          <PageTitle>Bingo d’équipe</PageTitle>
+          <KyleEmpty>{total === 0 ? "La première grille n’est pas encore prête." : `Les ${total} grilles sont terminées.`}</KyleEmpty>
         </>
       )}
 
       {history.length > 0 && (
-        <section className="flex flex-col gap-1">
-          <Eyebrow>Grilles terminées</Eyebrow>
+        <section className="section">
+          <SectionHeading>Grilles terminées</SectionHeading>
           {history.map((h) => (
-            <p key={h.id} className="text-[13px] text-[color:var(--muted)]">
-              ✅ Grille {h.order} — « {h.title} »{h.completedAt ? ` · terminée le ${dateFmt.format(h.completedAt)}` : ""}
+            <p key={h.id} className="card flat flex items-center gap-2.5 px-4 py-3 text-[14px]">
+              <CheckIcon className="ico text-[color:var(--olive-ink)]" />
+              <span>
+                <strong>Grille {h.order}</strong> — <span className="accent">« {h.title} »</span>
+                {h.completedAt ? ` · terminée le ${dateFmt.format(h.completedAt)}` : ""}
+              </span>
             </p>
           ))}
         </section>
       )}
 
-      <p className="text-xs text-[color:var(--muted)]">
-        Un roman valide une case ; deux graphiques (d&apos;un ou deux membres de l&apos;équipe) aussi. Une case avec une seule moitié est « en attente » et ne
-        rapporte rien. Ligne, colonne ou diagonale complète : {bonus.line} pts ; grille entière : {bonus.full} pts, puis la grille suivante s&apos;ouvre.
+      <p className="meta-xs">
+        Un roman valide une case ; deux graphiques (d’un ou deux membres de l’équipe) aussi. Une case avec une seule moitié est « en attente » et ne rapporte
+        rien. Ligne, colonne ou diagonale complète : {bonus.line} pts ; grille entière : {bonus.full} pts, puis la grille suivante s’ouvre.
       </p>
     </main>
   );
