@@ -70,7 +70,7 @@ export function StoryView({
 
   return (
     <main className="story flex flex-1 flex-col gap-5 p-5">
-      {!demo && <LiveRefresh seconds={15} />}
+      {!demo && <LiveRefresh seconds={20} />}
       <Flash params={params} />
       <header>
         <Eyebrow style={{ color: teamColor }}>

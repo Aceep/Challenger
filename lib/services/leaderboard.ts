@@ -71,9 +71,25 @@ export async function getTeamScore(teamId: string): Promise<number> {
 
 /** Runs `fn`, then reports the leader before/after so callers can announce a change. */
 export async function withLeaderWatch<T>(challengeId: string | null | undefined, fn: () => Promise<T>) {
-  const top = async () => (challengeId ? (await getLeaderboard(challengeId)).map((r) => ({ teamId: r.teamId, name: r.name })) : []);
-  const before = await top();
+  const before = await topTeams(challengeId);
   const result = await fn();
-  const after = await top();
+  const after = await topTeams(challengeId);
   return { result, before, after };
+}
+
+/** Teams ordered by score only (no book counters) — enough to detect a leader change. */
+async function topTeams(challengeId: string | null | undefined) {
+  if (!challengeId) return [];
+  const challenge = await prisma.challenge.findUniqueOrThrow({ where: { id: challengeId }, select: { startAt: true, endAt: true } });
+  const teams = await prisma.team.findMany({ where: { challengeId }, select: { id: true, name: true } });
+  const sums = await prisma.pointEvent.groupBy({
+    by: ["teamId"],
+    where: { teamId: { in: teams.map((t) => t.id) }, createdAt: { gte: challenge.startAt, lte: challenge.endAt } },
+    _sum: { amount: true },
+  });
+  const byTeam = new Map(sums.map((s) => [s.teamId, round1(num(s._sum.amount))]));
+  return teams
+    .map((t) => ({ teamId: t.id, name: t.name, points: byTeam.get(t.id) ?? 0 }))
+    .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name))
+    .map(({ teamId, name }) => ({ teamId, name }));
 }
