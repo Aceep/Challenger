@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth, signIn } from "@/auth";
+import { Kyle } from "@/components/ui/Kyle";
 
 const ERRORS: Record<string, string> = {
   NotInvited: "Ton compte Discord n'est pas invité à ce défi. Demande à un organisateur.",
@@ -9,37 +11,42 @@ const ERRORS: Record<string, string> = {
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const session = await auth();
   const { error, callbackUrl } = await searchParams;
-  if (session?.user) redirect("/");
+  if (session?.user) redirect("/home");
 
   const errorKey = Array.isArray(error) ? error[0] : error;
   const target = Array.isArray(callbackUrl) ? callbackUrl[0] : callbackUrl;
 
   return (
-    <main className="flex flex-1 flex-col items-center justify-center gap-8 p-6">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold">Book Challenge</h1>
-        <p className="mt-2 text-slate-600 dark:text-slate-400">
-          Lis, remplis tes bingos, accomplis des quêtes, fais gagner ton équipe.
+    <main className="mx-auto flex min-h-dvh max-w-lg flex-col items-center justify-center gap-7 p-6 text-center">
+      <Kyle width={140} alt="Kyle, la mascotte d'Aceep&Kyle" />
+      <div>
+        <p className="eyebrow">Aceep&amp;Kyle</p>
+        <h1 className="mt-1 text-[34px]">Lisez en équipe.</h1>
+        <p className="mt-2 text-[color:var(--muted)]">
+          Chaque page lue rapporte des points à ton équipe : bingo, quêtes et histoire dont vous êtes le héros.
         </p>
       </div>
-      {errorKey && (
-        <p className="max-w-sm rounded-md bg-red-100 p-3 text-center text-sm text-red-800 dark:bg-red-950 dark:text-red-200">
-          {ERRORS[errorKey] ?? "Connexion impossible. Réessaie."}
-        </p>
-      )}
+      {errorKey && <p className="flash err">{ERRORS[errorKey] ?? "Connexion impossible. Réessaie."}</p>}
       <form
         action={async () => {
           "use server";
-          await signIn("discord", { redirectTo: target ?? "/" });
+          await signIn("discord", { redirectTo: target ?? "/home" });
         }}
       >
-        <button
-          type="submit"
-          className="rounded-lg bg-[#5865F2] px-6 py-3 text-lg font-semibold text-white shadow hover:bg-[#4752c4]"
-        >
+        <button type="submit" className="btn text-[17px]">
           Se connecter avec Discord
         </button>
       </form>
+      <p className="text-[13px] text-[color:var(--muted)]">
+        Pas encore invité·e ?{" "}
+        <Link href="/demo" className="underline">
+          Voir la démo
+        </Link>{" "}
+        ·{" "}
+        <Link href="/" className="underline">
+          Découvrir Aceep&amp;Kyle
+        </Link>
+      </p>
     </main>
   );
 }
