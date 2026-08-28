@@ -57,7 +57,15 @@ export function BottomNav({ base = "", isAdmin = false }: { base?: string; isAdm
             </Link>
           );
         })}
-        <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-haspopup="menu" aria-current={moreActive && !open ? "page" : undefined}>
+        {more.map((m) => (
+          <Link key={m.href} href={m.href} className="more-inline" aria-current={pathname.startsWith(m.href) ? "page" : undefined}>
+            <span className="ic" aria-hidden>
+              {m.icon}
+            </span>
+            {m.label}
+          </Link>
+        ))}
+        <button type="button" className="more-btn" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-haspopup="menu" aria-current={moreActive && !open ? "page" : undefined}>
           <span className="ic" aria-hidden>
             {open ? "✕" : "☰"}
           </span>

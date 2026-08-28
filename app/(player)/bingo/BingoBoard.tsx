@@ -33,7 +33,7 @@ export function BingoBoard({ title, size, cells, books, completedLines, order, t
   const editableIds = new Set(books.map((b) => b.id));
 
   return (
-    <section className="flex flex-col gap-3">
+    <section className="bingo-layout flex flex-col gap-3">
       <div>
         <h1>Bingo d&apos;équipe</h1>
         <p className="text-[13px] text-[color:var(--muted)]">
