@@ -11,8 +11,8 @@ datasource db {
 // Auth.js (next-auth v5) tables
 // ---------------------------------------------------------------------------
 
-enum Role {
-  ADMIN
+enum ChallengeRole {
+  ORGANIZER
   PLAYER
 }
 
@@ -23,21 +23,24 @@ model User {
   emailVerified DateTime?
   image         String?
   discordId     String?   @unique
-  role          Role      @default(PLAYER)
+  /// Platform super-admin: organiser of every challenge, sees every edition.
+  isSuperAdmin  Boolean   @default(false)
   /// First login guided tour: set once Kyle's visit is finished or skipped.
   onboardedAt   DateTime?
   createdAt     DateTime  @default(now())
 
-  accounts         Account[]
-  sessions         Session[]
-  membership       TeamMember?
-  captainOf        Team[]            @relation("TeamCaptain")
-  books            Book[]
-  editedBooks      Book[]            @relation("BookEditor")
-  deputyOf         Team[]            @relation("TeamDeputy")
-  ballots          VoteBallot[]
-  questions        Question[]
-  questionMessages QuestionMessage[]
+  accounts          Account[]
+  sessions          Session[]
+  memberships       ChallengeMember[]
+  teamMemberships   TeamMember[]
+  createdChallenges Challenge[]       @relation("ChallengeCreator")
+  captainOf         Team[]            @relation("TeamCaptain")
+  books             Book[]
+  editedBooks       Book[]            @relation("BookEditor")
+  deputyOf          Team[]            @relation("TeamDeputy")
+  ballots           VoteBallot[]
+  questions         Question[]
+  questionMessages  QuestionMessage[]
 }
 
 model Account {
@@ -109,14 +112,35 @@ model Challenge {
   faqSyncedAt             DateTime?
   /// Last Sunday leaderboard post (catch-up logic)
   lastWeeklyPostAt        DateTime?
+  /// Organiser who created the edition (kept for the challenge list)
+  createdById             String?
   createdAt               DateTime        @default(now())
 
-  teams      Team[]
-  invites    Invite[]
-  bingoGrids BingoGrid[]
-  quests     Quest[]
-  story      Story?
-  questions  Question[]
+  createdBy   User?             @relation("ChallengeCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  members     ChallengeMember[]
+  teamMembers TeamMember[]
+  teams       Team[]
+  invites     Invite[]
+  bingoGrids  BingoGrid[]
+  quests      Quest[]
+  story       Story?
+  questions   Question[]
+
+  @@index([discordGuildId])
+}
+
+/// A person's role inside one challenge. The tenant membership: no global role.
+model ChallengeMember {
+  challengeId String
+  userId      String
+  role        ChallengeRole @default(PLAYER)
+  createdAt   DateTime      @default(now())
+
+  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([challengeId, userId])
+  @@index([userId])
 }
 
 model Team {
@@ -158,26 +182,30 @@ model Team {
   @@unique([challengeId, name])
 }
 
+/// At most one team per person and per challenge (challengeId denormalised from the team).
 model TeamMember {
-  userId   String   @id
-  teamId   String
-  joinedAt DateTime @default(now())
+  userId      String
+  challengeId String
+  teamId      String
+  joinedAt    DateTime @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  team      Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
+  @@id([userId, challengeId])
   @@index([teamId])
 }
 
 /// Admin pre-registers a Discord user id; on first login the user is attached to the team.
 model Invite {
-  id          String    @id @default(cuid())
+  id          String        @id @default(cuid())
   challengeId String
   discordId   String
   teamId      String?
-  role        Role      @default(PLAYER)
+  role        ChallengeRole @default(PLAYER)
   usedAt      DateTime?
-  createdAt   DateTime  @default(now())
+  createdAt   DateTime      @default(now())
 
   challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
   team      Team?     @relation(fields: [teamId], references: [id], onDelete: SetNull)
