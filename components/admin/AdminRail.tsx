@@ -21,12 +21,13 @@ const GROUPS = [
       { href: "/admin/bingo", label: "🎯 Bingo" },
       { href: "/admin/quests", label: "🗺️ Quêtes" },
       { href: "/admin/story", label: "📖 Histoire" },
+      { href: "/admin/faq", label: "❓ FAQ" },
     ],
   },
 ] as const;
 
 /** Left rail of the admin desk. `base` is "/demo" for the read-only demo. */
-export function AdminRail({ who, base = "" }: { who: string; base?: string }) {
+export function AdminRail({ who, base = "", openQuestions = 0 }: { who: string; base?: string; /** Badge on FAQ: questions without an answer yet. */ openQuestions?: number }) {
   const pathname = usePathname();
   return (
     <nav className="rail" aria-label="Administration">
@@ -43,9 +44,15 @@ export function AdminRail({ who, base = "" }: { who: string; base?: string }) {
           {g.items.map((item) => {
             const href = `${base}${item.href}`;
             const active = item.href === "/admin" ? pathname === href : pathname.startsWith(href);
+            const badge = item.href === "/admin/faq" && openQuestions > 0 ? openQuestions : null;
             return (
               <Link key={item.href} href={href} aria-current={active ? "page" : undefined}>
                 {item.label}
+                {badge !== null && (
+                  <span className="badge" title={`${badge} question${badge > 1 ? "s" : ""} sans réponse`}>
+                    {badge}
+                  </span>
+                )}
               </Link>
             );
           })}

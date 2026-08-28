@@ -678,6 +678,7 @@ export const DEMO_DASHBOARD: Omit<DashboardViewProps, "demo"> = {
     nextIn: "dans 2 j 6 h",
   },
   todo: [
+    { id: "demo-todo-questions", tone: "wait", icon: "❓", text: `${DEMO_OPEN_QUESTIONS} questions sans réponse dans la FAQ.`, href: "/admin/faq" },
     {
       id: "demo-todo-tie",
       tone: "wait",
