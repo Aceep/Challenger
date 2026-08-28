@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { Kyle } from "@/components/ui/Kyle";
+import { tourHref, type TourId } from "@/lib/tour/steps";
 
 /** Discreet "this is fake data" strip shown on every demo screen. */
-export function DemoBanner() {
+export function DemoBanner({ tour }: { tour?: TourId }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[color:var(--line)] bg-[color:var(--hi)] px-4 py-2 text-[13px]">
       <span className="flex items-center gap-2 font-bold">
@@ -10,6 +11,11 @@ export function DemoBanner() {
         Démo — données fictives
       </span>
       <span className="flex items-center gap-3">
+        {tour && (
+          <Link href={tourHref(tour, 0, "/demo")} className="underline">
+            ✨ Visite guidée
+          </Link>
+        )}
         <Link href="/" className="underline">
           Accueil
         </Link>

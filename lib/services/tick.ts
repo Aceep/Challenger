@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { announceDormant, announceResolution, announceTieStage, announceWeekly, announceWindow } from "@/lib/discord/events";
+import { once } from "@/lib/services/bot-events";
 import { advanceTieStages, dormantTeams, resolveExpiredVotes } from "@/lib/services/story";
 import { dueSundayKey, isVerificationWindow, parisClock, parisInstant, sundayKey } from "@/lib/time/paris";
 
@@ -11,15 +12,6 @@ import { dueSundayKey, isVerificationWindow, parisClock, parisInstant, sundayKey
  * Safe to call as often as wanted (cron, on activity): each announcement is
  * recorded in BotEvent so it is posted once.
  */
-
-/** Runs `fn` once per `key` (no-op when already done). */
-async function once(key: string, fn: () => Promise<void>) {
-  const done = await prisma.botEvent.findUnique({ where: { key } });
-  if (done) return false;
-  await prisma.botEvent.create({ data: { key } });
-  await fn();
-  return true;
-}
 
 export async function runTick(now = new Date()) {
   const challenge = await prisma.challenge.findFirst({ where: { status: "ACTIVE" } });

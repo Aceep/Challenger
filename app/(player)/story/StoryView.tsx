@@ -79,7 +79,9 @@ export function StoryView({
         <h1>{node.title}</h1>
       </header>
 
-      <p className="chapter card">{node.body}</p>
+      <p className="chapter card" data-tour="story-chapter">
+        {node.body}
+      </p>
 
       {node.isEnding && <p className="text-center text-lg font-extrabold">✨ Fin de votre histoire</p>}
 

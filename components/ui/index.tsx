@@ -30,9 +30,10 @@ export function Button({
   return <button {...props} className={cls} />;
 }
 
-export function Card({ className, children, style }: { className?: string; children: ReactNode; style?: React.CSSProperties }) {
+/** Extra props are forwarded to the `<div>` (used for `data-tour` targets). */
+export function Card({ className, children, style, ...rest }: { className?: string; children: ReactNode } & Omit<ComponentProps<"div">, "ref" | "className" | "children">) {
   return (
-    <div className={cx("card", className)} style={style}>
+    <div {...rest} className={cx("card", className)} style={style}>
       {children}
     </div>
   );

@@ -40,6 +40,7 @@ export default async function AdminTeamsPage({ searchParams }: PageProps<"/admin
           deputyId: t.deputyId ?? "",
           adventureChannel: t.discordChannelId,
           libraryChannel: t.discordLibraryChannelId,
+          discordRole: t.discordRoleId,
           gridLabel: grids ? `${current?.grid.order ?? 0} / ${grids}` : "—",
           points: points.get(t.id) ?? 0,
         };

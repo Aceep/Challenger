@@ -1,8 +1,14 @@
 import "server-only";
+import type { Overwrite } from "@/lib/discord/permissions";
 
 /**
- * Minimal Discord REST client (bot token). Every call is best-effort: failures
- * are logged and swallowed so game actions never depend on Discord being up.
+ * Minimal Discord REST client (bot token).
+ *
+ * Two levels:
+ * - `postMessage` / `editMessage` are best-effort: failures are logged and
+ *   swallowed so game actions never depend on Discord being up.
+ * - `request()` returns a `DiscordResult` so the guild bootstrap
+ *   (`lib/services/discord-setup.ts`) can report what failed and why.
  */
 const API = "https://discord.com/api/v10";
 
@@ -13,6 +19,12 @@ export type OutgoingMessage = {
   embeds?: { title?: string; description?: string; color?: number; footer?: { text: string }; url?: string }[];
   buttons?: MessageButton[];
 };
+
+export type DiscordResult<T> = { ok: true; data: T } | { ok: false; status: number; error: string };
+
+type Method = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
+
+export const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 function enabled() {
   return !!process.env.DISCORD_BOT_TOKEN;
@@ -29,23 +41,42 @@ function toPayload(m: OutgoingMessage) {
   return { content: m.content, embeds: m.embeds, components: rows };
 }
 
-async function call(path: string, method: "POST" | "PATCH" | "PUT" | "DELETE", body?: unknown) {
-  if (!enabled()) return null;
+/**
+ * One REST call. Retries once on 429 (rate limit) after `retry_after`.
+ * A 204 resolves to an empty object.
+ */
+export async function request<T>(path: string, method: Method = "GET", body?: unknown, retry = true): Promise<DiscordResult<T>> {
+  if (!enabled()) return { ok: false, status: 0, error: "DISCORD_BOT_TOKEN manquant." };
   try {
     const res = await fetch(`${API}${path}`, {
       method,
       headers: { Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
-      body: body ? JSON.stringify(body) : undefined,
+      body: body === undefined ? undefined : JSON.stringify(body),
     });
-    if (!res.ok) {
-      console.error(`[discord] ${method} ${path} → ${res.status}: ${(await res.text()).slice(0, 300)}`);
-      return null;
+    if (res.status === 429 && retry) {
+      // `retry_after` (seconds, float) comes in the body, mirrored by the header.
+      const header = Number(res.headers.get("retry-after"));
+      const fromBody = await res.json().catch(() => null);
+      const after = Number.isFinite(header) && header > 0 ? header : Number((fromBody as { retry_after?: number } | null)?.retry_after) || 1;
+      await sleep(Math.min(after * 1000 + 250, 10_000));
+      return request<T>(path, method, body, false);
     }
-    return res.status === 204 ? {} : ((await res.json()) as { id?: string });
+    if (!res.ok) {
+      const text = (await res.text()).slice(0, 300);
+      console.error(`[discord] ${method} ${path} → ${res.status}: ${text}`);
+      return { ok: false, status: res.status, error: text || `HTTP ${res.status}` };
+    }
+    return { ok: true, data: (res.status === 204 ? {} : await res.json()) as T };
   } catch (e) {
     console.error(`[discord] ${method} ${path} failed`, e);
-    return null;
+    return { ok: false, status: 0, error: e instanceof Error ? e.message : String(e) };
   }
+}
+
+/** Best-effort variant: the payload, or null when anything went wrong. */
+async function call(path: string, method: Method, body?: unknown) {
+  const r = await request<{ id?: string }>(path, method, body);
+  return r.ok ? r.data : null;
 }
 
 /** Returns the created message id, or null. */
@@ -62,5 +93,63 @@ export async function editMessage(channelId: string | null | undefined, messageI
 
 /** Registers slash commands for one guild (instant, unlike global commands). */
 export async function registerGuildCommands(appId: string, guildId: string, commands: unknown[]) {
-  return call(`/applications/${appId}/guilds/${guildId}/commands`, "PUT", commands);
+  return request<unknown[]>(`/applications/${appId}/guilds/${guildId}/commands`, "PUT", commands);
+}
+
+// ---------------------------------------------------------------------------
+// Guild bootstrap helpers (see lib/services/discord-setup.ts)
+// ---------------------------------------------------------------------------
+
+export type GuildRole = { id: string; name: string; color?: number; managed?: boolean; position?: number };
+/** `type` 0 = text channel, 4 = category. */
+export type GuildChannel = { id: string; name?: string; type: number; parent_id?: string | null };
+
+export function getGuildRoles(guildId: string) {
+  return request<GuildRole[]>(`/guilds/${guildId}/roles`);
+}
+
+export function getGuildChannels(guildId: string) {
+  return request<GuildChannel[]>(`/guilds/${guildId}/channels`);
+}
+
+export function createRole(guildId: string, role: { name: string; color?: number; mentionable?: boolean; hoist?: boolean }) {
+  return request<GuildRole>(`/guilds/${guildId}/roles`, "POST", {
+    name: role.name.slice(0, 100),
+    color: role.color ?? 0,
+    mentionable: role.mentionable ?? true,
+    hoist: role.hoist ?? false,
+    permissions: "0",
+  });
+}
+
+export function createChannel(
+  guildId: string,
+  channel: { name: string; type: 0 | 4; parentId?: string | null; topic?: string; permissionOverwrites?: Overwrite[] },
+) {
+  return request<GuildChannel>(`/guilds/${guildId}/channels`, "POST", {
+    name: channel.name.slice(0, 100),
+    type: channel.type,
+    parent_id: channel.parentId ?? undefined,
+    topic: channel.topic?.slice(0, 1024),
+    permission_overwrites: channel.permissionOverwrites,
+  });
+}
+
+export function getGuildMember(guildId: string, userId: string) {
+  return request<{ user?: { id: string }; roles?: string[] }>(`/guilds/${guildId}/members/${userId}`);
+}
+
+export function addMemberRole(guildId: string, userId: string, roleId: string) {
+  return request<unknown>(`/guilds/${guildId}/members/${userId}/roles/${roleId}`, "PUT");
+}
+
+export function removeMemberRole(guildId: string, userId: string, roleId: string) {
+  return request<unknown>(`/guilds/${guildId}/members/${userId}/roles/${roleId}`, "DELETE");
+}
+
+/** Pins a message (falls back to the legacy route on older API behaviour). */
+export async function pinMessage(channelId: string, messageId: string) {
+  const r = await request<unknown>(`/channels/${channelId}/messages/pins/${messageId}`, "PUT");
+  if (!r.ok && r.status === 404) return request<unknown>(`/channels/${channelId}/pins/${messageId}`, "PUT");
+  return r;
 }

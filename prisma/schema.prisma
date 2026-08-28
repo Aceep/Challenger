@@ -24,6 +24,8 @@ model User {
   image         String?
   discordId     String?   @unique
   role          Role      @default(PLAYER)
+  /// First login guided tour: set once Kyle's visit is finished or skipped.
+  onboardedAt   DateTime?
   createdAt     DateTime  @default(now())
 
   accounts    Account[]
@@ -95,6 +97,8 @@ model Challenge {
   bingoFullBonus          Int             @default(100)
   discordGuildId          String?
   discordGeneralChannelId String?
+  /// Discord role given to organisers ("Organisateurs"), created by the bot setup.
+  discordAdminRoleId      String?
   /// Last Sunday leaderboard post (catch-up logic)
   lastWeeklyPostAt        DateTime?
   createdAt               DateTime        @default(now())
@@ -120,6 +124,8 @@ model Team {
   discordChannelId        String?
   /// Team "librairie" channel where /ajouter-un-livre and /modifier-un-livre are allowed
   discordLibraryChannelId String?
+  /// Discord role carried by the team members, created by the bot setup.
+  discordRoleId           String?
   createdAt               DateTime @default(now())
 
   challenge        Challenge         @relation(fields: [challengeId], references: [id], onDelete: Cascade)

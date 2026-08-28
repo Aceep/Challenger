@@ -52,20 +52,22 @@ export function HomeView({ userName, team, challengeName, challengeOver, score, 
       {challengeOver && <p className="flash warn">🏁 Le défi est terminé : les scores sont figés. Merci d&apos;avoir joué !</p>}
 
       {team && challengeName ? (
-        <ScoreCard
-          teamName={team.name}
-          teamColor={team.color}
-          challengeName={challengeName}
-          points={score}
-          href={p("/team")}
-          rankLine={
-            rank
-              ? rank.gapPoints > 0
-                ? `${ORDINAL(rank.position)} sur ${rank.total} · à ${fmtPoints(rank.gapPoints)} pts ${ofTeam(rank.ahead)}`
-                : `${ORDINAL(rank.position)} sur ${rank.total} · en tête`
-              : null
-          }
-        />
+        <div data-tour="home-score">
+          <ScoreCard
+            teamName={team.name}
+            teamColor={team.color}
+            challengeName={challengeName}
+            points={score}
+            href={p("/team")}
+            rankLine={
+              rank
+                ? rank.gapPoints > 0
+                  ? `${ORDINAL(rank.position)} sur ${rank.total} · à ${fmtPoints(rank.gapPoints)} pts ${ofTeam(rank.ahead)}`
+                  : `${ORDINAL(rank.position)} sur ${rank.total} · en tête`
+                : null
+            }
+          />
+        </div>
       ) : (
         <KyleEmpty>Tu n&apos;as pas encore d&apos;équipe. Un organisateur va t&apos;en attribuer une.</KyleEmpty>
       )}
@@ -85,9 +87,11 @@ export function HomeView({ userName, team, challengeName, challengeOver, score, 
         </Card>
       </div>
 
-      <Button href={p("/books/new")} className="text-[17px]" style={{ padding: 14 }}>
-        + J&apos;ai fini une lecture
-      </Button>
+      <div data-tour="home-add">
+        <Button href={p("/books/new")} className="w-full text-[17px]" style={{ padding: 14 }}>
+          + J&apos;ai fini une lecture
+        </Button>
+      </div>
 
       <Card className="flex flex-col gap-2">
         <Eyebrow>Cette semaine</Eyebrow>
