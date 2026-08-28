@@ -1,17 +1,33 @@
 import { getActiveChallenge, requireAdmin } from "@/lib/dal";
 import { prisma } from "@/lib/db";
 import { bookWeight, isComplete } from "@/lib/scoring/reading";
-import { listGridsAdmin } from "@/lib/services/bingo";
-import { BingoAdminView, type GridProgress } from "./BingoAdminView";
-import { deleteGridAction, moveGridAction, saveGridAction } from "./actions";
+import { getTeamBoard, listGridsAdmin } from "@/lib/services/bingo";
+import { BingoAdminView, type GridProgress, type TeamBoard } from "./BingoAdminView";
+import { deleteGridAction, moveGridAction, placeTeamBookAction, removeTeamBookAction, saveGridAction } from "./actions";
+
+const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
 
 export default async function AdminBingoPage({ searchParams }: PageProps<"/admin/bingo">) {
   await requireAdmin();
   const params = await searchParams;
   const challenge = await getActiveChallenge();
-  const actions = { saveGridAction, moveGridAction, deleteGridAction };
+  const noBoard = { placeTeamBookAction: placeTeamBookAction.bind(null, ""), removeTeamBookAction: removeTeamBookAction.bind(null, "") };
   if (!challenge) {
-    return <BingoAdminView grids={[]} teams={[]} hasChallenge={false} bonus={{ line: 0, full: 0 }} editingId={null} params={params} {...actions} />;
+    return (
+      <BingoAdminView
+        grids={[]}
+        teams={[]}
+        hasChallenge={false}
+        bonus={{ line: 0, full: 0 }}
+        editingId={null}
+        params={params}
+        teamBoard={null}
+        saveGridAction={saveGridAction}
+        moveGridAction={moveGridAction}
+        deleteGridAction={deleteGridAction}
+        {...noBoard}
+      />
+    );
   }
 
   const [grids, teams, teamGrids, fills] = await Promise.all([
@@ -29,7 +45,29 @@ export default async function AdminBingoPage({ searchParams }: PageProps<"/admin
     const key = `${f.teamId}:${f.cellId}`;
     weights.set(key, [...(weights.get(key) ?? []), bookWeight(f.book.type)]);
   }
-  const edit = Array.isArray(params.edit) ? params.edit[0] : params.edit;
+  const edit = one(params.edit);
+
+  // Board of one team (`?team=`), with every reading it may place or move.
+  const selected = teams.find((t) => t.id === one(params.team)) ?? teams[0] ?? null;
+  let teamBoard: TeamBoard | null = null;
+  if (selected) {
+    const [board, teamBooks] = await Promise.all([
+      getTeamBoard(selected.id),
+      prisma.book.findMany({
+        where: { teamId: selected.id, deletedAt: null },
+        orderBy: { finishedAt: "desc" },
+        include: { user: { select: { name: true } }, bingoFill: { select: { cellId: true } } },
+      }),
+    ]);
+    teamBoard = {
+      teamId: selected.id,
+      teamName: selected.name,
+      grid: board.grid ? { ...board.grid, completedLines: board.grid.completedLines.length } : null,
+      total: board.total,
+      history: board.history.map((h) => ({ id: h.id, order: h.grid.order, title: h.grid.title, completedAt: h.completedAt })),
+      books: teamBooks.map((b) => ({ id: b.id, title: b.title, type: b.type, owner: b.user.name ?? "?", placedOn: b.bingoFill?.cellId ?? null })),
+    };
+  }
 
   return (
     <BingoAdminView
@@ -52,9 +90,14 @@ export default async function AdminBingoPage({ searchParams }: PageProps<"/admin
       teams={teams}
       hasChallenge
       bonus={{ line: challenge.bingoLineBonus, full: challenge.bingoFullBonus }}
-      editingId={edit ?? null}
+      editingId={edit || null}
       params={params}
-      {...actions}
+      teamBoard={teamBoard}
+      saveGridAction={saveGridAction}
+      moveGridAction={moveGridAction}
+      deleteGridAction={deleteGridAction}
+      placeTeamBookAction={placeTeamBookAction.bind(null, selected?.id ?? "")}
+      removeTeamBookAction={removeTeamBookAction.bind(null, selected?.id ?? "")}
     />
   );
 }
