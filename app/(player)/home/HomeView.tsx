@@ -24,6 +24,9 @@ export type HomeViewProps = {
 
 const ORDINAL = (n: number) => (n === 1 ? "1ᵉʳ" : `${n}ᵉ`);
 
+/** « Les Hérissons » → « des Hérissons », « Kyle » → « de Kyle ». */
+const ofTeam = (name: string) => (/^les\s/i.test(name) ? `des ${name.slice(4)}` : `de ${name}`);
+
 function remaining(deadline: Date, now: Date) {
   const h = Math.max(0, Math.round((deadline.getTime() - now.getTime()) / 3_600_000));
   if (h < 1) return "clos dans moins d'une heure";
@@ -59,7 +62,7 @@ export function HomeView({ userName, isAdmin, team, challengeName, challengeOver
           rankLine={
             rank
               ? rank.gapPoints > 0
-                ? `${ORDINAL(rank.position)} sur ${rank.total} · à ${fmtPoints(rank.gapPoints)} pts de ${rank.ahead}`
+                ? `${ORDINAL(rank.position)} sur ${rank.total} · à ${fmtPoints(rank.gapPoints)} pts ${ofTeam(rank.ahead)}`
                 : `${ORDINAL(rank.position)} sur ${rank.total} · en tête`
               : null
           }
