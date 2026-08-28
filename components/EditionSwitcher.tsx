@@ -78,7 +78,7 @@ export function EditionSwitcher({ current, options, action, returnTo, variant }:
   return (
     <div className="ed-switch flat">
       <p className="ed-head">{head}</p>
-      {list || <p className="meta-xs">Tu n’as accès qu’à cette édition.</p>}
+      {list || <p className="meta-xs">{current ? "Tu n’as accès qu’à cette édition." : "Aucune édition ne t’est ouverte pour l’instant."}</p>}
     </div>
   );
 }
