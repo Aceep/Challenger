@@ -10,25 +10,6 @@ const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) 
 export default async function AdminBingoPage({ searchParams }: PageProps<"/admin/bingo">) {
   const { challenge } = await requireOrganizer();
   const params = await searchParams;
-  const noBoard = { placeTeamBookAction: placeTeamBookAction.bind(null, ""), removeTeamBookAction: removeTeamBookAction.bind(null, "") };
-  if (!challenge) {
-    return (
-      <BingoAdminView
-        grids={[]}
-        teams={[]}
-        hasChallenge={false}
-        bonus={{ line: 0, full: 0 }}
-        editingId={null}
-        params={params}
-        teamBoard={null}
-        saveGridAction={saveGridAction}
-        moveGridAction={moveGridAction}
-        deleteGridAction={deleteGridAction}
-        {...noBoard}
-      />
-    );
-  }
-
   const [grids, teams, teamGrids, fills] = await Promise.all([
     listGridsAdmin(challenge.id),
     prisma.team.findMany({ where: { challengeId: challenge.id }, orderBy: { name: "asc" }, select: { id: true, name: true, color: true } }),

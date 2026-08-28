@@ -15,24 +15,6 @@ export default async function AdminReadingsPage({ searchParams }: PageProps<"/ad
   const actions = { updateReadingAction, deleteReadingAction };
   const filters = { teamId: one(params.team), userId: one(params.user), q: one(params.q), deleted: one(params.deleted) === "1" };
 
-  if (!challenge) {
-    return (
-      <ReadingsView
-        readings={[]}
-        teams={[]}
-        players={[]}
-        filters={filters}
-        page={1}
-        pages={1}
-        total={0}
-        hasChallenge={false}
-        editing={null}
-        params={params}
-        {...actions}
-      />
-    );
-  }
-
   const page = Math.max(1, Number(one(params.page)) || 1);
   const [listing, teams, members] = await Promise.all([
     listReadingsAdmin(challenge.id, { ...filters, page }),
