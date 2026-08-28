@@ -3,9 +3,9 @@ import { Skeleton, SkeletonCard, SkeletonPage } from "@/components/ui/Skeleton";
 export default function Loading() {
   return (
     <SkeletonPage className="home">
-      <header>
+      <div>
         <Skeleton className="h-7 w-1/2" />
-      </header>
+      </div>
       <div className="score flex flex-col gap-3">
         <Skeleton className="h-3 w-1/3" />
         <Skeleton className="h-14 w-2/5" />

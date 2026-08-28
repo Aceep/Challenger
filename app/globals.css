@@ -1112,7 +1112,9 @@
   .player-shell main.home, .player-shell main.story, .player-shell main.help { max-width: 980px; }
   .player-shell .list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
   .player-shell main.home { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; }
-  .player-shell main.home > header, .player-shell main.home > .flash { grid-column: 1 / -1; }
+  .player-shell main.home > :first-child,
+  .player-shell main.home > .flash,
+  .player-shell main.home > .card { grid-column: 1 / -1; }
   .player-shell main.home > .score { grid-row: span 2; }
   .player-shell main.story .chapter { max-width: 68ch; }
   .player-shell .bingo-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; column-gap: 24px; align-items: start; }
