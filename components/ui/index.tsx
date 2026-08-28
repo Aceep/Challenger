@@ -161,7 +161,7 @@ export function Pill({
   children: ReactNode;
   className?: string;
 }) {
-  return <span className={cx(stamp ? "stamp" : "pill", tone, stamp && xs && "xs", className)}>{children}</span>;
+  return <span className={cx(stamp ? "stamp" : "pill", tone, xs && "xs", className)}>{children}</span>;
 }
 
 /** Team (or edition) avatar: first letter over the team colour. */
