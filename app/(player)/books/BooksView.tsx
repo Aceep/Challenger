@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { Button, Eyebrow, KyleEmpty, Pill } from "@/components/ui";
 import { Flash } from "@/components/Flash";
+import { PencilIcon } from "@/components/ui/icons";
 import { fmtDelta } from "@/lib/format";
+import { DeleteBookButton } from "./DeleteBookButton";
 
 export type BookRow = {
   id: string;
@@ -50,39 +52,38 @@ function Row({ b, index, showOwner, teamColor, prefix, deleteBookAction }: { b: 
   return (
     <li className="card book">
       <div className="cover" style={{ background: cover(teamColor, index) }} aria-hidden />
-      <div className="min-w-0">
-        <p className="t">
-          {b.type === "GRAPHIQUE" && <Pill tone="type">graphique</Pill>} {b.title}
-          {showOwner && <span className="font-normal text-[color:var(--muted)]"> · {b.owner}</span>}
-        </p>
-        <p className="s truncate">
+      <div className="body">
+        <div className="head">
+          <p className="t">
+            {b.type === "GRAPHIQUE" && <Pill tone="type">graphique</Pill>} {b.title}
+            {showOwner && <span className="font-normal text-[color:var(--muted)]"> · {b.owner}</span>}
+          </p>
+          <p className="pts num">{fmtDelta(b.points)}</p>
+        </div>
+        <p className="s">
           {b.author} · {b.pages} p. · {dateFmt.format(b.finishedAt)}
         </p>
         {(b.questNumber !== null || b.cellLabel) && (
-          <p className="links truncate">
+          <p className="links">
             {b.questNumber !== null && `🗺️ quête #${b.questNumber}${b.questHalf ? " (½)" : ""}`}
             {b.questNumber !== null && b.cellLabel && " · "}
             {b.cellLabel && `🎯 case ${b.cellLabel}${b.cellHalf ? " (½)" : ""}`}
           </p>
         )}
-        <div className="actions">
-          {b.editable ? (
-            <>
-              <Link href={`${prefix}/books/${b.id}/edit`}>Modifier</Link>
-              {deleteBookAction && (
-                <form action={deleteBookAction}>
-                  <input type="hidden" name="bookId" value={b.id} />
-                  <button className="text-[color:var(--brick)]">Supprimer</button>
-                </form>
-              )}
-              {b.editUntil && <span>modifiable jusqu&apos;à {timeFmt.format(b.editUntil)}</span>}
-            </>
-          ) : (
-            <span>Modification par le·la capitaine uniquement</span>
+        <div className="foot">
+          <span className="note">
+            {b.editable ? (b.editUntil ? `modifiable jusqu'à ${timeFmt.format(b.editUntil)}` : "") : "Modification par le·la capitaine uniquement"}
+          </span>
+          {b.editable && (
+            <span className="actions">
+              <Link href={`${prefix}/books/${b.id}/edit`} className="icon-btn" title="Modifier" aria-label={`Modifier « ${b.title} »`}>
+                <PencilIcon />
+              </Link>
+              {deleteBookAction && <DeleteBookButton bookId={b.id} title={b.title} points={b.points} hasLinks={b.questNumber !== null || !!b.cellLabel} action={deleteBookAction} />}
+            </span>
           )}
         </div>
       </div>
-      <p className="pts num">{fmtDelta(b.points)}</p>
     </li>
   );
 }
