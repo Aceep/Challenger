@@ -1,4 +1,4 @@
-import { getActiveChallenge } from "@/lib/dal";
+import { getActiveChallenge, requireAdmin } from "@/lib/dal";
 import { prisma } from "@/lib/db";
 import { bookWeight, isComplete } from "@/lib/scoring/reading";
 import { listGridsAdmin } from "@/lib/services/bingo";
@@ -6,6 +6,7 @@ import { BingoAdminView, type GridProgress } from "./BingoAdminView";
 import { deleteGridAction, moveGridAction, saveGridAction } from "./actions";
 
 export default async function AdminBingoPage({ searchParams }: PageProps<"/admin/bingo">) {
+  await requireAdmin();
   const params = await searchParams;
   const challenge = await getActiveChallenge();
   const actions = { saveGridAction, moveGridAction, deleteGridAction };

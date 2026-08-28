@@ -1,4 +1,4 @@
-import { getActiveChallenge } from "@/lib/dal";
+import { getActiveChallenge, requireAdmin } from "@/lib/dal";
 import { prisma } from "@/lib/db";
 import { bookWeight, isComplete } from "@/lib/scoring/reading";
 import { listQuestsAdmin } from "@/lib/services/quests";
@@ -9,6 +9,7 @@ const dateFmt = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short
 const toLocalInput = (d: Date | null) => (d ? new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16) : "");
 
 export default async function AdminQuestsPage({ searchParams }: PageProps<"/admin/quests">) {
+  await requireAdmin();
   const params = await searchParams;
   const challenge = await getActiveChallenge();
   const actions = { saveQuestAction, deleteQuestAction };
