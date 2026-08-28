@@ -1,10 +1,12 @@
+import { Flash } from "@/components/Flash";
 import { prisma } from "@/lib/db";
 import { getActiveChallenge } from "@/lib/dal";
 import { getStoryAdmin } from "@/lib/services/story";
 import { NodeForm, NodeList, StoryForm, type EditorStory } from "./StoryEditor";
 import { resetTeamStoryAction } from "./actions";
 
-export default async function AdminStoryPage() {
+export default async function AdminStoryPage({ searchParams }: PageProps<"/admin/story">) {
+  const params = await searchParams;
   const challenge = await getActiveChallenge();
   if (!challenge) {
     return (
@@ -54,6 +56,7 @@ export default async function AdminStoryPage() {
   return (
     <main className="flex flex-col gap-6">
       <h1 className="text-2xl font-bold">Histoire</h1>
+      <Flash params={params} />
       <StoryForm story={editorStory} />
 
       {editorStory && (

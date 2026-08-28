@@ -2,7 +2,9 @@ import { InteractionResponseType, InteractionType, verifyKey } from "discord-int
 import { after, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { announceGridChange, announceRankChange, announceResolution, syncVoteMessage } from "@/lib/discord/events";
+import { userMessage } from "@/lib/errors";
 import { fmtPoints } from "@/lib/format";
+import { helpText } from "@/lib/discord/help";
 import { cellChoices, editableBookChoices, questChoices } from "@/lib/services/autocomplete";
 import { bookPatchSchema, bookSchema, deleteBook, describeResult, logBook, updateBook, type BookResult } from "@/lib/services/books";
 import { getLeaderboard, withLeaderWatch } from "@/lib/services/leaderboard";
@@ -53,7 +55,12 @@ export async function POST(request: Request) {
     return new NextResponse("invalid signature", { status: 401 });
   }
 
-  const interaction = JSON.parse(rawBody) as Interaction;
+  let interaction: Interaction;
+  try {
+    interaction = JSON.parse(rawBody) as Interaction;
+  } catch {
+    return new NextResponse("bad request", { status: 400 });
+  }
   if (interaction.type === InteractionType.PING) return NextResponse.json({ type: InteractionResponseType.PONG });
   if (interaction.type !== InteractionType.APPLICATION_COMMAND_AUTOCOMPLETE) after(() => tickOnActivity());
 
@@ -62,6 +69,7 @@ export async function POST(request: Request) {
   const player = await playerFromDiscord(discordUser.id);
   if (!player) {
     if (interaction.type === InteractionType.APPLICATION_COMMAND_AUTOCOMPLETE) return choices([]);
+    if (interaction.data?.name === "help") return ephemeral(helpText(null));
     return ephemeral(`Tu n'es pas encore inscrit·e : connecte-toi d'abord sur ${appUrl()}`);
   }
   const { user, team } = player;
@@ -174,10 +182,12 @@ export async function POST(request: Request) {
           }`,
         );
       }
+      case "help":
+        return ephemeral(helpText(team));
       default:
-        return ephemeral("Commande inconnue.");
+        return ephemeral("Commande inconnue. Tape `/help` pour la liste.");
     }
   } catch (e) {
-    return ephemeral(`❌ ${e instanceof Error ? e.message : "Erreur"}`);
+    return ephemeral(`❌ ${userMessage(e)}`);
   }
 }

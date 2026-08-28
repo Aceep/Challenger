@@ -1,3 +1,4 @@
+import { GameError } from "@/lib/errors";
 import "server-only";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
@@ -262,14 +263,14 @@ export async function getTeamChapterStatus(teamId: string) {
 export async function castBallot(voteId: string, userId: string, choiceId: string) {
   return prisma.$transaction(async (tx) => {
     const vote = await tx.vote.findUniqueOrThrow({ where: { id: voteId }, include: { node: { include: { choices: true } }, team: true } });
-    if (vote.status !== "OPEN") throw new Error("Ce vote est clos");
+    if (vote.status !== "OPEN") throw new GameError("Ce vote est clos");
     const voters = await eligibleVoterIds(tx, vote.teamId);
-    if (!voters.includes(userId)) throw new Error("Tu ne peux pas voter pour cette équipe");
+    if (!voters.includes(userId)) throw new GameError("Tu ne peux pas voter pour cette équipe");
     const choice = vote.node.choices.find((c) => c.id === choiceId);
-    if (!choice) throw new Error("Choix inconnu");
+    if (!choice) throw new GameError("Choix inconnu");
     if (choice.lockedByQuestId) {
       const done = await tx.questCompletion.findFirst({ where: { questId: choice.lockedByQuestId, teamId: vote.teamId } });
-      if (!done) throw new Error("Ce choix est encore verrouillé");
+      if (!done) throw new GameError("Ce choix est encore verrouillé");
     }
     await tx.voteBallot.upsert({
       where: { voteId_userId: { voteId, userId } },
@@ -352,15 +353,15 @@ export async function breakTie(voteId: string, userId: string, choiceId: string)
     prisma.vote.findUniqueOrThrow({ where: { id: voteId }, include: { team: true, ballots: true, node: { include: { choices: { orderBy: { sortOrder: "asc" } } } } } }),
     prisma.user.findUniqueOrThrow({ where: { id: userId } }),
   ]);
-  if (vote.status !== "OPEN" || vote.tieStage === "NONE" || !vote.tieSince) throw new Error("Pas d'égalité à trancher");
+  if (vote.status !== "OPEN" || vote.tieStage === "NONE" || !vote.tieSince) throw new GameError("Pas d'égalité à trancher");
   const info = tieInfo(vote, userId, vote.node.choices.map((c) => c.id));
-  if (!info.leaders.includes(choiceId)) throw new Error("Choisis l'un des choix à égalité");
+  if (!info.leaders.includes(choiceId)) throw new GameError("Choisis l'un des choix à égalité");
   const role = user.role === "ADMIN" ? "admin" : info.role;
   if (!canBreakTie(info.stage, role)) {
-    throw new Error(info.stage === "CAPTAIN" ? "Le·la capitaine a 5 h pour trancher" : info.stage === "DEPUTY" ? "L'adjoint·e a 5 h pour trancher" : "Tu ne peux pas trancher");
+    throw new GameError(info.stage === "CAPTAIN" ? "Le·la capitaine a 5 h pour trancher" : info.stage === "DEPUTY" ? "L'adjoint·e a 5 h pour trancher" : "Tu ne peux pas trancher");
   }
   if (role === "member") {
-    if (vote.pendingChoiceId) throw new Error("Un choix attend déjà la confirmation d'un·e admin");
+    if (vote.pendingChoiceId) throw new GameError("Un choix attend déjà la confirmation d'un·e admin");
     await prisma.vote.update({ where: { id: voteId }, data: { pendingChoiceId: choiceId, pendingById: userId } });
     return null;
   }
@@ -374,8 +375,8 @@ export async function confirmTieBreak(voteId: string, adminId: string, accept: b
     prisma.vote.findUniqueOrThrow({ where: { id: voteId }, include: { team: true, node: { include: { choices: true } } } }),
     prisma.user.findUniqueOrThrow({ where: { id: adminId } }),
   ]);
-  if (admin.role !== "ADMIN") throw new Error("Réservé aux admins");
-  if (vote.status !== "OPEN" || !vote.pendingChoiceId) throw new Error("Rien à confirmer");
+  if (admin.role !== "ADMIN") throw new GameError("Réservé aux admins");
+  if (vote.status !== "OPEN" || !vote.pendingChoiceId) throw new GameError("Rien à confirmer");
   if (!accept) {
     await prisma.vote.update({ where: { id: voteId }, data: { pendingChoiceId: null, pendingById: null } });
     return null;
@@ -387,10 +388,10 @@ export async function confirmTieBreak(voteId: string, adminId: string, accept: b
 /** Captain picks the rival for hostile/alliance effects, then the resolution applies. */
 export async function chooseTargetTeam(voteId: string, userId: string, targetTeamId: string) {
   const vote = await prisma.vote.findUniqueOrThrow({ where: { id: voteId }, include: { team: true } });
-  if (vote.status !== "AWAITING_TARGET" || !vote.resultChoiceId) throw new Error("Rien à cibler");
+  if (vote.status !== "AWAITING_TARGET" || !vote.resultChoiceId) throw new GameError("Rien à cibler");
   const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
-  if (vote.team.captainId !== userId && user.role !== "ADMIN") throw new Error("Seul·e le·la capitaine choisit la cible");
-  if (targetTeamId === vote.teamId) throw new Error("Choisis une autre équipe");
+  if (vote.team.captainId !== userId && user.role !== "ADMIN") throw new GameError("Seul·e le·la capitaine choisit la cible");
+  if (targetTeamId === vote.teamId) throw new GameError("Choisis une autre équipe");
   return applyResolution(voteId, vote.resultChoiceId, targetTeamId, "majority");
 }
 

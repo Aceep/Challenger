@@ -1,3 +1,4 @@
+import { GameError } from "@/lib/errors";
 import "server-only";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
@@ -63,8 +64,8 @@ export async function logBook(actor: BookActor, input: BookInput): Promise<BookR
   assertWritable(actor.role);
   return prisma.$transaction(async (tx) => {
     const membership = await playerTeam(tx, actor.id);
-    if (membership && membership.team.challenge.endAt < new Date()) throw new Error("Le défi est terminé");
-    if ((input.questId || input.cellId) && !membership) throw new Error("Rejoins une équipe pour valider une quête ou une case");
+    if (membership && membership.team.challenge.endAt < new Date()) throw new GameError("Le défi est terminé");
+    if ((input.questId || input.cellId) && !membership) throw new GameError("Rejoins une équipe pour valider une quête ou une case");
 
     const type = effectiveType(input.pages, input.type === "GRAPHIQUE");
     const book = await tx.book.create({
@@ -90,10 +91,10 @@ export async function logBook(actor: BookActor, input: BookInput): Promise<BookR
 
 async function loadEditable(tx: Tx, bookId: string, actor: BookActor) {
   const book = await tx.book.findUnique({ where: { id: bookId, deletedAt: null }, include: { team: { include: { challenge: true } } } });
-  if (!book) throw new Error("Lecture introuvable");
+  if (!book) throw new GameError("Lecture introuvable");
   const isCaptainOfOwner = !!book.team && book.team.captainId === actor.id;
   if (!canEditBook(book, { id: actor.id, role: actor.role, isCaptainOfOwner })) {
-    throw new Error(
+    throw new GameError(
       book.userId === actor.id
         ? `Modification possible pendant 1 h après l'ajout (jusqu'à ${editDeadline(book).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" })}) ; ensuite, demande à ton·ta capitaine.`
         : "Seul·e le·la capitaine peut modifier cette lecture",
@@ -107,7 +108,7 @@ export async function updateBook(actor: BookActor, bookId: string, patch: BookPa
   assertWritable(actor.role);
   return prisma.$transaction(async (tx) => {
     const { book, ownerTeam } = await loadEditable(tx, bookId, actor);
-    if (ownerTeam && ownerTeam.challenge.endAt < new Date()) throw new Error("Le défi est terminé");
+    if (ownerTeam && ownerTeam.challenge.endAt < new Date()) throw new GameError("Le défi est terminé");
 
     const pages = patch.pages ?? book.pages;
     const declaredGraphic = patch.type !== undefined ? patch.type === "GRAPHIQUE" : book.isGraphic;

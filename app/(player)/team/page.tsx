@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Flash } from "@/components/Flash";
 import { getCurrentPlayer } from "@/lib/dal";
 import { fmtDelta, fmtPoints } from "@/lib/format";
 import { getTeamStats } from "@/lib/services/team";
@@ -7,7 +8,8 @@ import { DeputyForm } from "./DeputyForm";
 const dateFmt = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 const SOURCE_LABEL: Record<string, string> = { READING: "Lecture", BINGO: "Bingo", QUEST: "Quêtes", STORY: "Histoire", ADMIN: "Ajustements" };
 
-export default async function TeamPage() {
+export default async function TeamPage({ searchParams }: PageProps<"/team">) {
+  const params = await searchParams;
   const { user, team } = await getCurrentPlayer();
   if (!team) {
     return (
@@ -30,6 +32,7 @@ export default async function TeamPage() {
         </h1>
         <p className="text-sm text-slate-500">{fmtPoints(stats.total)} pts au total</p>
       </header>
+      <Flash params={params} />
 
       <section className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {Object.entries(SOURCE_LABEL).map(([k, label]) =>

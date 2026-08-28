@@ -1,4 +1,5 @@
 /** Who may edit or delete a reading. Pure, no I/O. */
+import { GameError } from "@/lib/errors";
 import { addActiveTime, isVerificationWindow } from "@/lib/time/paris";
 
 export const EDIT_WINDOW_MS = 60 * 60 * 1000;
@@ -22,5 +23,5 @@ export const VERIFICATION_MESSAGE =
 
 /** Non-admins cannot write during the Sunday verification window. */
 export function assertWritable(role: "ADMIN" | "PLAYER", now = new Date()) {
-  if (role !== "ADMIN" && isVerificationWindow(now)) throw new Error(VERIFICATION_MESSAGE);
+  if (role !== "ADMIN" && isVerificationWindow(now)) throw new GameError(VERIFICATION_MESSAGE);
 }
