@@ -4,6 +4,7 @@ import { teamDiscordReady } from "@/lib/discord/permissions";
 import { cellLabel } from "@/lib/services/bingo";
 import { getLeaderboard } from "@/lib/services/leaderboard";
 import { num } from "@/lib/services/points";
+import { openQuestionsCount } from "@/lib/services/questions";
 import { dormantTeams, tiedVotes } from "@/lib/services/story";
 import { dueSundayKey, parisInstant } from "@/lib/time/paris";
 import { DashboardView, type DashboardViewProps } from "./DashboardView";
@@ -51,15 +52,16 @@ export default async function AdminHome() {
     prisma.botEvent.findFirst({ where: { key: { startsWith: "weekly:" } }, orderBy: { createdAt: "desc" } }),
   ]);
 
-  const [rows, ties, dormant, pointSum, discordTeams] = challenge
+  const [rows, ties, dormant, pointSum, discordTeams, openQuestions] = challenge
     ? await Promise.all([
         getLeaderboard(challenge.id),
         tiedVotes(now),
         dormantTeams(7, now),
         prisma.pointEvent.aggregate({ where: { createdAt: { gte: challenge.startAt, lte: challenge.endAt } }, _sum: { amount: true } }),
         prisma.team.findMany({ where: { challengeId: challenge.id }, select: { discordRoleId: true, discordChannelId: true, discordLibraryChannelId: true } }),
+        openQuestionsCount(challenge.id),
       ])
-    : [[], [], [], null, []];
+    : [[], [], [], null, [], 0];
 
   const discordMissing = discordTeams.filter((t) => !teamDiscordReady(t)).length;
 
@@ -72,6 +74,17 @@ export default async function AdminHome() {
             icon: "🤖",
             text: `Discord : ${discordMissing} équipe${discordMissing > 1 ? "s" : ""} sans rôle ni salons.`,
             href: "/admin/challenge",
+          },
+        ]
+      : []),
+    ...(openQuestions
+      ? [
+          {
+            id: "questions",
+            tone: "wait" as const,
+            icon: "❓",
+            text: `${openQuestions} question${openQuestions > 1 ? "s" : ""} sans réponse dans la FAQ.`,
+            href: "/admin/faq",
           },
         ]
       : []),

@@ -43,6 +43,15 @@ export function helpSections(channels: { library: string; adventure: string }): 
         "Égalité : le·la capitaine tranche (5 h), puis l'adjoint·e (5 h), puis le premier membre qui se manifeste avec l'accord d'un·e admin. Compteurs en pause de minuit à 8 h.",
       ],
     },
+    {
+      title: "❓ Questions",
+      lines: [
+        "**/question** titre · détail — ta question ouvre un sujet dans le forum **#faq** et l'organisation est prévenue.",
+        "Tout le monde peut répondre dans le fil : les réponses remontent automatiquement sur la page **FAQ** du site (quelques minutes au plus).",
+        "Depuis le site, la page FAQ permet aussi de poser une question, de répondre et de marquer une question comme résolue (auteur·rice ou admin).",
+        "Les réponses les plus utiles sont épinglées en haut de la page, dans « Questions fréquentes ».",
+      ],
+    },
   ];
 }
 

@@ -214,6 +214,82 @@ export function BingoSkeleton() {
   );
 }
 
+/** FaqListView: title + "Poser une question", pinned answers, then the question cards. */
+export function FaqListSkeleton() {
+  return (
+    <SkeletonPage gap={5}>
+      <header className="flex items-center justify-between gap-3">
+        <Skeleton className="h-7 w-1/4" />
+        <Skeleton className="h-9 w-44" style={{ borderRadius: 999 }} />
+      </header>
+      <section className="flex flex-col gap-2.5">
+        <Skeleton className="h-3 w-40" />
+        <ul className="list" aria-hidden>
+          {Array.from({ length: 2 }, (_, i) => (
+            <li key={i}>
+              <div className="card quest">
+                <div className="head">
+                  <Skeleton className="h-5 w-3/5" />
+                  <Skeleton className="h-5 w-16" style={{ borderRadius: 999 }} />
+                </div>
+                <SkeletonLines n={2} />
+              </div>
+            </li>
+          ))}
+        </ul>
+      </section>
+      <section className="flex flex-col gap-2.5">
+        <Skeleton className="h-3 w-32" />
+        <ul className="list" aria-hidden>
+          {Array.from({ length: 3 }, (_, i) => (
+            <li key={i}>
+              <div className="card quest">
+                <div className="head">
+                  <Skeleton className="h-5 w-2/3" />
+                  <Skeleton className="h-5 w-16" style={{ borderRadius: 999 }} />
+                </div>
+                <Skeleton className="h-3 w-2/5" />
+              </div>
+            </li>
+          ))}
+        </ul>
+      </section>
+    </SkeletonPage>
+  );
+}
+
+/** QuestionView: back link + title, the question, its replies, the answer form. */
+export function QuestionSkeleton() {
+  return (
+    <SkeletonPage>
+      <header className="flex flex-col gap-2">
+        <Skeleton className="h-3 w-12" />
+        <Skeleton className="h-7 w-3/4" />
+        <Skeleton className="h-3 w-2/5" />
+      </header>
+      <div className="chapter card">
+        <SkeletonLines n={3} />
+      </div>
+      <Skeleton className="h-3 w-24" />
+      <ul className="list" aria-hidden>
+        {Array.from({ length: 2 }, (_, i) => (
+          <li key={i}>
+            <div className="card flex flex-col gap-2">
+              <Skeleton className="h-3 w-1/3" />
+              <SkeletonLines n={2} />
+            </div>
+          </li>
+        ))}
+      </ul>
+      <div className="flex flex-col gap-1.5" aria-hidden>
+        <Skeleton className="h-3 w-20" />
+        <Skeleton className="h-20 w-full" style={{ borderRadius: 10 }} />
+      </div>
+      <Skeleton className="h-12 w-full" style={{ borderRadius: 12 }} />
+    </SkeletonPage>
+  );
+}
+
 /** BookForm page: title, seven labelled fields, primary button, cancel link. */
 export function BookFormSkeleton() {
   const widths = ["100%", "100%", "40%", "100%", "100%", "100%", "45%"];
@@ -292,6 +368,16 @@ export function AdminTableSkeleton({ rows = 5, cols = 4, secondary = false }: { 
     <AdminFrame>
       <TableSkeleton rows={rows} cols={cols} />
       {secondary && <SkeletonCard lines={3} />}
+    </AdminFrame>
+  );
+}
+
+/** FaqAdminView: title, the Discord forum card, then the questions table. */
+export function AdminFaqSkeleton() {
+  return (
+    <AdminFrame badge>
+      <SkeletonCard lines={3} />
+      <TableSkeleton rows={5} cols={5} />
     </AdminFrame>
   );
 }

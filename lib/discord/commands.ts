@@ -25,6 +25,7 @@ export type SlashCommand = {
     autocomplete?: boolean;
     min_value?: number;
     max_value?: number;
+  max_length?: number;
     choices?: { name: string; value: string }[];
   }[];
 };
@@ -61,6 +62,14 @@ export const SLASH_COMMANDS: SlashCommand[] = [
       { type: STRING, name: "quete", description: "Rattacher à une quête", required: false, autocomplete: true },
       { type: STRING, name: "case", description: "Placer sur une case du bingo", required: false, autocomplete: true },
       { type: BOOLEAN, name: "supprimer", description: "Supprimer cette lecture", required: false },
+    ],
+  },
+  {
+    name: "question",
+    description: "Poser une question à l'organisation (elle ouvre un sujet dans le forum faq)",
+    options: [
+      { type: STRING, name: "titre", description: "La question en une phrase", required: true, max_length: 100 },
+      { type: STRING, name: "detail", description: "Précisions (facultatif)", required: false, max_length: 1000 },
     ],
   },
   { name: "score", description: "Afficher le classement des équipes" },
