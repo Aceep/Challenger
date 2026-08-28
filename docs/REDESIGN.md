@@ -106,3 +106,22 @@ Exporter des constantes typées comme les retours des services. Contenu (reprend
 - Mobile 390 px : pas de scroll horizontal ; les 5 onglets tiennent ; l'action « + J'ai fini une lecture » visible sans scroll sur l'accueil.
 - Les règles affichées (points, ½ crédits, fenêtre, cascade) restent celles de `SPEC-challenge-lecture.md` — la refonte ne change aucun texte de règle.
 - Tests existants verts ; ajouter un test de rendu léger (`lib/demo/data.test.ts`) vérifiant que les données de démo respectent les invariants (points = `readingPoints(pages)`, types = `effectiveType`, sommes de score = somme du livre de comptes).
+
+## 9. Addendum — supervision admin des lectures, bingos et quêtes (2026-08-28)
+
+Objectif : depuis l'admin, **voir et corriger** tout ce que les joueurs ont déclaré. Trois ajouts, réels + démo, sans toucher aux règles (on passe par `updateBook` / `deleteBook` de `lib/services/books.ts` avec un acteur `role: "ADMIN"`, qui a déjà tous les droits et ignore la fenêtre du dimanche).
+
+### 9.1 Admin › Lectures (`/admin/readings`, rail « 📚 Lectures » entre Joueurs et Bingo)
+- Table de **toutes les lectures du défi** (`Book` où `team.challengeId` = défi actif, y compris `deletedAt` non nul, affichées barrées avec pill « supprimée ») : date, équipe (pastille couleur), joueur, titre — auteur, pages, type (pill), points (`fmtPoints`), quête `#n` (½ si graphique), case `B3` (½), modifié par / quand. Tri par date décroissante, **filtres** en haut (équipe, joueur, recherche titre/auteur, « afficher les supprimées »), via query params, 50 lignes par page (`?page=`).
+- **« Modifier »** ouvre la `Modal` (`components/ui/Modal.tsx`, pleine page sur mobile) pré-remplie : titre, auteur·ice, pages (aperçu des points), type, quête (choix de `questChoices(challengeId, teamId)` + la quête actuelle), case (`cellChoices(teamId)` + la case actuelle), terminé le ; bouton « Enregistrer » → `updateBook`, « Supprimer la lecture » → `deleteBook`, garde-fou modifications non enregistrées (`isDirty`). Les erreurs de règle (case déjà validée…) reviennent en `Flash` rouge via `withFlash`.
+- Service : `lib/services/admin-readings.ts` → `listReadingsAdmin(challengeId, { teamId?, userId?, q?, deleted?, page })` (Prisma, `include` user/team/questBook.quest/bingoFill.cell/updatedBy) et `getReadingAdmin(bookId)`. Actions : `app/admin/readings/actions.ts` (`updateReadingAction`, `deleteReadingAction`) avec l'acteur `{ id: admin.id, role: "ADMIN", teamId: null, isCaptain: false }`.
+- Démo : `lib/demo/data.ts` → `DEMO_READINGS_ADMIN` (≈ 12 lectures sur les 4 équipes, dont 1 supprimée) ; page `/demo/admin/readings` avec la même vue et `demoAction`.
+
+### 9.2 Admin › Bingo — grilles par équipe
+Sous la table des grilles, une section **« Grilles des équipes »** : sélecteur d'équipe (`?team=`), puis la grille active de l'équipe (réutiliser `getTeamBoard(teamId)` et `BingoCell`) ; au clic sur une case, panneau avec les lectures posées (« Léa — Titre ½ », bouton **Retirer** → `updateBook(admin, bookId, { cellId: null })`) et un formulaire **Placer une lecture** (select des lectures de l'équipe non placées, `listTeamBooks`-like : `prisma.book.findMany({ where: { teamId, deletedAt: null, bingoFill: null } })`) → `updateBook(admin, bookId, { cellId })`. Historique des grilles terminées de l'équipe (`TeamGrid.completedAt`). Le composant client peut être une variante de `app/(player)/bingo/BingoBoard.tsx` acceptant `adminBooks` + actions ; ne pas dupliquer la logique de sélection. Démo : équipe Renards avec `DEMO_GRID`.
+
+### 9.3 Admin › Quêtes — avancement par équipe
+Sous la table des quêtes, section **« Avancement par équipe »** : sélecteur d'équipe, puis la liste des quêtes avec progression (`listQuestsForTeam(challengeId, teamId)`), lectures rattachées avec **Retirer** (`updateBook(admin, bookId, { questId: null })`) et formulaire **Rattacher une lecture** (lectures de l'équipe sans quête → `updateBook(admin, bookId, { questId })`). Démo : Renards.
+
+### Vérification
+`npm run typecheck && npm run lint && npm test && npm run build` ; `/admin/readings` filtre/édite/supprime une lecture et le livre de comptes se corrige (ledger négatif visible sur `/team`) ; retirer puis replacer une lecture sur une case recalcule les bonus de ligne ; `/demo/admin/readings`, `/demo/admin/bingo?team=…`, `/demo/admin/quests?team=…` → 200 sans session. Un commit par sous-section.
