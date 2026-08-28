@@ -242,12 +242,12 @@ export function NodeList({ story, quests, actions }: { story: EditorStory; quest
           <NodeForm key={n.id} storyId={story.id} node={n} quests={quests} action={actions.saveNodeAction} onDone={() => setEditingNode(null)} />
         ) : (
           <div key={n.id} className="node" style={n.alerts.length ? { borderColor: "var(--kyle-deep)" } : undefined}>
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="t">
                 {story.startNodeId === n.id && "🚩 "}
                 {n.title}
               </span>
-              <span className="flex items-center gap-2 text-xs text-[color:var(--muted)]">
+              <span className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--muted)]">
                 {n.choices.length} choix
                 {n.voteHours ? ` · vote ${n.voteHours} h` : ""}
                 {n.requiredBingoLines ? ` · condition : ${n.requiredBingoLines} lignes de bingo` : ""}

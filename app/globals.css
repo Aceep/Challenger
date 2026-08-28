@@ -1361,6 +1361,7 @@
   }
   .node .c {
     display: flex;
+    flex-wrap: wrap;
     gap: var(--sp-2);
     align-items: center;
     font-size: var(--fs-sm);
@@ -1571,6 +1572,63 @@
   }
   .form-grid .wide {
     grid-column: auto;
+  }
+}
+
+/* An admin table folds into one small card per row on phones: the header row
+   goes away and every cell announces its column, from the `data-label` that
+   `<DataTable>` copies off the header. Opt-in (`.stacked`) — a two-column
+   table already reads fine as a table. Unlayered on purpose, so it wins over
+   the `text-right` / `whitespace-nowrap` utilities written on the cells. */
+@media (max-width: 767px) {
+  .data-table.stacked,
+  .data-table.stacked tbody,
+  .data-table.stacked tr,
+  .data-table.stacked td {
+    display: block;
+  }
+  .data-table.stacked thead {
+    display: none;
+  }
+  .data-table.stacked tbody tr {
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    padding: var(--sp-2) var(--sp-3);
+  }
+  .data-table.stacked tbody tr + tr {
+    margin-top: var(--sp-3);
+  }
+  .data-table.stacked td {
+    padding: 6px 0;
+    border-bottom: 0;
+    text-align: left;
+    white-space: normal;
+    overflow-wrap: break-word;
+  }
+  /* A cell the row has nothing to say about (no type, no action) is dropped
+     rather than left as a lone label. */
+  .data-table.stacked td:empty {
+    display: none;
+  }
+  /* The per-team columns of the quest and bingo matrices share a line instead
+     of stacking one team per row. */
+  .data-table.stacked td.matrix {
+    display: inline-block;
+    padding-right: var(--sp-5);
+    vertical-align: top;
+  }
+  .data-table.stacked td::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 2px;
+    font-size: var(--fs-nav);
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .data-table.stacked td:not([data-label])::before {
+    content: none;
   }
 }
 

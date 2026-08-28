@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Card, KyleEmpty, Pill } from "@/components/ui";
+import { DataTable } from "@/components/ui/DataTable";
 import { Flash } from "@/components/Flash";
 import { BOOK_TYPE_LABEL, fmtPoints } from "@/lib/format";
 import { ReadingEditModal, type AdminReadingEdit } from "./ReadingEditModal";
@@ -145,72 +146,69 @@ export function ReadingsView({
             <KyleEmpty>Aucune lecture ne correspond à ces filtres.</KyleEmpty>
           ) : (
             <Card>
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Terminé le</th>
-                    <th>Équipe</th>
-                    <th>Joueur·se</th>
-                    <th>Lecture</th>
-                    <th className="text-right">Pages</th>
-                    <th>Type</th>
-                    <th className="text-right">Points</th>
-                    <th>Quête</th>
-                    <th>Case</th>
-                    <th>Modifiée par</th>
-                    <th />
+              <DataTable
+                head={[
+                  "Terminé le",
+                  "Équipe",
+                  "Joueur·se",
+                  "Lecture",
+                  { label: "Pages", className: "text-right" },
+                  "Type",
+                  { label: "Points", className: "text-right" },
+                  "Quête",
+                  "Case",
+                  "Modifiée par",
+                  "",
+                ]}
+              >
+                {readings.map((b) => (
+                  <tr key={b.id}>
+                    <td className="num whitespace-nowrap">{dateFmt.format(b.finishedAt)}</td>
+                    <td className="whitespace-nowrap">
+                      {b.teamName ? (
+                        <>
+                          <span className="dot" style={{ background: b.teamColor ?? "var(--edition)" }} />
+                          {b.teamName}
+                        </>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td>{b.owner}</td>
+                    <td>
+                      {b.deleted ? (
+                        <s>
+                          <strong>{b.title}</strong> — {b.author}
+                        </s>
+                      ) : (
+                        <>
+                          <strong>{b.title}</strong> — {b.author}
+                        </>
+                      )}{" "}
+                      {b.deleted && <Pill tone="no">supprimée</Pill>}
+                    </td>
+                    <td className="num text-right">{b.pages}</td>
+                    <td>
+                      <Pill tone="type">{BOOK_TYPE_LABEL[b.type]}</Pill>
+                    </td>
+                    <td className="num text-right font-extrabold" style={b.deleted ? { color: "var(--brick)" } : undefined}>
+                      {fmtPoints(b.points)}
+                    </td>
+                    <td className="whitespace-nowrap">{b.questNumber ? `#${b.questNumber}${b.questHalf ? " (½)" : ""}` : "—"}</td>
+                    <td className="whitespace-nowrap">{b.cellLabel ? `${b.cellLabel}${b.cellHalf ? " (½)" : ""}` : "—"}</td>
+                    <td className="whitespace-nowrap text-[color:var(--muted)]">{b.updatedLabel}</td>
+                    <td className="whitespace-nowrap">
+                      {b.deleted ? (
+                        <span className="text-[color:var(--muted)]">—</span>
+                      ) : (
+                        <Link href={href(`edit=${b.id}`)} className="underline">
+                          Modifier
+                        </Link>
+                      )}
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {readings.map((b) => (
-                    <tr key={b.id}>
-                      <td className="num whitespace-nowrap">{dateFmt.format(b.finishedAt)}</td>
-                      <td className="whitespace-nowrap">
-                        {b.teamName ? (
-                          <>
-                            <span className="dot" style={{ background: b.teamColor ?? "var(--edition)" }} />
-                            {b.teamName}
-                          </>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                      <td>{b.owner}</td>
-                      <td>
-                        {b.deleted ? (
-                          <s>
-                            <strong>{b.title}</strong> — {b.author}
-                          </s>
-                        ) : (
-                          <>
-                            <strong>{b.title}</strong> — {b.author}
-                          </>
-                        )}{" "}
-                        {b.deleted && <Pill tone="no">supprimée</Pill>}
-                      </td>
-                      <td className="num text-right">{b.pages}</td>
-                      <td>
-                        <Pill tone="type">{BOOK_TYPE_LABEL[b.type]}</Pill>
-                      </td>
-                      <td className="num text-right font-extrabold" style={b.deleted ? { color: "var(--brick)" } : undefined}>
-                        {fmtPoints(b.points)}
-                      </td>
-                      <td className="whitespace-nowrap">{b.questNumber ? `#${b.questNumber}${b.questHalf ? " (½)" : ""}` : "—"}</td>
-                      <td className="whitespace-nowrap">{b.cellLabel ? `${b.cellLabel}${b.cellHalf ? " (½)" : ""}` : "—"}</td>
-                      <td className="whitespace-nowrap text-[color:var(--muted)]">{b.updatedLabel}</td>
-                      <td className="whitespace-nowrap">
-                        {b.deleted ? (
-                          <span className="text-[color:var(--muted)]">—</span>
-                        ) : (
-                          <Link href={href(`edit=${b.id}`)} className="underline">
-                            Modifier
-                          </Link>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                ))}
+              </DataTable>
             </Card>
           )}
 

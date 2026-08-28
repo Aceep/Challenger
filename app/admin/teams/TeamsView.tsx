@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Card, KyleEmpty, Pill } from "@/components/ui";
+import { DataTable } from "@/components/ui/DataTable";
 import { Flash } from "@/components/Flash";
 import { fmtPoints } from "@/lib/format";
 import type { ActionState } from "@/lib/forms";
@@ -63,43 +64,40 @@ export function TeamsView({
       ) : (
         <>
           <Card>
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Équipe</th>
-                  <th>Membres</th>
-                  <th>Capitaine</th>
-                  <th>Adjoint·e</th>
-                  <th>Salon aventure</th>
-                  <th>Salon librairie</th>
-                  <th>Grille</th>
-                  <th className="text-right">Points</th>
-                  <th />
+            <DataTable
+              head={[
+                "Équipe",
+                "Membres",
+                "Capitaine",
+                "Adjoint·e",
+                "Salon aventure",
+                "Salon librairie",
+                "Grille",
+                { label: "Points", className: "text-right" },
+                "",
+              ]}
+            >
+              {teams.map((t) => (
+                <tr key={t.id}>
+                  <td>
+                    <span className="dot" style={{ background: t.color }} />
+                    <strong>{t.name}</strong>
+                  </td>
+                  <td className="num">{t.members.length}</td>
+                  <td>{t.captain ?? <Pill tone="no">à nommer</Pill>}</td>
+                  <td>{t.deputy ?? <Pill tone="no">à nommer</Pill>}</td>
+                  <td>{t.adventureChannel ? <code>{t.adventureChannel}</code> : <Pill tone="no">manquant</Pill>}</td>
+                  <td>{t.libraryChannel ? <code>{t.libraryChannel}</code> : <Pill tone="no">manquant</Pill>}</td>
+                  <td className="num">{t.gridLabel}</td>
+                  <td className="num text-right font-extrabold">{fmtPoints(t.points)}</td>
+                  <td>
+                    <Link href={`${base}?edit=${t.id}`} className="underline">
+                      Modifier
+                    </Link>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {teams.map((t) => (
-                  <tr key={t.id}>
-                    <td>
-                      <span className="dot" style={{ background: t.color }} />
-                      <strong>{t.name}</strong>
-                    </td>
-                    <td className="num">{t.members.length}</td>
-                    <td>{t.captain ?? <Pill tone="no">à nommer</Pill>}</td>
-                    <td>{t.deputy ?? <Pill tone="no">à nommer</Pill>}</td>
-                    <td>{t.adventureChannel ? <code>{t.adventureChannel}</code> : <Pill tone="no">manquant</Pill>}</td>
-                    <td>{t.libraryChannel ? <code>{t.libraryChannel}</code> : <Pill tone="no">manquant</Pill>}</td>
-                    <td className="num">{t.gridLabel}</td>
-                    <td className="num text-right font-extrabold">{fmtPoints(t.points)}</td>
-                    <td>
-                      <Link href={`${base}?edit=${t.id}`} className="underline">
-                        Modifier
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+              ))}
+            </DataTable>
           </Card>
 
           <TeamForm action={createTeamAction} />
