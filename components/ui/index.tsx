@@ -215,7 +215,7 @@ export function ScoreCard({
         <span className="eyebrow" style={{ color: teamColor }}>
           {teamName}
         </span>
-        <span className="accent text-[14px] text-[color:var(--muted)]">{challengeName}</span>
+        <span className="accent">{challengeName}</span>
       </div>
       <p className="value num">
         <CountUp value={points} />
@@ -310,7 +310,7 @@ export function MemberRow({
   sub: ReactNode;
   points: number;
   color: string;
-  /** « capitaine » / « adjointe »… */
+  /** « capitaine » / « adjointe »… */
   badge?: string;
   badgeIcon?: ReactNode;
 }) {
@@ -384,7 +384,7 @@ export function BingoCell({
   );
 }
 
-/** Small olive check, for « terminée » lines. */
+/** Small olive check, for « terminée » lines. */
 export function DoneMark() {
   return <CheckIcon className="text-[color:var(--olive-ink)]" />;
 }

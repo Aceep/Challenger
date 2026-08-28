@@ -16,7 +16,7 @@ export type BookRow = {
   finishedAt: Date;
   points: number;
   owner: string;
-  /** The viewer may edit (own reading within 1 h, or captain / admin). */
+  /** The viewer may edit (own reading within 1 h, or captain / admin). */
   editable: boolean;
   /** Shown to the owner while their own edit window is still open. */
   editUntil: Date | null;
@@ -103,7 +103,7 @@ function Row({
           </span>
           {b.editable && (
             <span className="actions">
-              <Link href={`${prefix}/books?edit=${b.id}`} scroll={false} className="icon-btn" title="Modifier" aria-label={`Modifier « ${b.title} »`}>
+              <Link href={`${prefix}/books?edit=${b.id}`} scroll={false} className="icon-btn" title="Modifier" aria-label={`Modifier « ${b.title} »`}>
                 <PencilIcon />
               </Link>
               {deleteBookAction && (

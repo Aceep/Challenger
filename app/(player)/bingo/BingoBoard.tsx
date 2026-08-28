@@ -17,7 +17,7 @@ type Props = {
   title: string;
   size: number;
   cells: BoardCell[];
-  /** Books the current user may place/move (own within 1 h, or whole team for the captain). */
+  /** Books the current user may place/move (own within 1 h, or whole team for the captain). */
   books: { id: string; title: string; type: "ROMAN" | "GRAPHIQUE"; owner: string; placedOn: string | null }[];
   completedLines: number;
   /** Label (B3) of the cell validated by the last action: it pops once. */
@@ -50,7 +50,7 @@ export function BingoBoard({ title, size, cells, books, completedLines, order, t
               <span>
                 Grille {order} sur {total}
               </span>
-              <span className="accent">« {title} »</span>
+              <span className="accent">« {title} »</span>
               <span>
                 {done}/{size * size}
               </span>
@@ -107,7 +107,7 @@ export function BingoBoard({ title, size, cells, books, completedLines, order, t
         <div className="sheet">
           <div className="flex items-center justify-between gap-3">
             <h3>
-              Case {selected.label} <span className="accent font-normal text-[color:var(--muted)]">— {selected.prompt}</span>
+              Case {selected.label} <span className="accent">— {selected.prompt}</span>
             </h3>
             <Pill stamp tone={selected.complete ? "ok" : selected.weight > 0 ? "wait" : "type"}>
               {state(selected)}
@@ -153,7 +153,7 @@ export function BingoBoard({ title, size, cells, books, completedLines, order, t
                     .filter((b) => b.placedOn !== selected.id)
                     .map((b) => (
                       <option key={b.id} value={b.id}>
-                        {b.placedOn ? "✓ " : ""}
+                        {b.placedOn ? "déjà placée · " : ""}
                         {b.owner} — {b.title}
                         {b.type === "GRAPHIQUE" ? " (½)" : ""}
                       </option>
@@ -171,8 +171,8 @@ export function BingoBoard({ title, size, cells, books, completedLines, order, t
               <p className="meta-xs">
                 {hint ?? (
                   <>
-                    Un roman valide la case : le ½ déjà posé revient en attente. Un graphique = ½ case. ✓ = déjà placé ailleurs (il sera déplacé). Tu peux placer
-                    tes lectures pendant 1 h après leur ajout ; ensuite c’est le·la capitaine.
+                    Un roman valide la case : le ½ déjà posé revient en attente. Un graphique = ½ case. Une lecture « déjà placée » sera déplacée ici. Tu peux
+                    placer tes lectures pendant 1 h après leur ajout ; ensuite c’est le·la capitaine.
                   </>
                 )}
               </p>

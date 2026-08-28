@@ -62,11 +62,11 @@ function QuestCard({ q, teamColor, prefix, canAdd }: { q: QuestRow; teamColor: s
         {q.linkedBooks.length > 0 ? (
           <p className="meta" style={q.done ? { color: "var(--olive-ink)" } : undefined}>
             {q.linkedBooks.map((b) => `${b.owner} — ${b.title}${b.type === "GRAPHIQUE" ? " ½" : ""}`).join(" / ")}
-            {q.done ? ` · +${q.points} pts` : " · en attente de la seconde moitié"}
+            {q.done ? ` · +${q.points} pts` : " · en attente de la seconde moitié"}
           </p>
         ) : (
           <p className="meta">
-            {q.points} pts
+            {q.points} pts
             {q.forMyTeam && " · spéciale pour ton équipe"}
             {q.closeAt && ` · jusqu’au ${dateFmt.format(q.closeAt)}`}
             {q.open && " · se valide avec un roman, ou deux graphiques"}

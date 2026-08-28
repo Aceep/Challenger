@@ -61,7 +61,7 @@ export function BingoView({ grid, total, history, books, bonus, hasTeam, params,
             <p key={h.id} className="card flat flex items-center gap-2.5 px-4 py-3 text-[14px]">
               <CheckIcon className="ico text-[color:var(--olive-ink)]" />
               <span>
-                <strong>Grille {h.order}</strong> — <span className="accent">« {h.title} »</span>
+                <strong>Grille {h.order}</strong> — <span className="accent">« {h.title} »</span>
                 {h.completedAt ? ` · terminée le ${dateFmt.format(h.completedAt)}` : ""}
               </span>
             </p>
@@ -70,8 +70,8 @@ export function BingoView({ grid, total, history, books, bonus, hasTeam, params,
       )}
 
       <p className="meta-xs">
-        Un roman valide une case ; deux graphiques (d’un ou deux membres de l’équipe) aussi. Une case avec une seule moitié est « en attente » et ne rapporte
-        rien. Ligne, colonne ou diagonale complète : {bonus.line} pts ; grille entière : {bonus.full} pts, puis la grille suivante s’ouvre.
+        Un roman valide une case ; deux graphiques (d’un ou deux membres de l’équipe) aussi. Une case avec une seule moitié est « en attente » et ne rapporte
+        rien. Ligne, colonne ou diagonale complète : {bonus.line} pts ; grille entière : {bonus.full} pts, puis la grille suivante s’ouvre.
       </p>
     </main>
   );

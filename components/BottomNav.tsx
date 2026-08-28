@@ -34,7 +34,7 @@ const MORE: readonly Item[] = [
   { href: "/help", label: "Aide & règles", Icon: HelpIcon },
 ];
 
-/** Five tabs plus a « Plus » menu (Classement, Équipe, Aide, Administration). */
+/** Five tabs plus a « Plus » menu (Classement, Équipe, Aide, Administration). */
 export function BottomNav({ base = "", isAdmin = false }: { base?: string; isAdmin?: boolean }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);

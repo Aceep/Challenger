@@ -115,7 +115,7 @@ export function StoryView({
             <form action={chooseTargetAction} className="flex flex-col gap-2">
               <input type="hidden" name="voteId" value={vote.id} />
               <label className="field">
-                Quelle équipe visez-vous ?
+                Quelle équipe visez-vous ?
                 <select name="targetTeamId" required defaultValue="">
                   <option value="" disabled>
                     Choisir…
@@ -142,18 +142,18 @@ export function StoryView({
           <div className="flex items-center justify-between gap-2.5">
             <h3 className="flex items-center gap-2">
               <AlertIcon />
-              Égalité !
+              Égalité !
             </h3>
             <Pill stamp tone="wait">
               {tie.leaders.length} en tête
             </Pill>
           </div>
           <p className="meta" style={{ color: "var(--ink-2)" }}>
-            {tie.stage === "CAPTAIN" && "Le·la capitaine a 5 h pour trancher, puis l’adjoint·e, puis le premier membre qui se manifeste avec l’accord d’un·e admin."}
-            {tie.stage === "DEPUTY" && "Le·la capitaine n’a pas tranché : l’adjoint·e a 5 h, puis le premier membre qui se manifeste avec l’accord d’un·e admin."}
+            {tie.stage === "CAPTAIN" && "Le·la capitaine a 5 h pour trancher, puis l’adjoint·e, puis le premier membre qui se manifeste avec l’accord d’un·e admin."}
+            {tie.stage === "DEPUTY" && "Le·la capitaine n’a pas tranché : l’adjoint·e a 5 h, puis le premier membre qui se manifeste avec l’accord d’un·e admin."}
             {tie.stage === "ANY" && !tie.pendingChoiceId && "Le premier membre qui se manifeste tranche, avec l’accord d’un·e admin."}
-            {tie.pendingChoiceId && ` Un choix attend la confirmation d’un·e admin : « ${choices.find((c) => c.id === tie.pendingChoiceId)?.label ?? "?"} ».`}{" "}
-            Les compteurs sont en pause de minuit à 8 h.
+            {tie.pendingChoiceId && ` Un choix attend la confirmation d’un·e admin : « ${choices.find((c) => c.id === tie.pendingChoiceId)?.label ?? "?"} ».`}{" "}
+            Les compteurs sont en pause de minuit à 8 h.
           </p>
           {(tie.canBreak || isAdmin) && !tie.pendingChoiceId && (
             <div className="mt-1 flex flex-wrap gap-2">
@@ -187,7 +187,7 @@ export function StoryView({
 
       {vote?.status === "OPEN" && (
         <section className="section">
-          <SectionHeading>Que fait votre équipe ?</SectionHeading>
+          <SectionHeading>Que fait votre équipe ?</SectionHeading>
           <Meta>
             Vote ouvert jusqu’au {dateFmt.format(vote.deadline)} · <strong>{vote.ballots} vote{vote.ballots > 1 ? "s" : ""}</strong> (3 votants minimum)
             {vote.myChoiceId && " · tu as voté, tu peux changer d’avis jusqu’à la clôture"}
@@ -227,7 +227,7 @@ export function StoryView({
               return (
                 <li key={`${h.title}-${i}`}>
                   {h.title}
-                  {chosen && <span className="accent">« {chosen} »</span>}
+                  {chosen && <span className="accent">« {chosen} »</span>}
                   {i < history.length - 1 && <ArrowRightIcon className="ico-sm" />}
                 </li>
               );

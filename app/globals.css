@@ -246,6 +246,10 @@
     color: var(--muted);
     line-height: 1.35;
   }
+  /* Lead paragraph: same muted voice, body size. */
+  .meta.lg {
+    font-size: var(--fs-base);
+  }
   .meta strong,
   .meta-xs strong {
     color: var(--ink);
@@ -411,6 +415,10 @@
     border: 1px solid var(--line-strong);
   }
 
+  .sheet h3 .accent {
+    font-weight: 500;
+    color: var(--muted);
+  }
   .sheet {
     border-radius: var(--r-lg);
     padding: var(--sp-4);
@@ -666,6 +674,10 @@
     line-height: 1;
     letter-spacing: -0.02em;
   }
+  .score .accent {
+    font-size: 14px;
+    color: var(--muted);
+  }
   .score .value small {
     font-family: var(--font-display);
     font-style: italic;
@@ -870,9 +882,10 @@
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 4;
-    padding-right: 14px;
-    /* Break a word only when it cannot fit, so « couverture » stays whole. */
-    overflow-wrap: break-word;
+    /* Keeps the corner mark clear; a long word may spill into that padding
+       rather than break mid-syllable — the cell clips what does not fit. */
+    padding-right: 16px;
+    overflow-wrap: normal;
     hyphens: manual;
   }
   .cell .n {
