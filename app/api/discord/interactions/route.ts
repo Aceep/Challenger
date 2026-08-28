@@ -33,7 +33,7 @@ type Interaction = {
   user?: { id: string; username: string };
 };
 
-const appUrl = () => process.env.AUTH_URL ?? "https://aceep-challenger.vercel.app";
+const appUrl = () => process.env.AUTH_URL ?? "https://challenger-aceepkyle.vercel.app";
 
 async function playerFromDiscord(discordId: string) {
   const user = await prisma.user.findUnique({ where: { discordId }, include: { membership: { include: { team: { include: { challenge: true } } } } } });
