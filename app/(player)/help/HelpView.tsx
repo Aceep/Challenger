@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { Card, Kyle } from "@/components/ui";
+import { Card, Kyle, PageTitle, SectionHeading } from "@/components/ui";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import type { HelpSection } from "@/lib/discord/help";
 
@@ -17,24 +16,25 @@ function Rich({ text }: { text: string }) {
 }
 
 /** Help & rules — pure view, reused by /demo. */
-export function HelpView({ sections, demo }: HelpViewProps) {
+export function HelpView({ sections }: HelpViewProps) {
   return (
-    <main className="help flex flex-1 flex-col gap-4 p-5">
-      <header className="flex items-center gap-3">
+    <main className="help flex flex-1 flex-col gap-6 p-5">
+      <div className="flex items-center gap-4">
         <Kyle width={64} alt="Kyle, la mascotte" />
-        <div>
-          <Link href={demo ? "/demo" : "/home"} className="text-[13px] text-[color:var(--muted)]">
-            ← Accueil
-          </Link>
-          <h1>Aide &amp; règles</h1>
-          <p className="text-[13px] text-[color:var(--muted)]">
-            Aussi disponible avec <code>/help</code> sur Discord.
-          </p>
-        </div>
-      </header>
+        <PageTitle
+          className="min-w-0 flex-1"
+          kicker={
+            <p className="accent text-[15px] text-[color:var(--muted)]">
+              Aussi disponible avec <code>/help</code> sur Discord.
+            </p>
+          }
+        >
+          Aide &amp; règles
+        </PageTitle>
+      </div>
 
       {sections.map((s) => (
-        <Card key={s.title} className="help-card">
+        <Card key={s.title} tier="flat" className="help-card">
           <h3>{s.title}</h3>
           <ul>
             {s.lines.map((l, i) => (
@@ -46,12 +46,10 @@ export function HelpView({ sections, demo }: HelpViewProps) {
         </Card>
       ))}
 
-      <section className="flex flex-col gap-2">
-        <p className="eyebrow">Thème</p>
+      <section className="section">
+        <SectionHeading>Thème</SectionHeading>
         <ThemeToggle />
-        <p className="text-xs text-[color:var(--muted)]">
-          « Auto » suit le réglage de ton téléphone : clair « Papier » le jour, sombre « Encre » la nuit.
-        </p>
+        <p className="meta-xs">« Auto » suit le réglage de ton téléphone : clair « Papier » le jour, sombre « Encre » la nuit.</p>
       </section>
     </main>
   );
