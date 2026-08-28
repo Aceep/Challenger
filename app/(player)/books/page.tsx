@@ -36,7 +36,7 @@ export default async function BooksPage({ searchParams }: PageProps<"/books">) {
   const showDeadline = !isCaptain && user.role !== "ADMIN";
   const editId = Array.isArray(params.edit) ? params.edit[0] : params.edit;
   const editing = editId ? await loadBookEdit(editId, user) : null;
-  const flash = editId && !editing ? { ...params, error: "Cette lecture n'est plus modifiable (délai d'1 h dépassé — demande à ton·ta capitaine)." } : params;
+  const flash = editId && !editing ? { ...params, error: "Cette lecture n’est plus modifiable (délai d’1 h dépassé — demande à ton·ta capitaine)." } : params;
 
   return (
     <BooksView

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { CloseIcon } from "./icons";
 
 type Props = {
   title: ReactNode;
@@ -44,22 +45,20 @@ export function Modal({ title, children, onClose, isDirty, width = 760 }: Props)
       <div className="modal-head">
         <h2>{title}</h2>
         <button type="button" onClick={requestClose} className="modal-x" aria-label="Fermer">
-          ✕
+          <CloseIcon />
         </button>
       </div>
       <div className="modal-body">{children}</div>
       {confirming && (
         <div className="modal-confirm" role="alertdialog" aria-labelledby="modal-confirm-title">
           <div className="card flex flex-col gap-3">
-            <p id="modal-confirm-title" className="font-extrabold">
-              Modifications non enregistrées
-            </p>
-            <p className="text-[14px] text-[color:var(--muted)]">Si tu fermes maintenant, les changements de ce formulaire seront perdus.</p>
+            <h3 id="modal-confirm-title">Modifications non enregistrées</h3>
+            <p className="meta">Si tu fermes maintenant, les changements de ce formulaire seront perdus.</p>
             <div className="flex flex-wrap justify-end gap-2">
-              <button type="button" className="btn small ghost" onClick={() => setConfirming(false)} autoFocus>
-                Continuer l&apos;édition
+              <button type="button" className="btn sm ghost" onClick={() => setConfirming(false)} autoFocus>
+                Continuer l’édition
               </button>
-              <button type="button" className="btn small danger" onClick={onClose}>
+              <button type="button" className="btn sm danger" onClick={onClose}>
                 Fermer sans enregistrer
               </button>
             </div>

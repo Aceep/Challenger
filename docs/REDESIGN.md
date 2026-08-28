@@ -25,22 +25,41 @@ Règles de travail : lire `CLAUDE.md` (Node 22 via nvm, Next 16, Prisma 7, autor
 | `--bg` | `#FBF8F0` | `#141518` | fond de page |
 | `--surface` / `--surface-2` | `#FFFFFF` / `#F3EEE0` | `#1E2025` / `#26282E` | cartes / champs |
 | `--ink` / `--muted` | `#1A1A1F` / `#6B675C` | `#F3EFE4` / `#A39F92` | texte / secondaire |
-| `--line` | `#E4DDC9` | `#33363D` | bordures |
-| `--edition` | couleur du défi (`Challenge.color`, défaut `#2E4A7D`) | idem éclairci si besoin | bannière d'édition |
+| `--line` / `--line-strong` | `#E4DDC9` / `#D2C9B0` | `#33363D` / `#43474F` | traits sur le papier / bord d'un objet |
+| `--ink-2` | `#3A3833` | `#D8D3C6` | texte secondaire appuyé |
+| `--olive-ink` / `--brick-ink` | `#5F7A1C` / `#B3452F` | `#A9C95A` / `#E8836C` | **texte** vert / brique (les aplats gardent `--olive` / `--brick`) |
+| `--edition` | couleur du défi (`Challenge.color`, défaut `#2E4A7D`) | `#7FA3E6` | bannière d'édition |
 | équipes | `Team.color` (existant) | idem | rangs, avatars, score |
 
-Sémantique d'état, toujours forme + couleur : **validé** = olive plein ; **en attente ½** = hachures jaunes (`repeating-linear-gradient(135deg, var(--hi) 0 6px, transparent 6px 12px)`) + bordure `--kyle-deep` ; **refus/négatif** = brique ; **libre** = surface + `--line`.
+Dérivés : `--ink-rule` (`color-mix(--ink 55 %)`, filets pointillés), `--brick-soft` (`--brick` 14 %), `--kyle-ring` (`--kyle` 45 %, anneau de survol en sombre).
 
-Implémentation : `:root` = clair complet ; `@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {…} }` ; `:root[data-theme="dark"] {…}`. Exposer les tokens à Tailwind 4 via `@theme inline` (`--color-kyle`, `--color-olive`, `--color-surface`, …) et **remplacer toutes les classes `indigo-*`, `slate-*`, `pink-*`, `amber-*`, `green-*`, `red-*`** par les tokens. Le réglage utilisateur (Auto / Clair / Sombre) vit dans `localStorage` (`ak-theme`) avec un script inline anti-flash dans `app/layout.tsx` et un sélecteur dans la page Aide et le rail admin.
+Sémantique d'état, toujours forme + couleur : **validé** = `--olive-soft` + bordure `--olive` + pastille de coche olive ; **en attente ½** = hachures jaunes (`repeating-linear-gradient(135deg, var(--hi) 0 6px, transparent 6px 12px)`) + bordure `--kyle-deep` ; **refus/négatif** = brique ; **libre** = surface + `--line`.
+
+Implémentation : **un seul bloc de tokens**, chaque valeur en `light-dark(clair, sombre)` ; `:root { color-scheme: light dark }` et `:root[data-theme="light"|"dark"] { color-scheme: … }` pour le réglage manuel — pas de palette sombre dupliquée. Exposer les tokens à Tailwind 4 via `@theme inline` (`--color-kyle`, `--color-olive-ink`, `--radius-card`, …). Le réglage utilisateur (Auto / Clair / Sombre) vit dans `localStorage` (`ak-theme`) avec un script inline anti-flash dans `app/layout.tsx` et un sélecteur dans la page Aide et le rail admin.
+
+### Échelles (`app/globals.css`)
+| Famille | Tokens |
+|---|---|
+| Rayon | `--r-xs 6` · `--r-sm 10` · `--r-md 14` · `--r-lg 18` · `--r-pill 999` |
+| Espace | `--sp-1 4` → `--sp-2 8` · `--sp-3 12` · `--sp-4 16` · `--sp-5 20` · `--sp-6 24` · `--sp-8 32` · `--sp-10 40` |
+| Corps | `--fs-xs 12` · `--fs-sm 13` · `--fs-base 15` · `--fs-md 17` · `--fs-nav 11` |
+| Display | `--fs-d1 18` · `--fs-d2 22` · `--fs-d3 28` · `--fs-d4 34` · `--fs-d5 56` |
+| Ombres | `--shadow-raised` · `--shadow-card` · `--shadow-float` (survol) · `--shadow-modal` · `--shadow-nav` · `--shadow-rail` |
+| Bordure | `--bw 1.5px` = bord d'un objet ; `1px` = trait sur le papier |
+| Mouvement | `--dur-fast 120ms` · `--dur 160ms` · `--dur-slow 280ms` · `--ease` · `--ease-pop` |
+| Ornements | `--grain` (bruit 180 px, `body::before`) · `--ink-underline` (trait sous les `h1`) · `--check-badge` (coche des cases validées) |
+
+Les échelles de corps portent le préfixe `--fs-*` et non `--text-*` : le second est l'espace de noms de Tailwind, et le redéfinir changerait `text-sm` partout, admin compris.
 
 ### Typographie (`next/font/google`)
-- **Fraunces** (`opsz,wght` 9..144 / 500, 700, 900) → `--font-display` : titres `h1–h3`, gros chiffres (score, points, KPIs).
+- **Fraunces** (`opsz,wght` 9..144 / 500, 700, 900) → `--font-display` : titres `h1–h3`, gros chiffres (score, points, KPIs), et l'italique `.accent` (prénom, auteur·ice, unité « pts », amorce d'histoire — jamais un nombre).
 - **Nunito Sans** (400, 600, 700, 800 + italic 400) → `--font-body` : tout le reste. `tabular-nums` sur tout chiffre en colonne.
-- Échelle : h1 26 px (mobile) / 30 px (admin), h2 18–22, corps 15, secondaire 13, eyebrow 11 px majuscules espacées (`.eyebrow`).
+- Échelle : h1 28 px (mobile) / 34 px (bureau) / 30 px (admin), h2 18, corps 15, secondaire 13 (`.meta`), 12 (`.meta-xs`), eyebrow 11 px majuscules espacées (`.eyebrow`).
+- Graisses : 400 texte, 600 libellés/pastilles/nav, 700 noms et titres, 800 réservé au livre de comptes et au bouton primaire.
 - Supprimer Geist.
 
 ### Composants partagés (`components/ui/*`, server components sauf mention)
-`Button` (primary / ghost / danger / small), `Card`, `Pill` (ok / wait / no / type), `Flash` (existe : restyler), `Eyebrow`, `ScoreCard` (édition + valeur Fraunces + rang), `Stat`, `Field` (label + input/select + hint), `Avatar` (initiale sur `Team.color`), `KyleEmpty` (mascotte + phrase pour les états vides), `ProgressBar` (olive / half jaune), `BingoCell`, `RankRow`, `MemberRow`, `Ledger`, `ThemeToggle` (client). Pas de librairie de composants.
+`Button` (primary / ghost / danger × sm / md / lg, `small` = alias de `sm`), `Card` (`tier` card / flat / raised / sheet + `interactive`), `PageTitle` (h1 + trait d'encre + kicker + action), `SectionHeading` (h2 + filet pointillé), `Meta` (13 px, `row` pour les faits joints par `·`), `Pill` (ok / wait / no / type, `stamp` pour les états tamponnés), `Flash`, `Eyebrow`, `ScoreCard`, `Stat`, `Field`, `Avatar`, `KyleEmpty` (boîte pointillée), `ProgressBar`, `BingoCell`, `RankRow`, `MemberRow`, `Medal`, `Ledger`, `ThemeToggle` (client). Jeu d'icônes maison dans `components/ui/icons.tsx` (24 viewBox, `currentColor`, trait 2) — **aucun emoji** dans les écrans joueur. Pas de librairie de composants.
 
 ## 3. Routage et mode démo
 

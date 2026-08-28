@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { SubmitButton } from "@/components/ui/SubmitButton";
-import { BingoCell, Pill } from "@/components/ui";
+import { BingoCell, PageTitle, Pill } from "@/components/ui";
 
 export type BoardCell = {
   id: string;
@@ -17,7 +17,7 @@ type Props = {
   title: string;
   size: number;
   cells: BoardCell[];
-  /** Books the current user may place/move (own within 1 h, or whole team for the captain). */
+  /** Books the current user may place/move (own within 1 h, or whole team for the captain). */
   books: { id: string; title: string; type: "ROMAN" | "GRAPHIQUE"; owner: string; placedOn: string | null }[];
   completedLines: number;
   /** Label (B3) of the cell validated by the last action: it pops once. */
@@ -38,16 +38,30 @@ export function BingoBoard({ title, size, cells, books, completedLines, order, t
   const selected = cells.find((c) => c.id === selectedId) ?? null;
   const done = cells.filter((c) => c.complete).length;
   const editableIds = new Set(books.map((b) => b.id));
+  const state = (c: BoardCell) => (c.complete ? "validée" : c.weight > 0 ? "en attente ½" : "libre");
 
   return (
-    <section className="bingo-layout flex flex-col gap-3">
+    <section className="bingo-layout flex flex-col gap-4">
       {heading ?? (
-        <div>
-          <h1>Bingo d&apos;équipe</h1>
-          <p className="text-[13px] text-[color:var(--muted)]">
-            Grille {order} sur {total} · « {title} » · {done}/{size * size} · {completedLines} ligne{completedLines > 1 ? "s" : ""}
-          </p>
-        </div>
+        <PageTitle
+          stack
+          action={
+            <p className="meta row">
+              <span>
+                Grille {order} sur {total}
+              </span>
+              <span className="accent">« {title} »</span>
+              <span>
+                {done}/{size * size}
+              </span>
+              <span>
+                {completedLines} ligne{completedLines > 1 ? "s" : ""}
+              </span>
+            </p>
+          }
+        >
+          Bingo d’équipe
+        </PageTitle>
       )}
 
       <div className="bingo-grid" data-tour="bingo-board" style={{ gridTemplateColumns: `repeat(${size}, minmax(0, 1fr))` }}>
@@ -74,42 +88,46 @@ export function BingoBoard({ title, size, cells, books, completedLines, order, t
         ))}
       </div>
 
-      <div className="legend">
+      <p className="legend">
         <span>
-          <i style={{ background: "var(--olive)" }} />
+          <i style={{ background: "var(--olive)", borderColor: "var(--olive)" }} />
           validée
         </span>
         <span>
-          <i className="stripes" style={{ border: "1px solid var(--kyle-deep)" }} />
+          <i className="stripes" style={{ borderColor: "var(--kyle-deep)" }} />
           en attente ½
         </span>
         <span>
-          <i style={{ background: "var(--surface)", border: "1px solid var(--line)" }} />
+          <i style={{ background: "var(--surface)" }} />
           libre
         </span>
-      </div>
+      </p>
 
       {selected && (
         <div className="sheet">
-          <p className="eyebrow">
-            Case {selected.label} · {selected.complete ? "validée ✅" : selected.weight > 0 ? "en attente ½" : "libre"}
-          </p>
-          <p className="font-extrabold">{selected.prompt}</p>
+          <div className="flex items-center justify-between gap-3">
+            <h3>
+              Case {selected.label} <span className="accent">— {selected.prompt}</span>
+            </h3>
+            <Pill stamp tone={selected.complete ? "ok" : selected.weight > 0 ? "wait" : "type"}>
+              {state(selected)}
+            </Pill>
+          </div>
           {selected.books.length === 0 ? (
-            <p className="text-[13px] text-[color:var(--muted)]">Aucune lecture posée.</p>
+            <p className="meta">Aucune lecture posée.</p>
           ) : (
-            <ul className="flex flex-col gap-1 text-[13px]">
+            <ul className="flex flex-col">
               {selected.books.map((b) => (
-                <li key={b.id} className="flex items-center justify-between gap-2">
+                <li key={b.id} className="flex items-center justify-between gap-2 border-b border-dotted border-[color:var(--line-strong)] py-2 last:border-0 text-[14px]">
                   <span>
-                    {b.owner} — <strong>{b.title}</strong> {b.type === "GRAPHIQUE" && <Pill tone="wait">½</Pill>}
+                    <strong>{b.owner}</strong> — {b.title} {b.type === "GRAPHIQUE" && <Pill tone="type">graphique</Pill>}
                   </span>
                   {editableIds.has(b.id) && (
                     <form action={removeBookAction}>
                       <input type="hidden" name="bookId" value={b.id} />
-                      <button type="submit" className="text-xs text-[color:var(--brick)] underline">
+                      <SubmitButton className="btn sm danger" pendingLabel="…">
                         Retirer
-                      </button>
+                      </SubmitButton>
                     </form>
                   )}
                 </li>
@@ -117,8 +135,8 @@ export function BingoBoard({ title, size, cells, books, completedLines, order, t
             </ul>
           )}
           {selected.complete ? (
-            <div className="flex gap-2">
-              <button type="button" onClick={() => setSelectedId(null)} className="btn small ghost">
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => setSelectedId(null)} className="btn sm ghost">
                 Fermer
               </button>
             </div>
@@ -135,26 +153,26 @@ export function BingoBoard({ title, size, cells, books, completedLines, order, t
                     .filter((b) => b.placedOn !== selected.id)
                     .map((b) => (
                       <option key={b.id} value={b.id}>
-                        {b.placedOn ? "✓ " : ""}
+                        {b.placedOn ? "déjà placée · " : ""}
                         {b.owner} — {b.title}
                         {b.type === "GRAPHIQUE" ? " (½)" : ""}
                       </option>
                     ))}
                 </select>
               </label>
-              <div className="flex gap-2">
-                <SubmitButton className="btn small flex-1" pendingLabel="Enregistrement…">
-                  Valider
-                </SubmitButton>
-                <button type="button" onClick={() => setSelectedId(null)} className="btn small ghost">
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => setSelectedId(null)} className="btn sm ghost">
                   Fermer
                 </button>
+                <SubmitButton className="btn sm" pendingLabel="Enregistrement…">
+                  Valider
+                </SubmitButton>
               </div>
-              <p className="text-xs text-[color:var(--muted)]">
+              <p className="meta-xs">
                 {hint ?? (
                   <>
-                    Un roman valide la case : le ½ déjà posé revient en attente. Un graphique = ½ case. ✓ = déjà placé ailleurs (il sera déplacé). Tu peux placer
-                    tes lectures pendant 1 h après leur ajout ; ensuite c&apos;est le·la capitaine.
+                    Un roman valide la case : le ½ déjà posé revient en attente. Un graphique = ½ case. Une lecture « déjà placée » sera déplacée ici. Tu peux
+                    placer tes lectures pendant 1 h après leur ajout ; ensuite c’est le·la capitaine.
                   </>
                 )}
               </p>

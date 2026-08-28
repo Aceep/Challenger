@@ -1,4 +1,5 @@
-import { Card, Eyebrow, KyleEmpty } from "@/components/ui";
+import { Card, KyleEmpty, Meta, PageTitle, Pill, SectionHeading } from "@/components/ui";
+import { AlertIcon, ArrowRightIcon, LockIcon, SparkIcon } from "@/components/ui/icons";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { Flash } from "@/components/Flash";
 import { LiveRefresh } from "@/components/LiveRefresh";
@@ -59,9 +60,9 @@ export function StoryView({
 }: StoryViewProps) {
   if (!node) {
     return (
-      <main className="flex flex-1 flex-col gap-4 p-5">
-        <h1>Histoire</h1>
-        <KyleEmpty>{teamName ? "L'histoire n'a pas encore commencé." : "Rejoins une équipe pour vivre l'histoire."}</KyleEmpty>
+      <main className="flex flex-1 flex-col gap-5 p-5">
+        <PageTitle>Histoire</PageTitle>
+        <KyleEmpty>{teamName ? "L’histoire n’a pas encore commencé." : "Rejoins une équipe pour vivre l’histoire."}</KyleEmpty>
       </main>
     );
   }
@@ -72,23 +73,34 @@ export function StoryView({
     <main className="story flex flex-1 flex-col gap-5 p-5">
       {!demo && <LiveRefresh seconds={20} />}
       <Flash params={params} />
-      <header>
-        <Eyebrow style={{ color: teamColor }}>
-          {storyTitle} · {teamName}
-        </Eyebrow>
-        <h1>{node.title}</h1>
-      </header>
+      <PageTitle
+        kicker={
+          <p className="accent text-[15px]" style={{ color: teamColor }}>
+            {storyTitle} · {teamName}
+          </p>
+        }
+      >
+        {node.title}
+      </PageTitle>
 
-      <p className="chapter card" data-tour="story-chapter">
-        {node.body}
-      </p>
+      <Card className="px-5 py-4.5" data-tour="story-chapter">
+        <p className="chapter">{node.body}</p>
+      </Card>
 
-      {node.isEnding && <p className="text-center text-lg font-extrabold">✨ Fin de votre histoire</p>}
+      {node.isEnding && (
+        <p className="flex items-center justify-center gap-2 text-center text-lg font-bold">
+          <SparkIcon />
+          Fin de votre histoire
+        </p>
+      )}
 
       {!node.isEnding && unmet.length > 0 && (
-        <Card className="flex flex-col gap-1 text-sm" style={{ border: "1.5px solid var(--kyle-deep)" }}>
-          <p className="font-extrabold">🔒 Pour continuer, votre équipe doit :</p>
-          <ul className="list-inside list-disc text-[color:var(--muted)]">
+        <Card tier="raised" className="flex flex-col gap-2" style={{ borderColor: "var(--kyle-deep)" }}>
+          <h3 className="flex items-center gap-2">
+            <LockIcon />
+            Pour continuer, votre équipe doit :
+          </h3>
+          <ul className="meta list-inside list-disc">
             {unmet.map((u) => (
               <li key={u}>{u}</li>
             ))}
@@ -97,13 +109,13 @@ export function StoryView({
       )}
 
       {vote?.status === "AWAITING_TARGET" && (
-        <Card className="flex flex-col gap-2">
-          <p className="font-extrabold">Choix retenu : {vote.resultChoice?.label}</p>
+        <Card tier="raised" className="flex flex-col gap-3">
+          <h3>Choix retenu : {vote.resultChoice?.label}</h3>
           {isCaptain || isAdmin ? (
             <form action={chooseTargetAction} className="flex flex-col gap-2">
               <input type="hidden" name="voteId" value={vote.id} />
               <label className="field">
-                Quelle équipe visez-vous ?
+                Quelle équipe visez-vous ?
                 <select name="targetTeamId" required defaultValue="">
                   <option value="" disabled>
                     Choisir…
@@ -115,23 +127,33 @@ export function StoryView({
                   ))}
                 </select>
               </label>
-              <SubmitButton className="btn small" pendingLabel="Envoi…">Confirmer la cible</SubmitButton>
+              <SubmitButton className="btn sm" pendingLabel="Envoi…">
+                Confirmer la cible
+              </SubmitButton>
             </form>
           ) : (
-            <p className="text-sm text-[color:var(--muted)]">Le·la capitaine doit désigner l&apos;équipe visée.</p>
+            <Meta>Le·la capitaine doit désigner l’équipe visée.</Meta>
           )}
         </Card>
       )}
 
       {tie && vote && (
-        <Card className="flex flex-col gap-1.5" style={{ border: "1.5px solid var(--kyle-deep)" }}>
-          <p className="font-extrabold">⚖️ Égalité !</p>
-          <p className="text-[13px] text-[color:var(--muted)]">
-            {tie.stage === "CAPTAIN" && "Le·la capitaine a 5 h pour trancher, puis l'adjoint·e, puis le premier membre qui se manifeste avec l'accord d'un·e admin."}
-            {tie.stage === "DEPUTY" && "Le·la capitaine n'a pas tranché : l'adjoint·e a 5 h, puis le premier membre qui se manifeste avec l'accord d'un·e admin."}
-            {tie.stage === "ANY" && !tie.pendingChoiceId && "Le premier membre qui se manifeste tranche, avec l'accord d'un·e admin."}
-            {tie.pendingChoiceId && ` Un choix attend la confirmation d'un·e admin : « ${choices.find((c) => c.id === tie.pendingChoiceId)?.label ?? "?"} ».`}{" "}
-            Les compteurs sont en pause de minuit à 8 h.
+        <Card tier="raised" className="flex flex-col gap-2" style={{ borderColor: "var(--kyle-deep)" }}>
+          <div className="flex items-center justify-between gap-2.5">
+            <h3 className="flex items-center gap-2">
+              <AlertIcon />
+              Égalité !
+            </h3>
+            <Pill stamp tone="wait">
+              {tie.leaders.length} en tête
+            </Pill>
+          </div>
+          <p className="meta" style={{ color: "var(--ink-2)" }}>
+            {tie.stage === "CAPTAIN" && "Le·la capitaine a 5 h pour trancher, puis l’adjoint·e, puis le premier membre qui se manifeste avec l’accord d’un·e admin."}
+            {tie.stage === "DEPUTY" && "Le·la capitaine n’a pas tranché : l’adjoint·e a 5 h, puis le premier membre qui se manifeste avec l’accord d’un·e admin."}
+            {tie.stage === "ANY" && !tie.pendingChoiceId && "Le premier membre qui se manifeste tranche, avec l’accord d’un·e admin."}
+            {tie.pendingChoiceId && ` Un choix attend la confirmation d’un·e admin : « ${choices.find((c) => c.id === tie.pendingChoiceId)?.label ?? "?"} ».`}{" "}
+            Les compteurs sont en pause de minuit à 8 h.
           </p>
           {(tie.canBreak || isAdmin) && !tie.pendingChoiceId && (
             <div className="mt-1 flex flex-wrap gap-2">
@@ -141,7 +163,7 @@ export function StoryView({
                   <form key={c.id} action={breakTieAction}>
                     <input type="hidden" name="voteId" value={vote.id} />
                     <input type="hidden" name="choiceId" value={c.id} />
-                    <SubmitButton className="btn small">Trancher : {c.label}</SubmitButton>
+                    <SubmitButton className="btn sm">Trancher : {c.label}</SubmitButton>
                   </form>
                 ))}
             </div>
@@ -151,12 +173,12 @@ export function StoryView({
               <form action={confirmTieAction}>
                 <input type="hidden" name="voteId" value={vote.id} />
                 <input type="hidden" name="accept" value="1" />
-                <SubmitButton className="btn small">Confirmer</SubmitButton>
+                <SubmitButton className="btn sm">Confirmer</SubmitButton>
               </form>
               <form action={confirmTieAction}>
                 <input type="hidden" name="voteId" value={vote.id} />
                 <input type="hidden" name="accept" value="0" />
-                <SubmitButton className="btn small ghost">Refuser</SubmitButton>
+                <SubmitButton className="btn sm ghost">Refuser</SubmitButton>
               </form>
             </div>
           )}
@@ -164,41 +186,53 @@ export function StoryView({
       )}
 
       {vote?.status === "OPEN" && (
-        <section className="flex flex-col gap-2.5">
-          <div>
-            <p className="font-extrabold">Que fait votre équipe ?</p>
-            <p className="text-xs text-[color:var(--muted)]">
-              Vote ouvert jusqu&apos;au {dateFmt.format(vote.deadline)} · {vote.ballots} vote{vote.ballots > 1 ? "s" : ""} (3 votants minimum)
-              {vote.myChoiceId && " · tu as voté, tu peux changer d'avis jusqu'à la clôture"}
-            </p>
-          </div>
+        <section className="section">
+          <SectionHeading>Que fait votre équipe ?</SectionHeading>
+          <Meta>
+            Vote ouvert jusqu’au {dateFmt.format(vote.deadline)} · <strong>{vote.ballots} vote{vote.ballots > 1 ? "s" : ""}</strong> (3 votants minimum)
+            {vote.myChoiceId && " · tu as voté, tu peux changer d’avis jusqu’à la clôture"}
+          </Meta>
           {choices.map((c) => (
             <form key={c.id} action={voteAction}>
               <input type="hidden" name="voteId" value={vote.id} />
               <input type="hidden" name="choiceId" value={c.id} />
               <SubmitButton disabled={c.locked} className={`choice ${vote.myChoiceId === c.id ? "mine" : ""} ${c.locked ? "locked" : ""}`}>
+                {vote.myChoiceId === c.id && (
+                  <Pill stamp tone="me">
+                    Ton vote
+                  </Pill>
+                )}
                 <span className="l">
-                  {c.locked && "🔒 "}
+                  {c.locked && <LockIcon className="ico-sm" />}
                   {c.label}
                 </span>
-                {c.lockReason && <span className="v">{c.lockReason}</span>}
                 {c.effects.length > 0 && <span className="e">{c.effects.join(" · ")}</span>}
+                {c.lockReason && <span className="v">{c.lockReason}</span>}
                 {c.votes.length > 0 && <span className="v">Votes : {c.votes.join(", ")}</span>}
               </SubmitButton>
             </form>
           ))}
-          {allies.length > 0 && (
-            <p className="text-xs text-[color:var(--muted)]">Alliés qui peuvent voter avec vous : {allies.map((a) => a.name).join(", ")}</p>
-          )}
+          {allies.length > 0 && <Meta xs>Alliés qui peuvent voter avec vous : {allies.map((a) => a.name).join(", ")}</Meta>}
         </section>
       )}
 
       {history.length > 1 && (
-        <section>
-          <Eyebrow>Votre parcours</Eyebrow>
-          <p className="text-[13px] text-[color:var(--muted)]">
-            {history.map((h) => `${h.choiceLabel ? `« ${h.choiceLabel} » → ` : ""}${h.title}`).join(" · ")}
-          </p>
+        <section className="section">
+          <SectionHeading>Votre parcours</SectionHeading>
+          <ol className="path">
+            {history.map((h, i) => {
+              // `choiceLabel` is the choice that led to a chapter, so it is shown
+              // next to the chapter it was made in — the one before.
+              const chosen = history[i + 1]?.choiceLabel;
+              return (
+                <li key={`${h.title}-${i}`}>
+                  {h.title}
+                  {chosen && <span className="accent">« {chosen} »</span>}
+                  {i < history.length - 1 && <ArrowRightIcon className="ico-sm" />}
+                </li>
+              );
+            })}
+          </ol>
         </section>
       )}
     </main>

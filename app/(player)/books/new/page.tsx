@@ -13,7 +13,7 @@ export default async function NewBookPage() {
   return (
     <BookForm
       action={logBookAction}
-      title="J'ai fini une lecture"
+      title="J’ai fini une lecture"
       submitLabel="Enregistrer"
       quests={quests}
       cells={cells}
