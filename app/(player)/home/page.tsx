@@ -1,8 +1,10 @@
+import { cookies } from "next/headers";
 import { signOut } from "@/auth";
 import { TourAutoStart } from "@/components/tour/TourAutoStart";
 import { getCurrentPlayer } from "@/lib/dal";
 import { prisma } from "@/lib/db";
 import { getHomeSummary } from "@/lib/services/home";
+import { CHALLENGE_COOKIE } from "@/lib/tenancy/select";
 import { HomeView } from "./HomeView";
 
 export default async function HomePage() {
@@ -34,6 +36,9 @@ export default async function HomePage() {
         week={{ vote: summary.vote, pendingCells: summary.pendingCells }}
         signOutAction={async () => {
           "use server";
+          // The edition is a session preference: the next person to log in on
+          // this browser must not inherit it.
+          (await cookies()).delete(CHALLENGE_COOKIE);
           await signOut({ redirectTo: "/login" });
         }}
       />
