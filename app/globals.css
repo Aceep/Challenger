@@ -1379,3 +1379,31 @@ main > header, main > div:first-child { padding: 4px 0 6px; }
 /* reading card: content vertically centered next to the full-height cover */
 .book .body { justify-content: center; padding-top: 12px; padding-bottom: 12px; }
 .book .foot { margin-top: 8px; }
+
+/* reading card: horizontally centered content */
+.book .body { align-items: center; text-align: center; }
+.book .head { flex-direction: column; align-items: center; gap: 2px; }
+.book .foot { flex-direction: column; align-items: center; gap: 8px; width: 100%; }
+.book .note:empty { display: none; }
+
+/* dark theme: shadows vanish on the dark ground, so hover lifts with a lighter surface and a soft yellow ring */
+@media (hover: hover) {
+  :root[data-theme="dark"] .rank:hover, :root[data-theme="dark"] .member:hover, :root[data-theme="dark"] .book:hover, :root[data-theme="dark"] .quest:hover,
+  :root[data-theme="dark"] .kpi:hover, :root[data-theme="dark"] .node:hover, :root[data-theme="dark"] .pillars .card:hover, :root[data-theme="dark"] .cell:hover,
+  :root[data-theme="dark"] .edition:hover {
+    background-color: var(--surface-2);
+    box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--kyle) 45%, transparent), 0 12px 28px rgba(0, 0, 0, 0.5);
+  }
+  :root[data-theme="dark"] .cell.done:hover { background-color: var(--olive); }
+  :root[data-theme="dark"] .btn:not(:disabled):hover { box-shadow: 0 0 0 3px color-mix(in srgb, var(--kyle) 30%, transparent); }
+}
+@media (hover: hover) and (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .rank:hover, :root:not([data-theme="light"]) .member:hover, :root:not([data-theme="light"]) .book:hover, :root:not([data-theme="light"]) .quest:hover,
+  :root:not([data-theme="light"]) .kpi:hover, :root:not([data-theme="light"]) .node:hover, :root:not([data-theme="light"]) .pillars .card:hover, :root:not([data-theme="light"]) .cell:hover,
+  :root:not([data-theme="light"]) .edition:hover {
+    background-color: var(--surface-2);
+    box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--kyle) 45%, transparent), 0 12px 28px rgba(0, 0, 0, 0.5);
+  }
+  :root:not([data-theme="light"]) .cell.done:hover { background-color: var(--olive); }
+  :root:not([data-theme="light"]) .btn:not(:disabled):hover { box-shadow: 0 0 0 3px color-mix(in srgb, var(--kyle) 30%, transparent); }
+}
