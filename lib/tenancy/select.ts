@@ -7,9 +7,10 @@
  */
 
 /**
- * Cookie carrying the challenge the person last switched to. Written by
- * `switchChallengeAction` (Aide › Édition, admin rail, admin › Défi), cleared on
- * sign-out, read by `lib/dal.ts`.
+ * Cookie carrying the challenge the person last switched to — or the one they
+ * just created. Written only through `lib/tenancy/cookie.ts`
+ * (`switchChallengeAction` from Aide › Édition, the admin rail and Admin › Défi ;
+ * `createChallengeAction` from `/new`), cleared on sign-out, read by `lib/dal.ts`.
  */
 export const CHALLENGE_COOKIE = "challenge";
 

@@ -1,14 +1,12 @@
 "use server";
 
-import { cookies } from "next/headers";
 import { withFlash } from "@/lib/actions";
 import { requireUser } from "@/lib/dal";
 import { GameError } from "@/lib/errors";
 import { listSwitchableChallenges } from "@/lib/services/membership";
-import { CHALLENGE_COOKIE, switchLanding } from "@/lib/tenancy/select";
+import { setCurrentChallengeCookie } from "@/lib/tenancy/cookie";
+import { switchLanding } from "@/lib/tenancy/select";
 
-/** Editions are truly separate: switching is an explicit act, confirmed by a flash. */
-const YEAR = 365 * 24 * 60 * 60;
 /** Everything on screen belongs to the edition: revalidate both shells. */
 const PATHS = ["/", "/admin"];
 
@@ -33,14 +31,7 @@ export async function switchChallengeAction(formData: FormData) {
     );
   }
 
-  const jar = await cookies();
-  jar.set(CHALLENGE_COOKIE, target.challenge.id, {
-    path: "/",
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    maxAge: YEAR,
-  });
+  await setCurrentChallengeCookie(target.challenge.id);
 
   return withFlash(switchLanding(target.role, returnTo), async () => `Tu es maintenant sur « ${target.challenge.name} ».`, PATHS);
 }
