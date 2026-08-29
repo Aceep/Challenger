@@ -92,7 +92,7 @@ export function ChallengeView({ challenge, editions, steps, discord, params, sav
         <ol className="setup-steps">
           <li className={step > 1 ? "done" : ""}>
             <strong>1. Créez un serveur Discord vide</strong>, puis collez son identifiant dans le champ « Serveur Discord (id) » du formulaire ci-dessus et
-            enregistrez.{" "}
+            enregistrez — ou créez le défi depuis Discord avec <code>/challenger creer</code>&#8239;: l’identifiant est alors déjà rempli.{" "}
             {discord.guildId ? (
               <>
                 Serveur : <code>{discord.guildId}</code>
