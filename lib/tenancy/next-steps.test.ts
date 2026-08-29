@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { allDone, nextSteps } from "./next-steps";
+import { allDone, nextSteps, type NextStepsChallenge, type NextStepsCounts } from "./next-steps";
 
-const EMPTY = { discordGuildId: null, discordAdminRoleId: null, discordGeneralChannelId: null };
-const doneIds = (c: typeof EMPTY, counts: { teams: number; players: number }) =>
+const EMPTY: NextStepsChallenge = { discordGuildId: null, discordAdminRoleId: null, discordGeneralChannelId: null };
+const doneIds = (c: NextStepsChallenge, counts: NextStepsCounts) =>
   nextSteps(c, counts)
     .filter((s) => s.done)
     .map((s) => s.id);
