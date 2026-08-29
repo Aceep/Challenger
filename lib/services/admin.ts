@@ -9,21 +9,33 @@ import { ensureMember } from "@/lib/services/membership";
  * invitation or a membership always belongs to the edition it is managed from.
  */
 
-export const challengeSchema = z
-  .object({
-    name: z.string().trim().min(1, "Nom requis").max(100),
-    startAt: z.coerce.date(),
-    endAt: z.coerce.date(),
-    pointsPerPage: z.coerce.number().positive("Doit être > 0").max(10),
-    bingoLineBonus: z.coerce.number().int().min(0),
-    bingoFullBonus: z.coerce.number().int().min(0),
-    status: z.enum(["DRAFT", "ACTIVE", "FINISHED"]),
-    color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Couleur hex attendue").default("#2E4A7D"),
-    discordGuildId: z.string().trim().optional(),
-    discordGeneralChannelId: z.string().trim().optional(),
-  })
-  .refine((c) => c.endAt > c.startAt, { message: "La fin doit être après le début", path: ["endAt"] });
+/** Every field of an edition. Split out so the self-service form can pick a subset. */
+export const challengeFields = z.object({
+  name: z.string().trim().min(1, "Nom requis").max(100),
+  startAt: z.coerce.date(),
+  endAt: z.coerce.date(),
+  pointsPerPage: z.coerce.number().positive("Doit être > 0").max(10),
+  bingoLineBonus: z.coerce.number().int().min(0),
+  bingoFullBonus: z.coerce.number().int().min(0),
+  status: z.enum(["DRAFT", "ACTIVE", "FINISHED"]),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Couleur hex attendue").default("#2E4A7D"),
+  discordGuildId: z.string().trim().optional(),
+  discordGeneralChannelId: z.string().trim().optional(),
+});
+
+const afterStart = { message: "La fin doit être après le début", path: ["endAt"] };
+
+export const challengeSchema = challengeFields.refine((c) => c.endAt > c.startAt, afterStart);
 export type ChallengeInput = z.infer<typeof challengeSchema>;
+
+/**
+ * The creation form of `/new`: no status (always a draft), no Discord id — the
+ * organiser wires the server afterwards, from Admin › Défi.
+ */
+export const createChallengeSchema = challengeFields
+  .pick({ name: true, startAt: true, endAt: true, color: true, pointsPerPage: true, bingoLineBonus: true, bingoFullBonus: true })
+  .refine((c) => c.endAt > c.startAt, afterStart);
+export type CreateChallengeInput = z.infer<typeof createChallengeSchema>;
 
 /**
  * Creates or edits an edition. Several challenges live side by side; the only
