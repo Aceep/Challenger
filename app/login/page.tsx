@@ -4,7 +4,6 @@ import { auth, signIn } from "@/auth";
 import { Kyle } from "@/components/ui/Kyle";
 
 const ERRORS: Record<string, string> = {
-  NotInvited: "Ton compte Discord n'est pas invité à ce défi. Demande à un organisateur.",
   OAuthAccountNotLinked: "Ce compte est déjà lié à un autre utilisateur.",
 };
 
@@ -18,9 +17,9 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-lg flex-col items-center justify-center gap-7 p-6 text-center">
-      <Kyle width={140} alt="Kyle, la mascotte d'Aceep&Kyle" />
+      <Kyle width={140} alt="Kyle, la mascotte de Challenger" />
       <div>
-        <p className="eyebrow">Aceep&amp;Kyle</p>
+        <p className="eyebrow">Challenger · par Aceep&amp;Kyle</p>
         <h1 className="mt-1 text-[34px]">Lisez en équipe.</h1>
         <p className="mt-2 text-[color:var(--muted)]">
           Chaque page lue rapporte des points à ton équipe : bingo, quêtes et histoire dont vous êtes le héros.
@@ -38,13 +37,13 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
         </button>
       </form>
       <p className="text-[13px] text-[color:var(--muted)]">
-        Pas encore invité·e ?{" "}
+        Pas encore de défi ? Crée le tien après connexion. ·{" "}
         <Link href="/demo" className="underline">
           Voir la démo
         </Link>{" "}
         ·{" "}
         <Link href="/" className="underline">
-          Découvrir Aceep&amp;Kyle
+          Découvrir Challenger
         </Link>
       </p>
     </main>

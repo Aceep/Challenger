@@ -38,21 +38,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   pages: { signIn: "/login" },
   callbacks: {
     /**
-     * Private platform: only Discord ids pre-registered by an organiser (Invite)
-     * or users that already exist may sign in.
+     * Open platform: any Discord account may sign in — it can then create its
+     * own challenge (`/new`). Invitations only decide which challenges are
+     * joined, not who may connect (`joinInvitedChallenges`).
      */
-    async signIn({ user, account }) {
-      if (account?.provider !== "discord" || !account.providerAccountId) return false;
-      const discordId = account.providerAccountId;
-
-      if (user.id) {
-        const existing = await prisma.user.findUnique({ where: { id: user.id } });
-        if (existing) return true;
-      }
-      const invite = await prisma.invite.findFirst({
-        where: { discordId, usedAt: null },
-      });
-      return invite ? true : "/login?error=NotInvited";
+    async signIn({ account }) {
+      return account?.provider === "discord" && !!account.providerAccountId;
     },
     async jwt({ token, user, account, trigger }) {
       if (user?.id) token.id = user.id;
