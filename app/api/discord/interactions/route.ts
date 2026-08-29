@@ -8,7 +8,7 @@ import { announceGridChange, announceRankChange, announceReading, announceResolu
 import { getGuild } from "@/lib/discord/rest";
 import { userMessage } from "@/lib/errors";
 import { fmtPoints } from "@/lib/format";
-import { helpText } from "@/lib/discord/help";
+import { HELP_TITLE, helpText } from "@/lib/discord/help";
 import { cellChoices, editableBookChoices, questChoices } from "@/lib/services/autocomplete";
 import { createChallengeFromGuild, joinChallengeFromGuild } from "@/lib/services/challenger";
 import { syncMemberRoles } from "@/lib/services/discord-setup";
@@ -30,6 +30,9 @@ const reply = (type: number, data?: unknown) => NextResponse.json({ type, data }
 /** Flag 64 = only the caller sees it. */
 const ephemeral = (content: string) => reply(InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE, { content, flags: 64 });
 const publicReply = (content: string) => reply(InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE, { content });
+/** Long private answers go in an embed: `content` stops at 2 000 characters, an embed description at 4 096. */
+const ephemeralEmbed = (title: string, description: string) =>
+  reply(InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE, { embeds: [{ title, description }], flags: 64 });
 const choices = (list: { name: string; value: string }[]) => reply(InteractionResponseType.APPLICATION_COMMAND_AUTOCOMPLETE_RESULT, { choices: list });
 /** The « J'ai fini un livre » handlers already return a complete response body. */
 const fromFlow = (r: InteractionReply) => NextResponse.json(r);
@@ -146,7 +149,7 @@ export async function POST(request: Request) {
   const resolved = await resolveDiscordActor(discordUser.id, interaction.guild_id ?? null);
   if (resolved.kind !== "ok") {
     if (isAutocomplete) return choices([]);
-    if (interaction.data?.name === "help") return ephemeral(helpText(null));
+    if (interaction.data?.name === "help") return ephemeralEmbed(HELP_TITLE, helpText(null));
     if (resolved.kind === "no-challenge") return ephemeral("Ce serveur n’a pas encore de défi : un·e admin du serveur peut le créer avec `/challenger creer`.");
     if (resolved.kind === "not-member") return ephemeral("Tu n’es pas inscrit·e à ce défi : tape `/challenger rejoindre`, ou demande une invitation aux organisateur·ices.");
     return ephemeral(`Tu n’es pas encore inscrit·e : tape \`/challenger rejoindre\` ici, puis connecte-toi sur ${appUrl()}`);
@@ -309,7 +312,7 @@ export async function POST(request: Request) {
         );
       }
       case "help":
-        return ephemeral(helpText(team));
+        return ephemeralEmbed(HELP_TITLE, helpText(team));
       default:
         return ephemeral("Commande inconnue. Tape `/help` pour la liste.");
     }
