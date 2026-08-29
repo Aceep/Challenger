@@ -19,7 +19,8 @@ export default async function HomePage({ searchParams }: PageProps<"/home">) {
 
   return (
     <>
-      {!me_?.onboardedAt && <TourAutoStart tour="player" base="" />}
+      {/* The visit talks about a team, a bingo and a story: pointless without an edition. */}
+      {challenge && !me_?.onboardedAt && <TourAutoStart tour="player" base="" />}
       <HomeView
         userName={user.name ?? "lecteur·ice"}
         team={team ? { name: team.name, color: team.color } : null}

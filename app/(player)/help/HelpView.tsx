@@ -80,6 +80,11 @@ export function HelpView({ sections, edition, params, demo }: HelpViewProps) {
       <section className="section" id="edition">
         <SectionHeading>Édition</SectionHeading>
         <EditionSwitcher current={edition.current} options={edition.options} action={edition.action} returnTo="/home" variant="section" />
+        {!demo && (
+          <Link href="/new" className="btn sm ghost self-start">
+            Créer un défi
+          </Link>
+        )}
         <p className="meta-xs">
           Tout ce que tu vois (équipe, lectures, bingo, histoire) appartient à l’édition en cours. Changer d’édition ne perd rien.
         </p>

@@ -63,89 +63,109 @@ export function HomeView({ userName, team, challengeName, challengeOver, score, 
         Salut <span className="accent">{userName}</span>
       </PageTitle>
 
-      {challengeOver && (
-        <p className="flash warn">
-          <FlagIcon />
-          Le défi est terminé : les scores sont figés. Merci d’avoir joué !
-        </p>
-      )}
-
-      {team && challengeName ? (
-        <ScoreCard
-          data-tour="home-score"
-          teamName={team.name}
-          teamColor={team.color}
-          challengeName={challengeName}
-          points={score}
-          href={p("/team")}
-          rankLine={
-            rank ? (
-              rank.gapPoints > 0 ? (
-                <>
-                  {ORDINAL(rank.position)} sur {rank.total} · à <strong>{fmtPoints(rank.gapPoints)} pts</strong> {ofTeam(rank.ahead)}
-                </>
-              ) : (
-                <>
-                  {ORDINAL(rank.position)} sur {rank.total} · en tête
-                </>
-              )
-            ) : null
-          }
-        />
+      {challengeName === null ? (
+        <>
+          <KyleEmpty
+            action={
+              <Button href="/new" size="lg">
+                Crée ton défi
+              </Button>
+            }
+          >
+            Tu n’as pas encore de défi.
+          </KyleEmpty>
+          <p className="meta">
+            ou rejoins un défi : sur le serveur Discord de ton défi, tape <code>/challenger rejoindre</code>. Une invitation reçue s’applique à ta
+            prochaine connexion.
+          </p>
+        </>
       ) : (
-        <KyleEmpty>Tu n’as pas encore d’équipe. Un organisateur va t’en attribuer une.</KyleEmpty>
-      )}
+        <>
+        {challengeOver && (
+          <p className="flash warn">
+            <FlagIcon />
+            Le défi est terminé : les scores sont figés. Merci d’avoir joué !
+          </p>
+        )}
 
-      <div className="stat2">
-        <Stat
-          label="Mes lectures"
-          value={readings}
-          hint={
-            <>
-              {stats.romans} roman{stats.romans > 1 ? "s" : ""} · {stats.graphiques} graphique{stats.graphiques > 1 ? "s" : ""}
-            </>
-          }
-        />
-        <Stat
-          label="Mes points"
-          value={fmtPoints(stats.myPoints)}
-          hint={stats.teamShare !== null ? `${stats.teamShare} % de l’équipe` : undefined}
-        />
-      </div>
+        {team && challengeName ? (
+          <ScoreCard
+            data-tour="home-score"
+            teamName={team.name}
+            teamColor={team.color}
+            challengeName={challengeName}
+            points={score}
+            href={p("/team")}
+            rankLine={
+              rank ? (
+                rank.gapPoints > 0 ? (
+                  <>
+                    {ORDINAL(rank.position)} sur {rank.total} · à <strong>{fmtPoints(rank.gapPoints)} pts</strong> {ofTeam(rank.ahead)}
+                  </>
+                ) : (
+                  <>
+                    {ORDINAL(rank.position)} sur {rank.total} · en tête
+                  </>
+                )
+              ) : null
+            }
+          />
+        ) : (
+          <KyleEmpty>Tu n’as pas encore d’équipe. Un organisateur va t’en attribuer une.</KyleEmpty>
+        )}
 
-      <Button href={p("/books/new")} size="lg" className="cta" data-tour="home-add">
-        <PlusIcon />
-        J’ai fini une lecture
-      </Button>
+        <div className="stat2">
+          <Stat
+            label="Mes lectures"
+            value={readings}
+            hint={
+              <>
+                {stats.romans} roman{stats.romans > 1 ? "s" : ""} · {stats.graphiques} graphique{stats.graphiques > 1 ? "s" : ""}
+              </>
+            }
+          />
+          <Stat
+            label="Mes points"
+            value={fmtPoints(stats.myPoints)}
+            hint={stats.teamShare !== null ? `${stats.teamShare} % de l’équipe` : undefined}
+          />
+        </div>
 
-      <Card className="week flex flex-col gap-3.5">
-        <h2>Cette semaine</h2>
-        <ul className="agenda">
-          {week.vote && (
+        <Button href={p("/books/new")} size="lg" className="cta" data-tour="home-add">
+          <PlusIcon />
+          J’ai fini une lecture
+        </Button>
+
+        <Card className="week flex flex-col gap-3.5">
+          <h2>Cette semaine</h2>
+          <ul className="agenda">
+            {week.vote && (
+              <li>
+                <VoteIcon className="ico" />
+                <p>
+                  <strong>Vote en cours</strong> — {week.vote.chapter}, {remaining(week.vote.deadline, now)} ·{" "}
+                  <Link href={p("/story")}>voter</Link>
+                </p>
+              </li>
+            )}
+            {week.pendingCells.map((c) => (
+              <li key={c.label}>
+                <TargetIcon className="ico" />
+                <p>
+                  <strong>Case {c.label} en attente</strong> — {c.missing} · <Link href={p("/bingo")}>voir</Link>
+                </p>
+              </li>
+            ))}
             <li>
-              <VoteIcon className="ico" />
+              <SearchIcon className="ico" />
               <p>
-                <strong>Vote en cours</strong> — {week.vote.chapter}, {remaining(week.vote.deadline, now)} ·{" "}
-                <Link href={p("/story")}>voter</Link>
+                <strong>Vérification dimanche 19 h – 21 h</strong> — classement à 20 h
               </p>
             </li>
-          )}
-          {week.pendingCells.map((c) => (
-            <li key={c.label}>
-              <TargetIcon className="ico" />
-              <p>
-                <strong>Case {c.label} en attente</strong> — {c.missing} · <Link href={p("/bingo")}>voir</Link>
-              </p>
-            </li>
-          ))}
-          <li>
-            <SearchIcon className="ico" />
-            <p>
-              <strong>Vérification dimanche 19 h – 21 h</strong> — classement à 20 h
-            </p>
-          </li>
-        </ul>
-      </Card>
+          </ul>
+        </Card>
+        </>
+      )}
     </main>
   );
 }
