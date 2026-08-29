@@ -77,6 +77,19 @@ export async function loadPendingReading(id: string, userId: string, channelId: 
   return pending;
 }
 
+/**
+ * Load *and* take the row in one go: the delete is the lock. Two « Valider »
+ * clicks race on the same id, and only the one whose `deleteMany` reports a
+ * deleted row may go on to write the reading — the loser reads like an expired
+ * form, which is exactly what it is now.
+ */
+export async function claimPendingReading(id: string, userId: string, channelId: string | null, now = new Date()): Promise<PendingReading> {
+  const pending = await loadPendingReading(id, userId, channelId, now);
+  const { count } = await prisma.pendingReading.deleteMany({ where: { id, userId } });
+  if (count === 0) throw new GameError(EXPIRED);
+  return pending;
+}
+
 /** One dropdown change, validated against the row's own frozen options. */
 export async function setPendingChoice(
   id: string,

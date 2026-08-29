@@ -130,6 +130,9 @@ export async function POST(request: Request) {
       // « J'ai fini un livre » owns the `book:*` namespace; the votes keep `vote:*`.
       const book = parseBookId(customId);
       if (book) {
+        // Sans équipe il n'y a pas de salon librairie : le dire ainsi plutôt que
+        // de renvoyer vers un salon qui n'existe pas.
+        if (!team) return ephemeral("Rejoins une équipe d’abord.");
         if (!inTeamChannel) return teamChannelOnly();
         if (book.action === "new") return fromFlow(await openBookModal(ctx));
         if (!book.pendingId) return ephemeral("Bouton inconnu.");

@@ -31,7 +31,7 @@ export async function publishTeamGuide(challengeId: string, teamId: string): Pro
   if (!team) throw new GameError("Équipe introuvable.");
 
   const channelId = team.discordLibraryChannelId;
-  if (!channelId) throw new GameError("Cette équipe n’a pas encore de salon librairie : configure le serveur Discord d’abord.");
+  if (!channelId) throw new GameError("Cette équipe n’a pas encore de salon librairie : configure le serveur Discord d’abord.");
 
   const message = {
     embeds: [guideCard(team)],
@@ -46,7 +46,7 @@ export async function publishTeamGuide(challengeId: string, teamId: string): Pro
   }
 
   const messageId = await postMessage(channelId, message);
-  if (!messageId) throw new GameError("Le message n’a pas pu être publié : vérifie les permissions du bot sur le salon.");
+  if (!messageId) throw new GameError("Le message n’a pas pu être publié : vérifie les permissions du bot sur le salon.");
   // Best-effort: already pinned, or the 50-pin cap is reached.
   await pinMessage(channelId, messageId);
   await prisma.team.update({ where: { id: teamId }, data: { discordGuideMessageId: messageId } });

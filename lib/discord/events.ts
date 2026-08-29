@@ -12,13 +12,7 @@ const COLOR = { story: 0x6366f1, quest: 0xd97706, rank: 0x16a34a, effect: 0xdc26
 
 async function channelsFor(teamId: string) {
   const team = await prisma.team.findUnique({ where: { id: teamId }, include: { challenge: true } });
-  return {
-    team: team?.discordChannelId ?? null,
-    library: team?.discordLibraryChannelId ?? null,
-    general: team?.challenge.discordGeneralChannelId ?? null,
-    name: team?.name ?? "?",
-    color: team?.color ?? null,
-  };
+  return { team: team?.discordChannelId ?? null, general: team?.challenge.discordGeneralChannelId ?? null, name: team?.name ?? "?" };
 }
 
 /** Vote opened or updated: post/edit the team-channel message with buttons and named tally. */

@@ -61,6 +61,21 @@ describe("composants Discord", () => {
     expect(toOptions(choices, null, "— aucune —")[0].default).toBe(true);
   });
 
+  it("réserve la place de « — aucune — » sans manger une vraie option", () => {
+    const make = (n: number) => Array.from({ length: n }, (_, i) => ({ name: `Quête ${i}`, value: `q${i}` }));
+
+    // 24 choix + la sentinelle : le menu est plein, et les 24 sont tous là.
+    const full = toOptions(make(LIMIT.options - 1), null, "— aucune —");
+    expect(full).toHaveLength(LIMIT.options);
+    expect(full[0].value).toBe(NONE);
+    for (let i = 0; i < LIMIT.options - 1; i++) expect(full.some((o) => o.value === `q${i}`)).toBe(true);
+
+    // 25 choix + la sentinelle : on reste à 25 options, sentinelle en tête.
+    const over = toOptions(make(LIMIT.options), null, "— aucune —");
+    expect(over).toHaveLength(LIMIT.options);
+    expect(over[0].value).toBe(NONE);
+  });
+
   it("range les boutons par lignes de cinq", () => {
     const buttons = Array.from({ length: 7 }, (_, i) => ({ customId: `b${i}`, label: `Bouton ${i}` }));
     const rows = buttonRows(buttons);

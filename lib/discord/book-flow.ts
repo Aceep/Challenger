@@ -27,6 +27,7 @@ import { cellChoices, questChoices } from "@/lib/services/autocomplete";
 import { bookSchema, describeResult, logBook, type BookActor } from "@/lib/services/books";
 import { withLeaderWatch } from "@/lib/services/leaderboard";
 import {
+  claimPendingReading,
   consumePendingReading,
   createPendingReading,
   loadPendingReading,
@@ -209,7 +210,9 @@ export async function chooseBookOption(ctx: FlowCtx, field: PendingField, pendin
 export async function saveBookPending(ctx: FlowCtx, pendingId: string): Promise<InteractionReply> {
   const off = offSide(ctx);
   if (off) return off;
-  const pending = await loadPendingReading(pendingId, ctx.user.id, ctx.channelId);
+  // Claimed, not just read: the delete is what serialises a double « Valider »,
+  // so a second click finds nothing and says « expirée » instead of saving twice.
+  const pending = await claimPendingReading(pendingId, ctx.user.id, ctx.channelId);
   const parsed = bookSchema.safeParse({
     title: pending.title,
     author: pending.author,
@@ -222,8 +225,6 @@ export async function saveBookPending(ctx: FlowCtx, pendingId: string): Promise<
   if (!parsed.success) return ephemeralReply(invalid(parsed.error.issues[0]?.message));
 
   const { result, before, after: top } = await withLeaderWatch(ctx.challenge.id, () => logBook(ctx.actor, parsed.data));
-  // Dropped as soon as the reading exists: a second click finds nothing and says « expirée ».
-  await consumePendingReading(pendingId);
 
   const detail = describeResult(result, false);
   const teamId = ctx.team?.id;
