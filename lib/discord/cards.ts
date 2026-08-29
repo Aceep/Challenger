@@ -41,7 +41,7 @@ const NBSP = "\u00a0";
  * dans les guillemets « … », et entre un nombre et son unité (150 p., 19 h,
  * 7,5 pts). Appliqué à toute la copie produite ici.
  */
-function fr(s: string): string {
+export function fr(s: string): string {
   return s
     .replace(/ ([:;!?»])/g, `${NBSP}$1`)
     .replace(/« /g, `«${NBSP}`)
