@@ -14,20 +14,32 @@ const TYPE_CHOICES = [
   { name: "graphique", value: "GRAPHIQUE" },
 ];
 
+/**
+ * One option — or one sub-command (`type` 1), which carries its own options.
+ * Discord nests at most two levels, so the recursion never goes deep.
+ */
+export type SlashOption = {
+  type: number;
+  name: string;
+  description: string;
+  required?: boolean;
+  autocomplete?: boolean;
+  min_value?: number;
+  max_value?: number;
+  max_length?: number;
+  choices?: { name: string; value: string }[];
+  /** Options of a sub-command (`type` 1). */
+  options?: SlashOption[];
+};
+
 export type SlashCommand = {
   name: string;
   description: string;
-  options?: {
-    type: number;
-    name: string;
-    description: string;
-    required?: boolean;
-    autocomplete?: boolean;
-    min_value?: number;
-    max_value?: number;
-  max_length?: number;
-    choices?: { name: string; value: string }[];
-  }[];
+  /** Permission bits Discord requires to even see the command (decimal string). */
+  default_member_permissions?: string;
+  /** `false` hides the command in DMs — anything guild-scoped needs it. */
+  dm_permission?: boolean;
+  options?: SlashOption[];
 };
 
 export const SLASH_COMMANDS: SlashCommand[] = [

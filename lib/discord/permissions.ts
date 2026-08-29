@@ -10,7 +10,9 @@
 
 /** Permission bits used by the bootstrap (Discord `permissions` flags). */
 export const P = {
+  ADMINISTRATOR: 2 ** 3, // 8
   MANAGE_CHANNELS: 2 ** 4, // 16
+  MANAGE_GUILD: 2 ** 5, // 32 — « Gérer le serveur », required to create its challenge
   ADD_REACTIONS: 2 ** 6, // 64
   VIEW: 2 ** 10, // 1024 — VIEW_CHANNEL
   SEND: 2 ** 11, // 2048 — SEND_MESSAGES
