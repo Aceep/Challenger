@@ -100,7 +100,7 @@ export function BottomNav({
       <nav className="bottomnav sticky bottom-0 z-30" aria-label="Navigation">
         <Link href={home} className="brand" aria-hidden tabIndex={-1}>
           <Image src="/Kyle.png" alt="" width={28} height={34} sizes="28px" />
-          Aceep&amp;Kyle
+          Challenger
         </Link>
         {ITEMS.map(({ href: path, label, Icon }) => {
           // The demo's home screen is /demo itself, not /demo/home.
