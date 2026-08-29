@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
-import { announceGridChange, announceRankChange } from "@/lib/discord/events";
+import { announceGridChange, announceRankChange, announceReading } from "@/lib/discord/events";
 import { withFlash } from "@/lib/actions";
 import { getCurrentPlayer } from "@/lib/dal";
 import { userMessage } from "@/lib/errors";
@@ -31,6 +31,8 @@ export async function logBookAction(_prev: ActionState, formData: FormData): Pro
     const { result, before, after: top } = await withLeaderWatch(challengeId, () => logBook(a, parsed.data));
     if (challengeId) after(() => announceRankChange(challengeId, before, top));
     if (teamId && result.cell?.grid) after(() => announceGridChange(teamId, result.cell!.grid!));
+    const detail = describeResult(result, false);
+    if (teamId) after(() => announceReading(result.book.id, { kind: "new", points: result.points, detail }));
     message = describeResult(result);
   } catch (e) {
     return { error: userMessage(e) };
@@ -50,6 +52,8 @@ export async function updateBookAction(_prev: ActionState, formData: FormData): 
     const { result, before, after: top } = await withLeaderWatch(challengeId, () => updateBook(a, bookId, parsed.data));
     if (challengeId) after(() => announceRankChange(challengeId, before, top));
     if (teamId && result.cell?.grid) after(() => announceGridChange(teamId, result.cell!.grid!));
+    const detail = describeResult(result, false);
+    if (teamId) after(() => announceReading(result.book.id, { kind: "update", points: result.points, detail }));
     message = ["Lecture modifiée", describeResult(result)].filter(Boolean).join(" · ");
   } catch (e) {
     return { error: userMessage(e) };

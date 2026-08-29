@@ -3,12 +3,12 @@ import { prisma } from "@/lib/db";
 import { listTeamsWithMembers } from "@/lib/services/admin";
 import { getLeaderboard } from "@/lib/services/leaderboard";
 import { TeamsView } from "./TeamsView";
-import { createTeamAction, deleteTeamAction, setCaptainAction, setDeputyAction, updateTeamAction } from "./actions";
+import { createTeamAction, deleteTeamAction, publishGuideAction, setCaptainAction, setDeputyAction, updateTeamAction } from "./actions";
 
 export default async function AdminTeamsPage({ searchParams }: PageProps<"/admin/teams">) {
   const { challenge } = await requireOrganizer();
   const params = await searchParams;
-  const actions = { createTeamAction, updateTeamAction, deleteTeamAction, setCaptainAction, setDeputyAction };
+  const actions = { createTeamAction, updateTeamAction, deleteTeamAction, setCaptainAction, setDeputyAction, publishGuideAction };
 
   const [teams, rows, grids, teamGrids] = await Promise.all([
     listTeamsWithMembers(challenge.id),
@@ -39,6 +39,7 @@ export default async function AdminTeamsPage({ searchParams }: PageProps<"/admin
           adventureChannel: t.discordChannelId,
           libraryChannel: t.discordLibraryChannelId,
           discordRole: t.discordRoleId,
+          guidePublished: !!t.discordGuideMessageId,
           gridLabel: grids ? `${current?.grid.order ?? 0} / ${grids}` : "—",
           points: points.get(t.id) ?? 0,
         };

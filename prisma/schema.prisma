@@ -41,6 +41,7 @@ model User {
   ballots           VoteBallot[]
   questions         Question[]
   questionMessages  QuestionMessage[]
+  pendingReadings   PendingReading[]
 }
 
 model Account {
@@ -159,6 +160,8 @@ model Team {
   discordLibraryChannelId String?
   /// Discord role carried by the team members, created by the bot setup.
   discordRoleId           String?
+  /// Pinned guide card of the *librairie* salon; republishing edits this message.
+  discordGuideMessageId   String?
   createdAt               DateTime @default(now())
 
   challenge        Challenge         @relation(fields: [challengeId], references: [id], onDelete: Cascade)
@@ -250,6 +253,34 @@ model Book {
 
   @@index([userId])
   @@index([teamId, deletedAt])
+}
+
+/// Half-filled reading of the Discord « J'ai fini un livre » flow: what the modal
+/// captured, waiting for the three dropdowns and « Valider ». Short-lived — a
+/// Discord interaction token dies after 15 min — and purged by the tick.
+model PendingReading {
+  id          String   @id @default(cuid())
+  userId      String
+  challengeId String
+  teamId      String?
+  /// Librairie salon the flow started in; re-checked at « Valider ».
+  channelId   String
+  title       String
+  author      String
+  pages       Int
+  /// Declared type; ROMAN until the dropdown says otherwise.
+  type        BookType @default(ROMAN)
+  questId     String?
+  cellId      String?
+  /// Frozen snapshot of the quest/cell dropdown options ({ quests: [], cells: [] }).
+  options     Json     @default("{}")
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 // ---------------------------------------------------------------------------

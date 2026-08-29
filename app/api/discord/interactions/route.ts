@@ -1,11 +1,14 @@
 import { InteractionResponseType, InteractionType, verifyKey } from "discord-interactions";
 import { after, NextResponse } from "next/server";
-import { announceGridChange, announceRankChange, announceResolution, syncVoteMessage } from "@/lib/discord/events";
+import { cancelBookPending, chooseBookOption, openBookModal, saveBookPending, submitBookModal, type FlowCtx, type InteractionReply } from "@/lib/discord/book-flow";
+import { readingConfirmation } from "@/lib/discord/cards";
+import { BOOK_MODAL_ID, NONE, modalValues, parseBookId } from "@/lib/discord/components";
+import { announceGridChange, announceRankChange, announceReading, announceResolution, syncVoteMessage } from "@/lib/discord/events";
 import { userMessage } from "@/lib/errors";
 import { fmtPoints } from "@/lib/format";
 import { helpText } from "@/lib/discord/help";
 import { cellChoices, editableBookChoices, questChoices } from "@/lib/services/autocomplete";
-import { bookPatchSchema, bookSchema, deleteBook, describeResult, logBook, updateBook, type BookResult } from "@/lib/services/books";
+import { bookPatchSchema, bookSchema, deleteBook, describeResult, logBook, updateBook } from "@/lib/services/books";
 import { getLeaderboard, withLeaderWatch } from "@/lib/services/leaderboard";
 import { resolveDiscordActor } from "@/lib/services/membership";
 import { listQuestsForTeam } from "@/lib/services/quests";
@@ -18,30 +21,44 @@ import { tickOnActivity } from "@/lib/services/tick";
  * Discord signs every request with the app's public key; anything unsigned is rejected.
  */
 
-const ephemeral = (content: string) =>
-  NextResponse.json({ type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE, data: { content, flags: 64 } });
-const publicReply = (content: string) => NextResponse.json({ type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE, data: { content } });
-const choices = (list: { name: string; value: string }[]) =>
-  NextResponse.json({ type: InteractionResponseType.APPLICATION_COMMAND_AUTOCOMPLETE_RESULT, data: { choices: list } });
+/** One interaction response. `data` carries more than text (embeds, components) for the richer branches. */
+const reply = (type: number, data?: unknown) => NextResponse.json({ type, data });
+/** Flag 64 = only the caller sees it. */
+const ephemeral = (content: string) => reply(InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE, { content, flags: 64 });
+const publicReply = (content: string) => reply(InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE, { content });
+const choices = (list: { name: string; value: string }[]) => reply(InteractionResponseType.APPLICATION_COMMAND_AUTOCOMPLETE_RESULT, { choices: list });
+/** The « J'ai fini un livre » handlers already return a complete response body. */
+const fromFlow = (r: InteractionReply) => NextResponse.json(r);
 
 type Option = { name: string; value: string | number | boolean; focused?: boolean };
+/** A modal row and its (possibly nested) text inputs, as MODAL_SUBMIT sends them back. */
+type ModalRow = { type: number; components?: { type: number; custom_id?: string; value?: string; components?: ModalRow["components"] }[] };
 type Interaction = {
+  id: string;
   type: number;
+  token: string;
+  application_id?: string;
   channel_id?: string;
   /** The Discord server the command was typed in: it decides which challenge answers. */
   guild_id?: string;
-  data?: { name?: string; custom_id?: string; options?: Option[] };
+  data?: {
+    name?: string;
+    custom_id?: string;
+    /** 2 = button, 3 = string select. */
+    component_type?: number;
+    /** String-select selections. */
+    values?: string[];
+    options?: Option[];
+    /** MODAL_SUBMIT payload. */
+    components?: ModalRow[];
+  };
+  /** The message the component was attached to (an ephemeral one is never fetchable). */
+  message?: { id: string; flags?: number };
   member?: { user: { id: string; username: string } };
   user?: { id: string; username: string };
 };
 
 const appUrl = () => process.env.AUTH_URL ?? "https://challenger-aceepkyle.vercel.app";
-
-function describe(username: string, r: BookResult, verb: string) {
-  const head = `📚 **${username}** ${verb} *${r.book.title}* (${r.book.pages} p., ${r.book.type === "GRAPHIQUE" ? "graphique" : "roman"})${r.points ? ` → ${r.points > 0 ? "+" : ""}${fmtPoints(r.points)} pts` : ""}`;
-  const rest = describeResult(r, false);
-  return rest ? `${head}\n${rest}` : head;
-}
 
 export async function POST(request: Request) {
   const signature = request.headers.get("x-signature-ed25519") ?? "";
@@ -84,6 +101,16 @@ export async function POST(request: Request) {
   const inAdventure = !!adventureChannel && interaction.channel_id === adventureChannel;
   const adventureOnly = () =>
     ephemeral(adventureChannel ? `L'histoire se joue dans le salon aventure de ton équipe (<#${adventureChannel}>).` : "Ton équipe n'a pas encore de salon aventure configuré.");
+  const ctx: FlowCtx = {
+    actor,
+    user,
+    username: discordUser.username,
+    challenge,
+    team,
+    channelId: interaction.channel_id ?? null,
+    inTeamChannel,
+    libraryChannel,
+  };
 
   try {
     // --- Autocomplete --------------------------------------------------------
@@ -97,9 +124,25 @@ export async function POST(request: Request) {
       return choices([]);
     }
 
-    // --- Vote buttons -------------------------------------------------------
+    // --- Buttons and dropdowns ----------------------------------------------
     if (interaction.type === InteractionType.MESSAGE_COMPONENT) {
-      const [kind, voteId, choiceId] = (interaction.data?.custom_id ?? "").split(":");
+      const customId = interaction.data?.custom_id ?? "";
+      // « J'ai fini un livre » owns the `book:*` namespace; the votes keep `vote:*`.
+      const book = parseBookId(customId);
+      if (book) {
+        // Sans équipe il n'y a pas de salon librairie : le dire ainsi plutôt que
+        // de renvoyer vers un salon qui n'existe pas.
+        if (!team) return ephemeral("Rejoins une équipe d’abord.");
+        if (!inTeamChannel) return teamChannelOnly();
+        if (book.action === "new") return fromFlow(await openBookModal(ctx));
+        if (!book.pendingId) return ephemeral("Bouton inconnu.");
+        if (book.action === "save") return fromFlow(await saveBookPending(ctx, book.pendingId));
+        if (book.action === "cancel") return fromFlow(await cancelBookPending(ctx, book.pendingId));
+        // type / quest / cell — a string select, whose selection only exists in `data.values`.
+        const value = interaction.data?.values?.[0] ?? NONE;
+        return fromFlow(await chooseBookOption(ctx, book.action, book.pendingId, value));
+      }
+      const [kind, voteId, choiceId] = customId.split(":");
       if (kind !== "vote" || !voteId || !choiceId) return ephemeral("Bouton inconnu.");
       if (!inAdventure) return adventureOnly();
       const result = await castBallot(voteId, user.id, choiceId);
@@ -108,6 +151,13 @@ export async function POST(request: Request) {
         if (result) await announceResolution(result);
       });
       return ephemeral(result ? "Vote enregistré — le vote est clos !" : "Vote enregistré ✅");
+    }
+
+    // --- Modal « Une lecture de plus » --------------------------------------
+    if (interaction.type === InteractionType.MODAL_SUBMIT) {
+      if ((interaction.data?.custom_id ?? "") !== BOOK_MODAL_ID) return ephemeral("Formulaire inconnu.");
+      if (!inTeamChannel) return teamChannelOnly();
+      return fromFlow(await submitBookModal(ctx, modalValues(interaction.data)));
     }
 
     // --- Slash commands -----------------------------------------------------
@@ -128,7 +178,10 @@ export async function POST(request: Request) {
         const { result, before, after: top } = await withLeaderWatch(challenge.id, () => logBook(actor, parsed.data));
         if (team) after(() => announceRankChange(challenge.id, before, top));
         if (team && result.cell?.grid) after(() => announceGridChange(team.id, result.cell!.grid!));
-        return publicReply(describe(discordUser.username, result, "a terminé"));
+        // The public trace is the reading card, posted once per book whatever the surface.
+        const detail = describeResult(result, false);
+        if (team) after(() => announceReading(result.book.id, { kind: "new", points: result.points, detail }));
+        return ephemeral(readingConfirmation({ title: result.book.title, points: result.points, detail, kind: "new" }));
       }
       case "modifier-un-livre": {
         if (!inTeamChannel) return teamChannelOnly();
@@ -152,7 +205,9 @@ export async function POST(request: Request) {
         const { result, before, after: top } = await withLeaderWatch(challenge.id, () => updateBook(actor, bookId, patch.data));
         if (team) after(() => announceRankChange(challenge.id, before, top));
         if (team && result.cell?.grid) after(() => announceGridChange(team.id, result.cell!.grid!));
-        return publicReply(describe(discordUser.username, result, "a modifié"));
+        const detail = describeResult(result, false);
+        if (team) after(() => announceReading(result.book.id, { kind: "update", points: result.points, detail }));
+        return ephemeral(readingConfirmation({ title: result.book.title, points: result.points, detail, kind: "update" }));
       }
       case "score": {
         const rows = await getLeaderboard(challenge.id);
