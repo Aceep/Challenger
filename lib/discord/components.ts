@@ -120,9 +120,12 @@ export function buttonRows(buttons: MessageButton[]): ComponentRow[] {
 
 /** `{name,value}[]` (autocomplete choices) → select options, with the chosen one flagged. */
 export function toOptions(choices: { name: string; value: string }[], selected: string | null, none?: string): SelectOption[] {
+  // « — aucune — » gets its own reserved slot, so it never costs a real choice
+  // that a blind `slice(0, 25)` on the concatenation would have dropped.
+  const room = LIMIT.options - (none === undefined ? 0 : 1);
   const options: SelectOption[] = none === undefined ? [] : [{ label: none, value: NONE, default: !selected }];
-  for (const c of choices) options.push({ label: c.name, value: c.value, default: c.value === selected });
-  return options.slice(0, LIMIT.options);
+  for (const c of choices.slice(0, room)) options.push({ label: c.name, value: c.value, default: c.value === selected });
+  return options;
 }
 
 // ---------------------------------------------------------------------------
