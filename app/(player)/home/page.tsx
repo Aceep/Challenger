@@ -1,10 +1,9 @@
-import { cookies } from "next/headers";
 import { signOut } from "@/auth";
 import { TourAutoStart } from "@/components/tour/TourAutoStart";
 import { getCurrentPlayer } from "@/lib/dal";
 import { prisma } from "@/lib/db";
 import { getHomeSummary } from "@/lib/services/home";
-import { CHALLENGE_COOKIE } from "@/lib/tenancy/select";
+import { clearCurrentChallengeCookie } from "@/lib/tenancy/cookie";
 import { HomeView } from "./HomeView";
 
 export default async function HomePage({ searchParams }: PageProps<"/home">) {
@@ -39,7 +38,7 @@ export default async function HomePage({ searchParams }: PageProps<"/home">) {
           "use server";
           // The edition is a session preference: the next person to log in on
           // this browser must not inherit it.
-          (await cookies()).delete(CHALLENGE_COOKIE);
+          await clearCurrentChallengeCookie();
           await signOut({ redirectTo: "/login" });
         }}
       />
