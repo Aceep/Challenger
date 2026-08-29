@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/db";
+import { GLOBAL_COMMANDS } from "@/lib/discord/challenger";
 import { SLASH_COMMANDS } from "@/lib/discord/commands";
 import { welcomeMessage } from "@/lib/discord/help";
 import { channelSlug, generalOverwrites, hexToInt, teamOverwrites } from "@/lib/discord/permissions";
@@ -13,6 +14,7 @@ import {
   getGuildRoles,
   pinMessage,
   postMessage,
+  registerGlobalCommands,
   registerGuildCommands,
   removeMemberRole,
   sleep,
@@ -214,6 +216,11 @@ export async function setupGuild(challengeId: string): Promise<SetupSummary> {
   const commands = await registerGuildCommands(botId, guildId, SLASH_COMMANDS);
   if (commands.ok) out.skipped.push(`${SLASH_COMMANDS.length} commandes slash`);
   else out.errors.push(`commandes : ${commands.error}`);
+  // `/challenger` is application-wide (it must exist on servers with no
+  // challenge), so it is synced here too rather than per guild.
+  const global = await registerGlobalCommands(botId, GLOBAL_COMMANDS);
+  if (global.ok) out.skipped.push("commande /challenger");
+  else out.errors.push(`commande /challenger : ${global.error}`);
 
   // --- 6. Roles for the people already on the server.
   const assign = async (discordId: string | null, roleId: string | null, who: string) => {

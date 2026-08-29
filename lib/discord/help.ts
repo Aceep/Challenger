@@ -45,6 +45,12 @@ export function helpSections(channels: { library: string; adventure: string }): 
       ],
     },
     {
+      title: "🚪 Rejoindre ou créer un défi",
+      lines: [
+        "**/challenger rejoindre** — rejoindre le défi de ce serveur ; **/challenger creer** (admins du serveur) — en créer un.",
+      ],
+    },
+    {
       title: "❓ Questions",
       lines: [
         "**/question** titre · détail — ta question ouvre un sujet dans le forum **#faq** et l'organisation est prévenue.",
