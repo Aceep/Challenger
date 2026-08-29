@@ -22,7 +22,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
         <p className="eyebrow">Challenger · par Aceep&amp;Kyle</p>
         <h1 className="mt-1 text-[34px]">Lisez en équipe.</h1>
         <p className="mt-2 text-[color:var(--muted)]">
-          Chaque page lue rapporte des points à ton équipe : bingo, quêtes et histoire dont vous êtes le héros.
+          Chaque page lue rapporte des points à ton équipe : bingo, quêtes et histoire dont vous êtes le héros.
         </p>
       </div>
       {errorKey && <p className="flash err">{ERRORS[errorKey] ?? "Connexion impossible. Réessaie."}</p>}

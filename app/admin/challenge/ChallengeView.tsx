@@ -63,7 +63,7 @@ export function ChallengeView({ challenge, editions, steps, discord, params, sav
                 <span className="flex flex-wrap items-center gap-2">
                   <strong className="grow">{s.label}</strong>
                   {!s.done && s.href ? (
-                    <Link href={s.href} className="btn sm ghost">
+                    <Link href={s.href} className="btn sm ghost ml-auto">
                       Ouvrir
                     </Link>
                   ) : null}
