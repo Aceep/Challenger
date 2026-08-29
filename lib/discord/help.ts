@@ -63,6 +63,10 @@ export function helpSections(channels: { library: string; adventure: string }): 
 }
 
 /** Discord markdown for the ephemeral `/help` reply. */
+/** Title of the `/help` embed. */
+export const HELP_TITLE = "📖 Le défi en bref";
+
+/** Body of the `/help` embed — must stay under `EMBED_LIMIT`, it no longer fits a 2 000-char message. */
 export function helpText(team: { discordChannelId: string | null; discordLibraryChannelId: string | null } | null) {
   const library = team?.discordLibraryChannelId ?? team?.discordChannelId;
   const adventure = team?.discordChannelId;
@@ -76,7 +80,7 @@ export function helpText(team: { discordChannelId: string | null; discordLibrary
 export type TeamChannels = { name: string; discordChannelId: string | null; discordLibraryChannelId: string | null };
 
 /** Discord's embed description limit. */
-const EMBED_LIMIT = 4096;
+export const EMBED_LIMIT = 4096;
 
 const mention = (id: string | null, fallback: string) => (id ? `<#${id}>` : fallback);
 
