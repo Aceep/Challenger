@@ -95,14 +95,14 @@ const ADMIN: TourStep[] = [
     path: "/admin",
     target: "admin-dashboard",
     title: "Le poste de pilotage",
-    body: "Tout l’état du défi d’un coup d’œil : lectures déclarées, points distribués, joueurs actifs, et la liste **À traiter** qui te dit quoi faire ensuite.",
+    body: "Tout l’état du défi d’un coup d’œil : lectures déclarées, points distribués, joueurs actifs, et la liste **À traiter** qui te dit quoi faire ensuite. Sur un défi tout neuf, la carte **Prochaines étapes** de l’écran Défi te guide pas à pas.",
   },
   {
     id: "challenge-form",
     path: "/admin/challenge",
     target: "challenge-form",
     title: "1. Créer l’édition",
-    body: "Nom, dates, couleur et barème. Passer une édition en **actif** termine la précédente : il n’y a qu’un défi en cours à la fois.",
+    body: "Nom, dates, couleur et barème. Plusieurs éditions peuvent coexister ; un serveur Discord n’accueille qu’un défi **actif** à la fois.",
   },
   {
     id: "teams-table",
