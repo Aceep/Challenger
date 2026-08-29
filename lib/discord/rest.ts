@@ -139,9 +139,21 @@ export async function registerGlobalCommands(appId: string, commands: unknown[])
   return request<unknown[]>(`/applications/${appId}/commands`, "PUT", commands);
 }
 
-/** The guild itself — used for its name when a server creates its challenge. */
+/**
+ * The guild itself — its name when a server creates its challenge, and its
+ * `owner_id` when the install welcome has to reach the owner too.
+ */
 export function getGuild(guildId: string) {
-  return request<{ id: string; name: string }>(`/guilds/${guildId}`);
+  return request<{ id: string; name: string; owner_id?: string }>(`/guilds/${guildId}`);
+}
+
+/**
+ * Opens (or reuses) the DM channel with one user, so the bot can write to them
+ * outside any server. Discord refuses the message — not the channel — when the
+ * person blocks DMs from server members (403, code 50007).
+ */
+export function createDmChannel(userId: string) {
+  return request<{ id: string }>("/users/@me/channels", "POST", { recipient_id: userId });
 }
 
 // ---------------------------------------------------------------------------
