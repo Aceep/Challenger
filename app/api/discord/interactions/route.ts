@@ -3,11 +3,15 @@ import { after, NextResponse } from "next/server";
 import { cancelBookPending, chooseBookOption, openBookModal, saveBookPending, submitBookModal, type FlowCtx, type InteractionReply } from "@/lib/discord/book-flow";
 import { readingConfirmation } from "@/lib/discord/cards";
 import { BOOK_MODAL_ID, NONE, modalValues, parseBookId } from "@/lib/discord/components";
+import { hasManageGuild, parseChallengerInteraction } from "@/lib/discord/challenger";
 import { announceGridChange, announceRankChange, announceReading, announceResolution, syncVoteMessage } from "@/lib/discord/events";
+import { getGuild } from "@/lib/discord/rest";
 import { userMessage } from "@/lib/errors";
 import { fmtPoints } from "@/lib/format";
 import { helpText } from "@/lib/discord/help";
 import { cellChoices, editableBookChoices, questChoices } from "@/lib/services/autocomplete";
+import { createChallengeFromGuild, joinChallengeFromGuild } from "@/lib/services/challenger";
+import { syncMemberRoles } from "@/lib/services/discord-setup";
 import { bookPatchSchema, bookSchema, deleteBook, describeResult, logBook, updateBook } from "@/lib/services/books";
 import { getLeaderboard, withLeaderWatch } from "@/lib/services/leaderboard";
 import { resolveDiscordActor } from "@/lib/services/membership";
@@ -30,7 +34,8 @@ const choices = (list: { name: string; value: string }[]) => reply(InteractionRe
 /** The « J'ai fini un livre » handlers already return a complete response body. */
 const fromFlow = (r: InteractionReply) => NextResponse.json(r);
 
-type Option = { name: string; value: string | number | boolean; focused?: boolean };
+/** An option, or a sub-command (`type` 1) carrying its own options. */
+type Option = { name: string; type?: number; value?: string | number | boolean; focused?: boolean; options?: Option[] };
 /** A modal row and its (possibly nested) text inputs, as MODAL_SUBMIT sends them back. */
 type ModalRow = { type: number; components?: { type: number; custom_id?: string; value?: string; components?: ModalRow["components"] }[] };
 type Interaction = {
@@ -54,11 +59,61 @@ type Interaction = {
   };
   /** The message the component was attached to (an ephemeral one is never fetchable). */
   message?: { id: string; flags?: number };
-  member?: { user: { id: string; username: string } };
+  /** `permissions`: what the caller may do **in this guild**, computed by Discord. */
+  member?: { user: { id: string; username: string }; permissions?: string };
   user?: { id: string; username: string };
 };
 
 const appUrl = () => process.env.AUTH_URL ?? "https://challenger-aceepkyle.vercel.app";
+
+/**
+ * `/challenger creer` and `/challenger rejoindre` — the only commands that work
+ * on a server with no challenge, and for a Discord id with no account. Creating
+ * speaks for the whole server, so it asks for « Gérer le serveur ».
+ */
+async function challengerCommand(interaction: Interaction, discordId: string) {
+  const guildId = interaction.guild_id;
+  if (!guildId) return ephemeral("Cette commande se lance depuis un serveur Discord.");
+  const parsed = parseChallengerInteraction(interaction.data?.options);
+  if (!parsed) return ephemeral("Choisis `/challenger creer` ou `/challenger rejoindre`.");
+
+  try {
+    if (parsed.sub === "creer") {
+      if (!hasManageGuild(interaction.member?.permissions)) {
+        return ephemeral("Créer le défi de ce serveur demande la permission « Gérer le serveur ».");
+      }
+      const guild = await getGuild(guildId);
+      const result = await createChallengeFromGuild({ guildId, guildName: guild.ok ? guild.data.name : null, discordId, name: parsed.name });
+      if (result.kind === "exists") {
+        return ephemeral(
+          `Ce serveur a déjà un défi : « ${result.challenge.name} ». Tape \`/challenger rejoindre\` pour y participer, ou ouvre ${appUrl()}/admin/challenge.`,
+        );
+      }
+      return ephemeral(
+        result.pendingLogin
+          ? `✅ Défi « ${result.challenge.name} » créé pour ce serveur. Connecte-toi avec Discord sur ${appUrl()}/login : tu en deviendras l’organisateur·ice et tu finiras la configuration (équipes, salons, joueurs).`
+          : `✅ Défi « ${result.challenge.name} » créé ! Termine la configuration ici : ${appUrl()}/admin/challenge`,
+      );
+    }
+
+    const result = await joinChallengeFromGuild({ guildId, discordId });
+    if (result.kind === "no-challenge") {
+      return ephemeral("Ce serveur n’a pas encore de défi. Un·e admin du serveur peut le créer avec `/challenger creer`.");
+    }
+    if (result.kind === "already") return ephemeral(`Tu participes déjà à « ${result.challenge.name} ». Tout se passe sur ${appUrl()}/home`);
+    if (result.kind === "joined") {
+      after(() => syncMemberRoles(result.userId, result.challenge.id));
+      return ephemeral(
+        `✅ Bienvenue dans « ${result.challenge.name} » ! Un·e organisateur·ice te placera dans une équipe. Ton tableau de bord : ${appUrl()}/home`,
+      );
+    }
+    return ephemeral(
+      `✅ Tu es inscrit·e à « ${result.challenge.name} ». Connecte-toi une fois sur ${appUrl()}/login pour activer ton compte ; un·e organisateur·ice te placera ensuite dans une équipe.`,
+    );
+  } catch (e) {
+    return ephemeral(`❌ ${userMessage(e)}`);
+  }
+}
 
 export async function POST(request: Request) {
   const signature = request.headers.get("x-signature-ed25519") ?? "";
@@ -80,14 +135,21 @@ export async function POST(request: Request) {
 
   const discordUser = interaction.member?.user ?? interaction.user;
   if (!discordUser) return ephemeral("Utilisateur inconnu.");
+
+  // `/challenger` answers *before* the tenant is resolved: it is precisely the
+  // command of a server that has no challenge, or of someone who belongs to none.
+  if (interaction.type === InteractionType.APPLICATION_COMMAND && interaction.data?.name === "challenger") {
+    return challengerCommand(interaction, discordUser.id);
+  }
+
   // The server decides the tenant: same bot, one challenge per Discord guild.
   const resolved = await resolveDiscordActor(discordUser.id, interaction.guild_id ?? null);
   if (resolved.kind !== "ok") {
     if (isAutocomplete) return choices([]);
     if (interaction.data?.name === "help") return ephemeral(helpText(null));
-    if (resolved.kind === "no-challenge") return ephemeral("Ce serveur Discord n'est relié à aucun défi.");
-    if (resolved.kind === "not-member") return ephemeral("Tu n'es pas inscrit·e à ce défi : demande une invitation aux organisateur·ices.");
-    return ephemeral(`Tu n'es pas encore inscrit·e : connecte-toi d'abord sur ${appUrl()}`);
+    if (resolved.kind === "no-challenge") return ephemeral("Ce serveur n’a pas encore de défi : un·e admin du serveur peut le créer avec `/challenger creer`.");
+    if (resolved.kind === "not-member") return ephemeral("Tu n’es pas inscrit·e à ce défi : tape `/challenger rejoindre`, ou demande une invitation aux organisateur·ices.");
+    return ephemeral(`Tu n’es pas encore inscrit·e : tape \`/challenger rejoindre\` ici, puis connecte-toi sur ${appUrl()}`);
   }
   const { user, challenge, role, team } = resolved.actor;
   if (!isAutocomplete) after(() => tickOnActivity(challenge.id));

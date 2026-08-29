@@ -130,6 +130,20 @@ export async function registerGuildCommands(appId: string, guildId: string, comm
   return request<unknown[]>(`/applications/${appId}/guilds/${guildId}/commands`, "PUT", commands);
 }
 
+/**
+ * Registers the application-wide commands (`/challenger`). Slower to propagate
+ * — up to an hour — but they exist on every server the bot joins, including one
+ * that has no challenge yet.
+ */
+export async function registerGlobalCommands(appId: string, commands: unknown[]) {
+  return request<unknown[]>(`/applications/${appId}/commands`, "PUT", commands);
+}
+
+/** The guild itself — used for its name when a server creates its challenge. */
+export function getGuild(guildId: string) {
+  return request<{ id: string; name: string }>(`/guilds/${guildId}`);
+}
+
 // ---------------------------------------------------------------------------
 // Guild bootstrap helpers (see lib/services/discord-setup.ts)
 // ---------------------------------------------------------------------------
