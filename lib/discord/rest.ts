@@ -1,4 +1,6 @@
 import "server-only";
+import type { DiscordEmbed } from "@/lib/discord/cards";
+import { buttonRows, toComponents, type ComponentRow, type MessageButton } from "@/lib/discord/components";
 import type { Overwrite } from "@/lib/discord/permissions";
 
 /**
@@ -12,15 +14,18 @@ import type { Overwrite } from "@/lib/discord/permissions";
  */
 const API = "https://discord.com/api/v10";
 
-export type MessageButton = { customId: string; label: string; style?: 1 | 2 | 3 | 4; disabled?: boolean };
+/** Buttons and rows are built in `lib/discord/components.ts` (pure); re-exported for existing importers. */
+export type { ComponentRow, MessageButton } from "@/lib/discord/components";
 
 /** Pings are ignored unless they are explicitly allowed, so roles/users must be listed. */
 export type AllowedMentions = { roles?: string[]; users?: string[] };
 
 export type OutgoingMessage = {
   content?: string;
-  embeds?: { title?: string; description?: string; color?: number; footer?: { text: string }; url?: string }[];
+  embeds?: DiscordEmbed[];
   buttons?: MessageButton[];
+  /** Explicit rows (selects + buttons); takes precedence over `buttons`. */
+  rows?: ComponentRow[];
   allowedMentions?: AllowedMentions;
 };
 
@@ -41,14 +46,8 @@ function toAllowedMentions(a: AllowedMentions | undefined) {
 }
 
 function toPayload(m: OutgoingMessage) {
-  const rows = [];
-  for (let i = 0; i < (m.buttons?.length ?? 0); i += 5) {
-    rows.push({
-      type: 1,
-      components: m.buttons!.slice(i, i + 5).map((b) => ({ type: 2, style: b.style ?? 2, label: b.label.slice(0, 80), custom_id: b.customId, disabled: b.disabled ?? false })),
-    });
-  }
-  return { content: m.content, embeds: m.embeds, components: rows, allowed_mentions: toAllowedMentions(m.allowedMentions) };
+  const components = toComponents(m.rows ?? buttonRows(m.buttons ?? []));
+  return { content: m.content, embeds: m.embeds, components, allowed_mentions: toAllowedMentions(m.allowedMentions) };
 }
 
 /** Marker returned by `listMessages` when the channel/thread no longer exists (404). */
@@ -102,6 +101,28 @@ export async function postMessage(channelId: string | null | undefined, m: Outgo
 export async function editMessage(channelId: string | null | undefined, messageId: string | null | undefined, m: OutgoingMessage) {
   if (!channelId || !messageId) return;
   await call(`/channels/${channelId}/messages/${messageId}`, "PATCH", toPayload(m));
+}
+
+/** Discord's « Unknown Message » error code. */
+const UNKNOWN_MESSAGE = 10008;
+
+/**
+ * Edit that says whether the message is still there.
+ * `"gone"` = it no longer exists (404 / Unknown Message) and the caller may
+ * re-post; `"failed"` = anything else — never re-post on that, or a transient
+ * 500 spawns duplicates.
+ */
+export async function editMessageResult(channelId: string, messageId: string, m: OutgoingMessage): Promise<"ok" | "gone" | "failed"> {
+  const r = await request<unknown>(`/channels/${channelId}/messages/${messageId}`, "PATCH", toPayload(m));
+  if (r.ok) return "ok";
+  if (r.status === 404 || r.error.replace(/\s/g, "").includes(`"code":${UNKNOWN_MESSAGE}`)) return "gone";
+  return "failed";
+}
+
+/** Deletes a message (already-deleted is treated as success). */
+export async function deleteMessage(channelId: string, messageId: string): Promise<boolean> {
+  const r = await request(`/channels/${channelId}/messages/${messageId}`, "DELETE");
+  return r.ok || r.status === 404;
 }
 
 /** Registers slash commands for one guild (instant, unlike global commands). */

@@ -7,6 +7,7 @@ import { requireOrganizer } from "@/lib/dal";
 import { parseForm, type ActionState } from "@/lib/forms";
 import { createTeam, deleteTeam, setCaptain, teamSchema, updateTeam } from "@/lib/services/admin";
 import { setDeputy } from "@/lib/services/team";
+import { publishTeamGuide } from "@/lib/services/team-guide";
 
 const REVALIDATE = ["/admin", "/home"];
 function refresh() {
@@ -55,6 +56,17 @@ export async function setCaptainAction(formData: FormData) {
   await withFlash("/admin/teams", async () => {
     if (teamId) await setCaptain(challenge.id, teamId, userId);
     return "Capitaine mis·e à jour.";
+  }, REVALIDATE);
+}
+
+/** Publishes — or refreshes — the pinned guide card of the team's librairie salon. */
+export async function publishGuideAction(formData: FormData) {
+  const { challenge } = await requireOrganizer();
+  const teamId = String(formData.get("teamId") ?? "");
+  await withFlash("/admin/teams", async () => {
+    if (!teamId) return;
+    const r = await publishTeamGuide(challenge.id, teamId);
+    return r.status === "edited" ? "Guide mis à jour dans la librairie." : "Guide publié et épinglé dans la librairie.";
   }, REVALIDATE);
 }
 
