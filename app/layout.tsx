@@ -20,8 +20,9 @@ const nunito = Nunito_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Aceep&Kyle",
-  description: "Défis lecture en équipe : chaque page lue rapporte des points, le bingo, les quêtes et l'histoire font le reste.",
+  title: "Challenger",
+  description:
+    "Challenger, par Aceep&Kyle : lance le défi lecture de ta communauté Discord. Chaque page lue rapporte des points ; bingo, quêtes et histoire font le reste.",
 };
 
 export const viewport: Viewport = {

@@ -48,7 +48,7 @@ export function AdminRail({
       </Link>
       <div className="flex items-center gap-2 px-2 pt-1.5 pb-4 font-display text-[17px] font-black">
         <Kyle width={28} />
-        Aceep&amp;Kyle
+        Challenger
       </div>
       <div className="rail-edition">
         <EditionSwitcher

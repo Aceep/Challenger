@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Card, Kyle, KyleEmpty, Pill } from "@/components/ui";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
-export type LandingEdition = {
+export type LandingExample = {
   id: string;
   name: string;
   color: string;
@@ -12,13 +12,13 @@ export type LandingEdition = {
 };
 
 /** Public landing page — no session, no Discord call. */
-export function Landing({ editions }: { editions: LandingEdition[] }) {
+export function Landing({ examples }: { examples: LandingExample[] }) {
   return (
     <main className="landing">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <span className="flex items-center gap-2 font-display text-[18px] font-black">
-          <Kyle width={25} alt="Kyle, la mascotte d’Aceep&Kyle" />
-          Aceep&amp;Kyle
+          <Kyle width={25} alt="Kyle, la mascotte de Challenger" />
+          Challenger
         </span>
         <span className="flex items-center gap-3">
           <ThemeToggle />
@@ -30,34 +30,32 @@ export function Landing({ editions }: { editions: LandingEdition[] }) {
 
       <section className="hero">
         <div>
-          <p className="eyebrow">Aceep&amp;Kyle · défis lecture en équipe</p>
+          <p className="eyebrow">Challenger · par Aceep&amp;Kyle</p>
           <h1>
-            Lisez en équipe.
-            <br />
-            Gagnez <em>ensemble.</em>
+            Lance le défi lecture de ta <em>communauté.</em>
           </h1>
           <p className="lead">
-            Chaque page lue rapporte des points à votre équipe. Remplissez un bingo à plusieurs, validez des quêtes, et choisissez la suite d’une histoire
-            dont votre équipe est le héros — tout se passe sur Discord et ici.
+            Un serveur Discord, des équipes, huit semaines de lectures. Chaque page rapporte des points, le bingo et les quêtes se remplissent à plusieurs, et
+            une histoire dont votre équipe est le héros se décide au vote.
           </p>
           <div className="actions">
-            <Link href="/demo?tour=player&step=0" className="btn">
-              Visite guidée avec Kyle
+            <Link href="/new" className="btn">
+              Créer mon défi
             </Link>
-            <Link href="/demo" className="btn ghost">
-              Voir la démo joueur
+            <Link href="/demo?tour=player&step=0" className="btn ghost">
+              Visite guidée avec Kyle
             </Link>
           </div>
           <p className="text-[13px] text-[color:var(--muted)]">
-            Organisateur ?{" "}
-            <Link href="/demo/admin?tour=admin&step=0" className="underline">
-              Visite organisateur
-            </Link>{" "}
-            · ou <Link href="/demo/admin" className="underline">la démo complète</Link>.
+            Déjà un défi sur ton serveur ? Tape <code>/challenger rejoindre</code> sur Discord, ou{" "}
+            <Link href="/login" className="underline">
+              connecte-toi
+            </Link>
+            .
           </p>
         </div>
         <div className="mascot">
-          <Kyle width={320} className="relative w-[min(320px,80%)]" alt="Kyle, le dinosaure jaune d’Aceep&Kyle" />
+          <Kyle width={320} className="relative w-[min(320px,80%)]" alt="Kyle, le dinosaure jaune de Challenger" />
         </div>
       </section>
 
@@ -90,9 +88,10 @@ export function Landing({ editions }: { editions: LandingEdition[] }) {
       </section>
 
       <section className="landing-section">
-        <h2>Une plateforme, plusieurs éditions</h2>
+        <p className="eyebrow">Exemples fictifs</p>
+        <h2>Chaque communauté, son défi</h2>
         <div className="editions">
-          {editions.map((e) => (
+          {examples.map((e) => (
             <div key={e.id} className="edition" style={{ background: `linear-gradient(160deg, ${e.color}, color-mix(in srgb, ${e.color} 45%, #14151A))` }}>
               <span className="tag">
                 <Pill tone={e.status === "ACTIVE" ? "wait" : "ok"}>{e.status === "ACTIVE" ? "En cours" : "Terminée"}</Pill>
@@ -105,26 +104,49 @@ export function Landing({ editions }: { editions: LandingEdition[] }) {
         </div>
       </section>
 
-      <section className="how">
-        <div>
-          <h2>Comment ça marche</h2>
-          <ol>
-            <li>
-              <strong>L’organisateur crée l’édition</strong> : dates, barème, grilles de bingo, quêtes, histoire, salons Discord.
-            </li>
-            <li>
-              <strong>Les joueurs sont invités</strong> par leur identifiant Discord et rejoignent une équipe.
-            </li>
-            <li>
-              <strong>On lit, on déclare</strong> : <code>/ajouter-un-livre</code> dans la librairie de l’équipe, ou ici.
-            </li>
-            <li>
-              <strong>Le dimanche 19 h – 21 h</strong>, les capitaines vérifient ; le classement tombe à 20 h.
-            </li>
-          </ol>
+      <section className="landing-section">
+        <h2>Comment ça marche</h2>
+        <div className="how">
+          <div>
+            <h3>Côté organisateur·ice</h3>
+            <ol>
+              <li>
+                <strong>Crée le défi</strong> : ici, ou avec <code>/challenger creer</code> depuis ton serveur Discord.
+              </li>
+              <li>
+                <strong>Invite le bot</strong> et configure le serveur en un clic : rôles, catégorie, salons de chaque équipe.
+              </li>
+              <li>
+                <strong>Crée les équipes</strong> : une couleur, un·e capitaine, un·e adjoint·e.
+              </li>
+              <li>
+                <strong>Invite les joueurs</strong> — ou laisse-les rejoindre seuls depuis Discord.
+              </li>
+            </ol>
+          </div>
+          <div>
+            <h3>Côté joueur·euse</h3>
+            <ol>
+              <li>
+                <strong>Connecte-toi avec Discord</strong> : rien d’autre à installer.
+              </li>
+              <li>
+                <strong>Rejoins le défi</strong> avec <code>/challenger rejoindre</code>, ou grâce à une invitation.
+              </li>
+              <li>
+                <strong>Lis, déclare</strong> : <code>/ajouter-un-livre</code> dans la librairie de l’équipe, ou ici.
+              </li>
+              <li>
+                <strong>Le dimanche 19 h – 21 h</strong>, les capitaines vérifient ; le classement tombe à 20 h.
+              </li>
+            </ol>
+          </div>
         </div>
+      </section>
+
+      <section className="landing-section">
         <Card className="flex flex-col gap-3">
-          <p className="eyebrow">Sur le honneur, mais cadré</p>
+          <p className="eyebrow">Sur l’honneur, mais cadré</p>
           <p>
             Pas de validation manuelle des lectures : les points arrivent tout de suite. Les capitaines ont une fenêtre hebdomadaire pour vérifier, chaque
             lecture garde l’historique de ses modifications, et les points sont un livre de comptes que personne ne peut réécrire.
@@ -134,6 +156,9 @@ export function Landing({ editions }: { editions: LandingEdition[] }) {
       </section>
 
       <footer className="flex flex-wrap items-center justify-center gap-4 text-[13px] text-[color:var(--muted)]">
+        <Link href="/new" className="underline">
+          Créer mon défi
+        </Link>
         <Link href="/demo" className="underline">
           Démo joueur
         </Link>

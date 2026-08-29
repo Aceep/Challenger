@@ -1658,6 +1658,10 @@
   .how ol strong {
     color: var(--ink);
   }
+  .how h3 {
+    font-size: var(--fs-d1);
+    margin: var(--sp-2) 0 var(--sp-3);
+  }
   .landing-section h2 {
     font-size: var(--fs-d4);
     margin-bottom: var(--fs-d1);
