@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { teamDiscordReady } from "@/lib/discord/permissions";
+import { allDone } from "@/lib/tenancy/next-steps";
 import { effectiveType, readingPoints, round1 } from "@/lib/scoring/reading";
 import {
   DEMO_ADMIN_TEAMS,
@@ -13,6 +14,7 @@ import {
   DEMO_LEDGER,
   DEMO_MEMBERS,
   DEMO_MY_BOOKS,
+  DEMO_NEXT_STEPS,
   DEMO_READINGS_ADMIN,
   DEMO_TEAM,
 } from "./data";
@@ -76,6 +78,10 @@ describe("données de démo", () => {
     expect(ready.length).toBeLessThan(DEMO_ADMIN_TEAMS.length);
     expect(DEMO_DISCORD_SETUP.complete).toBe(false);
     expect(DEMO_DISCORD_SETUP.inviteUrl).toContain("discord.com/oauth2/authorize");
+  });
+
+  it("montre une édition entièrement configurée : pas de carte « Prochaines étapes »", () => {
+    expect(allDone(DEMO_NEXT_STEPS)).toBe(true);
   });
 
   it("décrit une grille de bingo valide : une seule ligne complète et des ½ en attente", () => {

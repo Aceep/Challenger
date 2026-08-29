@@ -2,6 +2,7 @@ import { requireOrganizer } from "@/lib/dal";
 import { prisma } from "@/lib/db";
 import { listOrganizedChallenges } from "@/lib/services/membership";
 import { botInviteUrl, discordSetupState } from "@/lib/discord/permissions";
+import { nextSteps } from "@/lib/tenancy/next-steps";
 import { switchChallengeAction } from "@/app/(player)/help/actions";
 import { ChallengeView } from "./ChallengeView";
 import { saveChallengeAction, setupDiscordAction } from "./actions";
@@ -13,10 +14,13 @@ export default async function AdminChallengePage({ searchParams }: PageProps<"/a
   const params = await searchParams;
   // Only the editions this organiser runs — every edition for a super-admin.
   const challenges = await listOrganizedChallenges(user.id);
-  const teams = await prisma.team.findMany({
-    where: { challengeId: current.id },
-    select: { discordRoleId: true, discordChannelId: true, discordLibraryChannelId: true },
-  });
+  const [teams, players] = await Promise.all([
+    prisma.team.findMany({
+      where: { challengeId: current.id },
+      select: { discordRoleId: true, discordChannelId: true, discordLibraryChannelId: true },
+    }),
+    prisma.challengeMember.count({ where: { challengeId: current.id, role: "PLAYER" } }),
+  ]);
   const appId = process.env.AUTH_DISCORD_ID;
 
   return (
@@ -41,6 +45,7 @@ export default async function AdminChallengePage({ searchParams }: PageProps<"/a
         period: `${dateFmt.format(c.startAt)} → ${dateFmt.format(c.endAt)}`,
         status: c.status,
       }))}
+      steps={nextSteps(current, { teams: teams.length, players })}
       discord={{
         ...discordSetupState(current, teams),
         inviteUrl: appId ? botInviteUrl(appId, current.discordGuildId) : null,

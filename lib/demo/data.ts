@@ -26,6 +26,7 @@ import type { EditorStory } from "@/app/admin/story/StoryEditor";
 import type { TeamStoryRow } from "@/app/admin/story/StoryAdminView";
 import type { AdminTeamRow } from "@/app/admin/teams/TeamsView";
 import { botInviteUrl, discordSetupState } from "@/lib/discord/permissions";
+import { nextSteps, type NextStep } from "@/lib/tenancy/next-steps";
 
 // ---------------------------------------------------------------------------
 // Édition et équipes
@@ -828,9 +829,12 @@ export const DEMO_ADMIN_TEAMS: AdminTeamRow[] = DEMO_TEAMS.map((t, i) => ({
 }));
 
 /** Setup state of the Discord server shown on /demo/admin/challenge. */
+/** Role « Organisateurs » created by the guild bootstrap. */
+const DEMO_ADMIN_ROLE_ID = "1542450110112501761";
+
 export const DEMO_DISCORD_SETUP = {
   ...discordSetupState(
-    { discordGuildId: DEMO_CHALLENGE_FORM.discordGuildId, discordAdminRoleId: "1542450110112501761", discordGeneralChannelId: DEMO_CHALLENGE_FORM.discordGeneralChannelId },
+    { discordGuildId: DEMO_CHALLENGE_FORM.discordGuildId, discordAdminRoleId: DEMO_ADMIN_ROLE_ID, discordGeneralChannelId: DEMO_CHALLENGE_FORM.discordGeneralChannelId },
     DEMO_ADMIN_TEAMS.map((t) => ({ discordRoleId: t.discordRole, discordChannelId: t.adventureChannel, discordLibraryChannelId: t.libraryChannel })),
   ),
   inviteUrl: botInviteUrl("1542446033106698260", DEMO_CHALLENGE_FORM.discordGuildId),
@@ -843,6 +847,16 @@ export const DEMO_ADMIN_PLAYERS: PlayerRow[] = [
   { id: "demo-user-alycia", name: "Alycia", discordId: "135118374829104197", teamId: "", teamName: null, isCaptain: false, role: "ORGANIZER", books: 0, isMe: true },
   { id: "demo-user-tom", name: "Tom", discordId: "552033445566777781", teamId: "demo-team-loutres", teamName: "Les Loutres", isCaptain: true, role: "PLAYER", books: 6, isMe: false },
 ];
+
+/** Everything is set up in the demo edition, so the « Prochaines étapes » card stays hidden. */
+export const DEMO_NEXT_STEPS: NextStep[] = nextSteps(
+  {
+    discordGuildId: DEMO_CHALLENGE_FORM.discordGuildId,
+    discordAdminRoleId: DEMO_ADMIN_ROLE_ID,
+    discordGeneralChannelId: DEMO_CHALLENGE_FORM.discordGeneralChannelId,
+  },
+  { teams: DEMO_ADMIN_TEAMS.length, players: DEMO_ADMIN_PLAYERS.filter((p) => p.role === "PLAYER").length },
+);
 
 export const DEMO_ADMIN_INVITES = [
   { id: "demo-invite-1", discordId: "773044556677882210", teamName: "Les Loutres", role: "PLAYER" as const },

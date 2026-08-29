@@ -1,14 +1,18 @@
+import Link from "next/link";
 import { Card, Eyebrow, Pill } from "@/components/ui";
 import { Flash } from "@/components/Flash";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import type { DiscordSetupState } from "@/lib/discord/permissions";
 import { DataTable } from "@/components/ui/DataTable";
 import type { ActionState } from "@/lib/forms";
+import { allDone, type NextStep } from "@/lib/tenancy/next-steps";
 import { ChallengeForm, type ChallengeValues } from "./ChallengeForm";
 
 export type ChallengeViewProps = {
   challenge: ChallengeValues | null;
   editions: { id: string; name: string; color: string; period: string; status: "DRAFT" | "ACTIVE" | "FINISHED" }[];
+  /** Setup checklist of a young edition; the card disappears once all done. */
+  steps: NextStep[];
   /** Setup state of the Discord server + the ready-made invite link. */
   discord: DiscordSetupState & { inviteUrl: string | null };
   params: Record<string, string | string[] | undefined>;
@@ -26,8 +30,9 @@ const STATUS: Record<string, { tone: "ok" | "wait" | "type"; label: string }> = 
 };
 
 /** Admin › Défi — pure view, reused by /demo/admin. */
-export function ChallengeView({ challenge, editions, discord, params, saveChallengeAction, setupDiscordAction, switchAction }: ChallengeViewProps) {
+export function ChallengeView({ challenge, editions, steps, discord, params, saveChallengeAction, setupDiscordAction, switchAction }: ChallengeViewProps) {
   const step = discord.guildId ? (discord.complete ? 3 : 2) : 1;
+  const done = steps.filter((s) => s.done).length;
 
   return (
     <>
@@ -44,11 +49,37 @@ export function ChallengeView({ challenge, editions, discord, params, saveChalle
       </div>
       <Flash params={params} />
 
+      {!allDone(steps) && (
+        <Card data-tour="next-steps" className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Eyebrow className="grow">Prochaines étapes</Eyebrow>
+            <Pill tone={done === steps.length ? "ok" : "wait"}>
+              {done} / {steps.length}
+            </Pill>
+          </div>
+          <ol className="setup-steps">
+            {steps.map((s) => (
+              <li key={s.id} className={s.done ? "done" : undefined}>
+                <span className="flex flex-wrap items-center gap-2">
+                  <strong className="grow">{s.label}</strong>
+                  {!s.done && s.href ? (
+                    <Link href={s.href} className="btn sm ghost">
+                      Ouvrir
+                    </Link>
+                  ) : null}
+                </span>
+                {s.hint ? <span className="hint">{s.hint}</span> : null}
+              </li>
+            ))}
+          </ol>
+        </Card>
+      )}
+
       <div data-tour="challenge-form">
         <ChallengeForm challenge={challenge} action={saveChallengeAction} />
       </div>
 
-      <Card data-tour="challenge-discord" className="flex flex-col gap-3">
+      <Card id="discord" data-tour="challenge-discord" className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <Eyebrow className="grow">Serveur Discord</Eyebrow>
           <Pill tone={discord.adminRoleId ? "ok" : "no"}>Organisateurs {discord.adminRoleId ? "✓" : "—"}</Pill>
@@ -97,7 +128,12 @@ export function ChallengeView({ challenge, editions, discord, params, saveChalle
 
       <div className="two">
         <Card>
-          <Eyebrow>Éditions</Eyebrow>
+          <div className="flex flex-wrap items-center gap-2">
+            <Eyebrow className="grow">Éditions</Eyebrow>
+            <Link href="/new" className="btn sm ghost">
+              Nouvelle édition
+            </Link>
+          </div>
           <DataTable head={["Édition", "Période", "Statut", ""]}>
             {editions.map((e) => {
               const current = e.id === challenge?.id;
@@ -131,8 +167,7 @@ export function ChallengeView({ challenge, editions, discord, params, saveChalle
             })}
           </DataTable>
           <p className="mt-2.5 text-[13px] text-[color:var(--muted)]">
-            Pour ouvrir une nouvelle édition, videz le formulaire ci-dessus (aucun identifiant) et enregistrez : passer une édition en « actif » termine la
-            précédente.
+            Chaque édition est indépendante&#8239;: ses équipes, ses joueurs, son serveur Discord. Un serveur n’accueille qu’un défi actif à la fois.
           </p>
         </Card>
 
