@@ -1,6 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/db";
-import { readingCard } from "@/lib/discord/cards";
+import { readingCard, readingChannel } from "@/lib/discord/cards";
 import { editMessage, postMessage, type MessageButton } from "@/lib/discord/rest";
 import { fmtPoints } from "@/lib/format";
 import { once } from "@/lib/services/bot-events";
@@ -63,7 +63,10 @@ export async function syncVoteMessage(voteId: string) {
 }
 
 /**
- * The public card of a reading, in the team's librairie (fallback: aventure).
+ * The public card of a reading, in the team's librairie — falling back to its
+ * aventure, then to the edition's general channel, so a reading logged on the
+ * web (the only surface that works without a team salon) is never swallowed.
+ * `readingChannel` picks; nothing is posted when the edition has no channel.
  *
  * A creation is announced at most once — the web action and the Discord flow
  * may both fire it for the same book. An edit is announced every time.
@@ -73,11 +76,25 @@ export async function announceReading(bookId: string, o: { kind: "new" | "update
     where: { id: bookId },
     include: {
       user: { select: { name: true } },
-      team: { select: { name: true, color: true, discordChannelId: true, discordLibraryChannelId: true } },
+      team: {
+        select: {
+          name: true,
+          color: true,
+          discordChannelId: true,
+          discordLibraryChannelId: true,
+          // The general channel of *that* team's edition: a reading never
+          // crosses over to another challenge's server.
+          challenge: { select: { discordGeneralChannelId: true } },
+        },
+      },
     },
   });
   if (!book || book.deletedAt || !book.team) return;
-  const channel = book.team.discordLibraryChannelId ?? book.team.discordChannelId;
+  const channel = readingChannel({
+    library: book.team.discordLibraryChannelId,
+    adventure: book.team.discordChannelId,
+    general: book.team.challenge.discordGeneralChannelId,
+  });
   if (!channel) return;
   const embed = readingCard({
     reader: book.user.name ?? "Quelqu’un",
