@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GUIDE_BUTTON_LABEL, guideCard, pickerPrompt, readingCard, readingConfirmation, type ReadingCardInput } from "./cards";
+import { GUIDE_BUTTON_LABEL, guideCard, pickerPrompt, readingCard, readingChannel, readingConfirmation, type ReadingCardInput } from "./cards";
 import { APP_URL } from "./help";
 
 /** Espace insécable : ce que la typographie française attend, et ce qu'on vérifie. */
@@ -25,6 +25,7 @@ function allStrings(): string[] {
   const guide = guideCard(TEAM);
   const created = readingCard({ ...READING, title: "Le livre « perdu »" });
   const updated = readingCard({ ...READING, kind: "update" });
+  const pointless = readingCard({ ...READING, kind: "update", points: 0, detail: "" });
   return [
     guide.title,
     guide.description,
@@ -35,6 +36,7 @@ function allStrings(): string[] {
     created.footer?.text,
     updated.author?.name,
     updated.description,
+    pointless.description,
     readingConfirmation(READING),
     readingConfirmation({ ...READING, kind: "update" }),
     pickerPrompt(READING, { quests: false, cells: false }),
@@ -91,11 +93,40 @@ describe("cartes Discord", () => {
     expect(readingCard({ ...READING, coverUrl: "https://exemple.test/couverture.jpg" }).thumbnail).toBeUndefined();
   });
 
+  it("la carte de lecture nomme l'équipe même sans point à annoncer", () => {
+    // Une correction qui ne touche pas la pagination ne rapporte rien : dans le
+    // salon général, partagé par toutes les équipes, il faut quand même savoir
+    // de qui l'on parle.
+    const card = readingCard({ ...READING, kind: "update", points: 0, detail: "" });
+    expect(card.description).toContain("Les Hérissons");
+    expect(card.description).not.toContain("pts");
+  });
+
   it("la carte de modification le dit", () => {
     const card = readingCard({ ...READING, kind: "update" });
     expect(card.author?.name).toContain("corrigé");
     // Une correction n'invite pas à corriger de nouveau dans l'heure.
     expect(card.footer).toBeUndefined();
+  });
+
+  it("la carte part dans la librairie de l'équipe, sinon son aventure", () => {
+    expect(readingChannel({ library: "222", adventure: "111", general: "999" })).toBe("222");
+    expect(readingChannel({ library: null, adventure: "111", general: "999" })).toBe("111");
+  });
+
+  it("sans salon d'équipe, la carte retombe sur le salon général de l'édition", () => {
+    // Le cas du site : on peut inscrire un livre sans que l'équipe ait de salon
+    // (sur Discord, /ajouter-un-livre exige la librairie). La lecture doit
+    // quand même se voir.
+    expect(readingChannel({ library: null, adventure: null, general: "999" })).toBe("999");
+    expect(readingChannel({ library: undefined, adventure: undefined, general: "999" })).toBe("999");
+    // Une chaîne vide vaut « pas configuré », pas un identifiant de salon.
+    expect(readingChannel({ library: "", adventure: "", general: "999" })).toBe("999");
+  });
+
+  it("sans aucun salon configuré, on ne poste rien", () => {
+    expect(readingChannel({ library: null, adventure: null, general: null })).toBeNull();
+    expect(readingChannel({ library: "", adventure: "", general: "" })).toBeNull();
   });
 
   it("la confirmation éphémère reprend le titre et le détail", () => {
