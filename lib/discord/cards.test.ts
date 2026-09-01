@@ -83,6 +83,14 @@ describe("cartes Discord", () => {
     expect(card.color).toBe(0);
   });
 
+  it("la carte de lecture porte la couverture en vignette, et rien d'autre", () => {
+    const cover = "https://covers.openlibrary.org/b/id/10675378-M.jpg";
+    expect(readingCard({ ...READING, coverUrl: cover }).thumbnail).toEqual({ url: cover });
+    expect(readingCard(READING).thumbnail).toBeUndefined();
+    expect(readingCard({ ...READING, coverUrl: null }).thumbnail).toBeUndefined();
+    expect(readingCard({ ...READING, coverUrl: "https://exemple.test/couverture.jpg" }).thumbnail).toBeUndefined();
+  });
+
   it("la carte de modification le dit", () => {
     const card = readingCard({ ...READING, kind: "update" });
     expect(card.author?.name).toContain("corrigé");

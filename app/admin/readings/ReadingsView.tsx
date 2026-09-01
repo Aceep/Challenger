@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BookCover } from "@/components/ui/BookCover";
 import { Card, KyleEmpty, Pill } from "@/components/ui";
 import { DataTable } from "@/components/ui/DataTable";
 import { Flash } from "@/components/Flash";
@@ -16,6 +17,8 @@ export type AdminReadingRow = {
   pages: number;
   type: "ROMAN" | "GRAPHIQUE";
   points: number;
+  /** OpenLibrary cover, when the reading was declared through the web autocomplete. */
+  coverUrl?: string | null;
   questNumber: number | null;
   /** A graphique only counts as ½ of the quest / cell. */
   questHalf: boolean;
@@ -176,16 +179,21 @@ export function ReadingsView({
                     </td>
                     <td>{b.owner}</td>
                     <td>
-                      {b.deleted ? (
-                        <s>
-                          <strong>{b.title}</strong> — {b.author}
-                        </s>
-                      ) : (
-                        <>
-                          <strong>{b.title}</strong> — {b.author}
-                        </>
-                      )}{" "}
-                      {b.deleted && <Pill tone="no">supprimée</Pill>}
+                      <span className="reading-cell">
+                        <BookCover src={b.coverUrl} title={b.title} width={26} />
+                        <span>
+                          {b.deleted ? (
+                            <s>
+                              <strong>{b.title}</strong> — {b.author}
+                            </s>
+                          ) : (
+                            <>
+                              <strong>{b.title}</strong> — {b.author}
+                            </>
+                          )}{" "}
+                          {b.deleted && <Pill tone="no">supprimée</Pill>}
+                        </span>
+                      </span>
                     </td>
                     <td className="num text-right">{b.pages}</td>
                     <td>

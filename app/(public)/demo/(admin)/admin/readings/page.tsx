@@ -37,6 +37,7 @@ export default async function DemoAdminReadingsPage({ searchParams }: PageProps<
           title: editing.title,
           author: editing.author,
           pages: editing.pages,
+          coverUrl: editing.coverUrl ?? null,
           type: editing.declaredGraphic ? "GRAPHIQUE" : "ROMAN",
           finishedAt: editing.finishedAt.toISOString().slice(0, 10),
           questId: editing.questId,
