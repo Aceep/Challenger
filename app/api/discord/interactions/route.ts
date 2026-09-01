@@ -1,7 +1,8 @@
 import { InteractionResponseType, InteractionType, verifyKey } from "discord-interactions";
 import { after, NextResponse } from "next/server";
 import { cancelBookPending, chooseBookOption, openBookModal, saveBookPending, submitBookModal, type FlowCtx, type InteractionReply } from "@/lib/discord/book-flow";
-import { readingConfirmation } from "@/lib/discord/cards";
+import { bingoCard } from "@/lib/discord/bingo";
+import { readingConfirmation, type DiscordEmbed } from "@/lib/discord/cards";
 import { BOOK_MODAL_ID, NONE, modalValues, parseBookId } from "@/lib/discord/components";
 import { hasManageGuild, parseChallengerInteraction } from "@/lib/discord/challenger";
 import { announceGridChange, announceRankChange, announceReading, announceResolution, syncVoteMessage } from "@/lib/discord/events";
@@ -12,6 +13,7 @@ import { HELP_TITLE, helpText } from "@/lib/discord/help";
 import { cellChoices, editableBookChoices, questChoices } from "@/lib/services/autocomplete";
 import { createChallengeFromGuild, joinChallengeFromGuild } from "@/lib/services/challenger";
 import { syncMemberRoles } from "@/lib/services/discord-setup";
+import { getTeamBoard } from "@/lib/services/bingo";
 import { bookPatchSchema, bookSchema, deleteBook, describeResult, logBook, updateBook } from "@/lib/services/books";
 import { getLeaderboard, withLeaderWatch } from "@/lib/services/leaderboard";
 import { resolveDiscordActor } from "@/lib/services/membership";
@@ -33,6 +35,8 @@ const publicReply = (content: string) => reply(InteractionResponseType.CHANNEL_M
 /** Long private answers go in an embed: `content` stops at 2 000 characters, an embed description at 4 096. */
 const ephemeralEmbed = (title: string, description: string) =>
   reply(InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE, { embeds: [{ title, description }], flags: 64 });
+/** Same, for a card built whole by a pure module (colour, footer, link). */
+const ephemeralCard = (embed: DiscordEmbed) => reply(InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE, { embeds: [embed], flags: 64 });
 const choices = (list: { name: string; value: string }[]) => reply(InteractionResponseType.APPLICATION_COMMAND_AUTOCOMPLETE_RESULT, { choices: list });
 /** The « J'ai fini un livre » handlers already return a complete response body. */
 const fromFlow = (r: InteractionReply) => NextResponse.json(r);
@@ -287,6 +291,23 @@ export async function POST(request: Request) {
           `🗺️ **Quêtes ouvertes — ${team.name}**\n${quests
             .map((q) => `${q.done ? "✅" : q.progress > 0 ? "◐" : "▫️"} **#${q.number} — ${q.title}** — ${q.points} pts${q.linkedBooks.length ? ` (${q.linkedBooks.map((b) => `${b.owner} — ${b.title}${b.type === "GRAPHIQUE" ? " ½" : ""}`).join(" / ")})` : ""}`)
             .join("\n")}\n\nUne quête se valide avec un roman, ou deux graphiques : option *quete* de \`/ajouter-un-livre\`.`,
+        );
+      }
+      // Éphémère comme /quete : une grille est l'affaire d'une équipe, et les
+      // équipes se croisent dans le salon général. `team` vient de
+      // `resolveDiscordActor`, déjà borné au défi du serveur : jamais la
+      // grille d'une autre équipe, ni d'une autre édition.
+      case "bingo": {
+        if (!team) return ephemeral("Rejoins une équipe d’abord : le bingo se joue en équipe.");
+        const board = await getTeamBoard(team.id);
+        return ephemeralCard(
+          bingoCard({
+            teamName: team.name,
+            teamColor: team.color,
+            grid: board.grid,
+            total: board.total,
+            bonus: { line: challenge.bingoLineBonus, full: challenge.bingoFullBonus },
+          }),
         );
       }
       case "histoire": {
