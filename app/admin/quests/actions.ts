@@ -25,7 +25,7 @@ export async function saveQuestAction(_prev: ActionState, formData: FormData): P
   const parsed = parseForm(questSchema, formData);
   if ("error" in parsed) return { error: parsed.error };
   try {
-    if (id) await updateQuest(id, parsed.data);
+    if (id) await updateQuest(challenge.id, id, parsed.data);
     else {
       const quest = await createQuest(challenge.id, parsed.data);
       after(() => announceQuest(quest.id));
@@ -38,10 +38,10 @@ export async function saveQuestAction(_prev: ActionState, formData: FormData): P
 }
 
 export async function deleteQuestAction(formData: FormData) {
-  await requireOrganizer();
+  const { challenge } = await requireOrganizer();
   const id = String(formData.get("questId") ?? "");
   await withFlash("/admin/quests", async () => {
-    if (id) await deleteQuest(id);
+    if (id) await deleteQuest(challenge.id, id);
     return "Quête supprimée.";
   }, REVALIDATE);
 }
@@ -49,7 +49,7 @@ export async function deleteQuestAction(formData: FormData) {
 /** An organiser acts for the whole challenge: no team, no captaincy, no Sunday window. */
 async function adminActor(): Promise<BookActor> {
   const { user, challenge } = await requireOrganizer();
-  return { id: user.id, role: "ORGANIZER", challengeId: challenge.id, teamId: null, isCaptain: false };
+  return { id: user.id, role: "ORGANIZER", challengeId: challenge.id, teamId: null, isCaptain: false, isSuperAdmin: user.isSuperAdmin };
 }
 
 /** Attaches (or moves) a reading of the team to a quest, as an admin. Bind the page to return to. */

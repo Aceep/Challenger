@@ -3,6 +3,7 @@ import "server-only";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { bookWeight, isComplete, MAX_BOOKS_PER_SLOT, type BookType } from "@/lib/scoring/reading";
+import { assertTeamOf } from "@/lib/services/admin";
 import { awardPoints, reverseByRef } from "@/lib/services/points";
 
 /**
@@ -37,7 +38,14 @@ async function nextNumber(tx: Tx, challengeId: string) {
   return (last._max.number ?? 0) + 1;
 }
 
-export function createQuest(challengeId: string, input: QuestInput) {
+/** Refuses to touch a quest of another edition. */
+export async function assertQuestOf(challengeId: string, questId: string) {
+  const quest = await prisma.quest.findUnique({ where: { id: questId }, select: { challengeId: true } });
+  if (!quest || quest.challengeId !== challengeId) throw new GameError("Cette quête n'appartient pas à ce défi");
+}
+
+export async function createQuest(challengeId: string, input: QuestInput) {
+  if (input.targetTeamId) await assertTeamOf(challengeId, input.targetTeamId);
   return prisma.$transaction(async (tx) => {
     const number = input.number ?? (await nextNumber(tx, challengeId));
     return tx.quest.create({ data: { challengeId, ...input, number } });
@@ -45,13 +53,16 @@ export function createQuest(challengeId: string, input: QuestInput) {
 }
 
 /** The number is assigned once at creation and never edited. */
-export function updateQuest(id: string, input: QuestInput) {
+export async function updateQuest(challengeId: string, id: string, input: QuestInput) {
+  await assertQuestOf(challengeId, id);
+  if (input.targetTeamId) await assertTeamOf(challengeId, input.targetTeamId);
   const { number: _ignored, ...data } = input;
   void _ignored;
   return prisma.quest.update({ where: { id }, data });
 }
 
-export function deleteQuest(id: string) {
+export async function deleteQuest(challengeId: string, id: string) {
+  await assertQuestOf(challengeId, id);
   return prisma.quest.delete({ where: { id } });
 }
 
@@ -139,7 +150,11 @@ export type QuestAttachResult = {
 
 /** Attaches a reading to a quest for its team (moves it if attached elsewhere) and updates completion. */
 export async function attachBookToQuest(tx: Tx, book: BookRef, teamId: string, questId: string, actorId: string): Promise<QuestAttachResult> {
-  const quest = await tx.quest.findUniqueOrThrow({ where: { id: questId } });
+  // The quest is looked up inside the team's own edition — `questId` comes from a
+  // form, and a quest of another edition must stay unreachable (as for a cell).
+  const team = await tx.team.findUniqueOrThrow({ where: { id: teamId }, select: { challengeId: true } });
+  const quest = await tx.quest.findUnique({ where: { id: questId, challengeId: team.challengeId } });
+  if (!quest) throw new GameError("Cette quête n'appartient pas à ce défi");
   if (!isQuestOpen(quest)) throw new GameError(`La quête #${quest.number} n'est pas ouverte`);
   if (quest.targetTeamId && quest.targetTeamId !== teamId) throw new GameError(`La quête #${quest.number} ne concerne pas ton équipe`);
   const others = await tx.questBook.findMany({
