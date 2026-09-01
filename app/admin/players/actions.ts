@@ -30,10 +30,10 @@ export async function createInviteAction(_prev: ActionState, formData: FormData)
 }
 
 export async function deleteInviteAction(formData: FormData) {
-  await requireOrganizer();
+  const { challenge } = await requireOrganizer();
   const id = String(formData.get("inviteId") ?? "");
   await withFlash("/admin/players", async () => {
-    if (id) await deleteInvite(id);
+    if (id) await deleteInvite(challenge.id, id);
     return "Invitation supprimée.";
   }, REVALIDATE);
 }

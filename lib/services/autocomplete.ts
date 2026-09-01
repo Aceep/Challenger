@@ -42,10 +42,15 @@ export async function cellChoices(teamId: string, q = ""): Promise<Choice[]> {
     .slice(0, 25);
 }
 
-/** Readings the actor may edit: own recent ones, plus the whole team's for the captain. */
-export async function editableBookChoices(actor: { id: string; teamId: string | null; isCaptain: boolean }, q = ""): Promise<Choice[]> {
+/**
+ * Readings the actor may edit **in this edition**: own recent ones, plus the
+ * whole team's for the captain. Without a team the readings attached to none are
+ * the only ones proposed — those of another edition never are.
+ */
+export async function editableBookChoices(actor: { id: string; challengeId: string | null; teamId: string | null; isCaptain: boolean }, q = ""): Promise<Choice[]> {
+  const mine = actor.challengeId ? { userId: actor.id, OR: [{ team: { challengeId: actor.challengeId } }, { teamId: null }] } : { userId: actor.id, teamId: null };
   const books = await prisma.book.findMany({
-    where: { deletedAt: null, ...(actor.isCaptain && actor.teamId ? { teamId: actor.teamId } : { userId: actor.id }) },
+    where: { deletedAt: null, ...(actor.isCaptain && actor.teamId ? { teamId: actor.teamId } : mine) },
     orderBy: { createdAt: "desc" },
     take: 100,
     include: { user: { select: { name: true } } },

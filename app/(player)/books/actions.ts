@@ -14,7 +14,11 @@ import { withLeaderWatch } from "@/lib/services/leaderboard";
 async function actor(): Promise<{ actor: BookActor; challengeId: string | null; teamId: string | null }> {
   const { user, challenge, role, team } = await getCurrentPlayer();
   const challengeId = challenge?.id ?? null;
-  return { actor: { id: user.id, role: role ?? "PLAYER", challengeId, teamId: team?.id ?? null, isCaptain: team?.captainId === user.id }, challengeId, teamId: team?.id ?? null };
+  return {
+    actor: { id: user.id, role: role ?? "PLAYER", challengeId, teamId: team?.id ?? null, isCaptain: team?.captainId === user.id, isSuperAdmin: user.isSuperAdmin },
+    challengeId,
+    teamId: team?.id ?? null,
+  };
 }
 
 const PATHS = ["/home", "/books", "/leaderboard", "/bingo", "/quests", "/team"];

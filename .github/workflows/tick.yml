@@ -12,6 +12,9 @@
 # doit valoir exactement la variable CRON_SECRET du projet Vercel, sinon
 # /api/cron/tick répond 401. Tant qu'il est absent, le job réussit sans rien
 # appeler : on ne veut pas d'un échec horaire sur un dépôt fraîchement cloné.
+#
+# Le secret part dans l'en-tête Authorization, jamais dans l'URL : une query
+# string se retrouve dans les journaux d'accès et les traces des proxys.
 
 name: Tick horaire
 
@@ -34,5 +37,5 @@ jobs:
             echo "::notice::CRON_SECRET absent — tick ignoré. Ajoutez le secret de dépôt CRON_SECRET (même valeur que sur Vercel) pour l'activer."
             exit 0
           fi
-          curl -fsS --max-time 30 "https://challenger-aceepkyle.vercel.app/api/cron/tick?secret=${CRON_SECRET}"
+          curl -fsS --max-time 30 -H "Authorization: Bearer ${CRON_SECRET}" "https://challenger-aceepkyle.vercel.app/api/cron/tick"
           echo

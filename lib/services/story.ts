@@ -3,6 +3,7 @@ import "server-only";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { completedLines } from "@/lib/scoring/bingo";
+import { assertTeamOf } from "@/lib/services/admin";
 import { activeGridForTeam, completePositions } from "@/lib/services/bingo";
 import { awardPoints } from "@/lib/services/points";
 import { getTeamScore } from "@/lib/services/leaderboard";
@@ -38,22 +39,50 @@ export const nodeSchema = z.object({
   defaultChoiceId: z.string().optional().transform((s) => s || null),
 });
 
-export async function createNode(storyId: string, input: z.infer<typeof nodeSchema>) {
+/**
+ * Every id below arrives from the admin form: each one is checked to belong to
+ * the edition being organised, or the write is refused. A story is 1:1 with its
+ * challenge, so the edition of a chapter (and of a choice) is read through it.
+ */
+async function assertStoryOf(challengeId: string, storyId: string) {
+  const story = await prisma.story.findUnique({ where: { id: storyId }, select: { challengeId: true } });
+  if (!story || story.challengeId !== challengeId) throw new GameError("Cette histoire n'appartient pas à ce défi");
+}
+
+async function assertNodeOf(challengeId: string, nodeId: string) {
+  const node = await prisma.storyNode.findUnique({ where: { id: nodeId }, select: { story: { select: { challengeId: true } } } });
+  if (!node || node.story.challengeId !== challengeId) throw new GameError("Ce chapitre n'appartient pas à ce défi");
+}
+
+async function assertChoiceOf(challengeId: string, choiceId: string) {
+  const choice = await prisma.storyChoice.findUnique({
+    where: { id: choiceId },
+    select: { node: { select: { story: { select: { challengeId: true } } } } },
+  });
+  if (!choice || choice.node.story.challengeId !== challengeId) throw new GameError("Ce choix n'appartient pas à ce défi");
+}
+
+export async function createNode(challengeId: string, storyId: string, input: z.infer<typeof nodeSchema>) {
+  await assertStoryOf(challengeId, storyId);
   const node = await prisma.storyNode.create({ data: { storyId, ...input } });
   // First node becomes the start automatically.
   await prisma.story.updateMany({ where: { id: storyId, startNodeId: null }, data: { startNodeId: node.id } });
   return node;
 }
 
-export function updateNode(id: string, input: z.infer<typeof nodeSchema>) {
+export async function updateNode(challengeId: string, id: string, input: z.infer<typeof nodeSchema>) {
+  await assertNodeOf(challengeId, id);
   return prisma.storyNode.update({ where: { id }, data: input });
 }
 
-export function deleteNode(id: string) {
+export async function deleteNode(challengeId: string, id: string) {
+  await assertNodeOf(challengeId, id);
   return prisma.storyNode.delete({ where: { id } });
 }
 
-export function setStartNode(storyId: string, nodeId: string) {
+export async function setStartNode(challengeId: string, storyId: string, nodeId: string) {
+  await assertStoryOf(challengeId, storyId);
+  await assertNodeOf(challengeId, nodeId);
   return prisma.story.update({ where: { id: storyId }, data: { startNodeId: nodeId } });
 }
 
@@ -81,15 +110,18 @@ export const choiceSchema = z.object({
     }),
 });
 
-export function createChoice(nodeId: string, input: z.infer<typeof choiceSchema>) {
+export async function createChoice(challengeId: string, nodeId: string, input: z.infer<typeof choiceSchema>) {
+  await assertNodeOf(challengeId, nodeId);
   return prisma.storyChoice.create({ data: { nodeId, ...input } });
 }
 
-export function updateChoice(id: string, input: z.infer<typeof choiceSchema>) {
+export async function updateChoice(challengeId: string, id: string, input: z.infer<typeof choiceSchema>) {
+  await assertChoiceOf(challengeId, id);
   return prisma.storyChoice.update({ where: { id }, data: input });
 }
 
-export function deleteChoice(id: string) {
+export async function deleteChoice(challengeId: string, id: string) {
+  await assertChoiceOf(challengeId, id);
   return prisma.storyChoice.delete({ where: { id } });
 }
 
@@ -106,7 +138,8 @@ export function getStoryAdmin(challengeId: string) {
 }
 
 /** Admin: send a team back to the start (clears its votes and history). */
-export async function resetTeamStory(teamId: string) {
+export async function resetTeamStory(challengeId: string, teamId: string) {
+  await assertTeamOf(challengeId, teamId);
   await prisma.$transaction([
     prisma.vote.deleteMany({ where: { teamId } }),
     prisma.storyVisit.deleteMany({ where: { teamId } }),

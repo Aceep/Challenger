@@ -5,7 +5,7 @@ import { GameError, userMessage } from "@/lib/errors";
 import { revalidatePath } from "next/cache";
 import { requireOrganizer, requireUser } from "@/lib/dal";
 import { parseForm, type ActionState } from "@/lib/forms";
-import { challengeSchema, upsertChallenge } from "@/lib/services/admin";
+import { challengeSchema, createChallengeSchema, upsertChallenge, type ChallengeInput } from "@/lib/services/admin";
 import { setupGuild } from "@/lib/services/discord-setup";
 
 export async function saveChallengeAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -13,10 +13,23 @@ export async function saveChallengeAction(_prev: ActionState, formData: FormData
   // Editing an edition needs to organise *that* edition; creating one only needs an account.
   const { user } = id ? await requireOrganizer(id) : await requireUser().then((u) => ({ user: u }));
   formData.delete("id");
-  const parsed = parseForm(challengeSchema, formData);
-  if ("error" in parsed) return { error: parsed.error };
+
+  // Creating goes through the same narrow door as `/new`: only an account is
+  // required, so a forged `status` or `discordGuildId` must never be read here —
+  // it would open an ACTIVE edition on somebody else's Discord server.
+  let input: ChallengeInput;
+  if (id) {
+    const parsed = parseForm(challengeSchema, formData);
+    if ("error" in parsed) return { error: parsed.error };
+    input = parsed.data;
+  } else {
+    const parsed = parseForm(createChallengeSchema, formData);
+    if ("error" in parsed) return { error: parsed.error };
+    input = { ...parsed.data, status: "DRAFT" };
+  }
+
   try {
-    await upsertChallenge(id, parsed.data, user.id);
+    await upsertChallenge(id, input, user.id);
   } catch (e) {
     return { error: userMessage(e) };
   }

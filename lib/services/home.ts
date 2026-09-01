@@ -8,10 +8,18 @@ import { num } from "@/lib/services/points";
 /**
  * Everything the player home needs, in five flat queries and no writes
  * (the story page and the tick are the ones that open / resolve votes).
+ *
+ * Every count belongs to `challengeId`: « Mes points » and the share of the team
+ * total would be inflated by the readings of the person's other editions.
  */
-export async function getHomeSummary(userId: string, team: { id: string; challengeId: string; startAt: Date; endAt: Date } | null) {
+export async function getHomeSummary(
+  userId: string,
+  challengeId: string | null,
+  team: { id: string; challengeId: string; startAt: Date; endAt: Date } | null,
+) {
+  const ofEdition = challengeId ? { OR: [{ team: { challengeId } }, { teamId: null }] } : { teamId: null };
   const [books, rows, score, vote, teamGrid] = await Promise.all([
-    prisma.book.findMany({ where: { userId, deletedAt: null }, select: { type: true, points: true } }),
+    prisma.book.findMany({ where: { userId, deletedAt: null, ...ofEdition }, select: { type: true, points: true } }),
     team ? getLeaderboard(team.challengeId) : Promise.resolve([]),
     team
       ? prisma.pointEvent.aggregate({ where: { teamId: team.id, createdAt: { gte: team.startAt, lte: team.endAt } }, _sum: { amount: true } }).then((r) => round1(num(r._sum.amount)))

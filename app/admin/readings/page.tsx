@@ -27,7 +27,7 @@ export default async function AdminReadingsPage({ searchParams }: PageProps<"/ad
   ]);
 
   const editId = one(params.edit);
-  const book = editId ? await getReadingAdmin(editId) : null;
+  const book = editId ? await getReadingAdmin(challenge.id, editId) : null;
   const editable = book && !book.deleted ? book : null;
   const ownerTeam = editable?.team ? await prisma.team.findUniqueOrThrow({ where: { id: editable.team.id }, select: { id: true, challengeId: true } }) : null;
   const [quests, cells] = ownerTeam ? await Promise.all([questChoices(ownerTeam.challengeId, ownerTeam.id), cellChoices(ownerTeam.id)]) : [[], []];

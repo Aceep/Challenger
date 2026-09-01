@@ -9,7 +9,7 @@ import { HomeView } from "./HomeView";
 export default async function HomePage({ searchParams }: PageProps<"/home">) {
   const { user, team, challenge } = await getCurrentPlayer();
   const [summary, me_] = await Promise.all([
-    getHomeSummary(user.id, team && challenge ? { id: team.id, challengeId: challenge.id, startAt: challenge.startAt, endAt: challenge.endAt } : null),
+    getHomeSummary(user.id, challenge?.id ?? null, team && challenge ? { id: team.id, challengeId: challenge.id, startAt: challenge.startAt, endAt: challenge.endAt } : null),
     // Read from the database, not the JWT: the flag must flip on the very next render.
     prisma.user.findUnique({ where: { id: user.id }, select: { onboardedAt: true } }),
   ]);
