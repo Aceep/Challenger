@@ -67,8 +67,9 @@ export async function listReadingsAdmin(challengeId: string, filter: ReadingsFil
   return { books: books.map(decorate), total, page, pages: Math.max(1, Math.ceil(total / READINGS_PAGE_SIZE)) };
 }
 
-/** One reading with everything the admin edit modal needs (deleted ones included). */
-export async function getReadingAdmin(bookId: string) {
-  const book = await prisma.book.findUnique({ where: { id: bookId }, include: READING_INCLUDE });
+/** One reading of the challenge, with everything the admin edit modal needs (deleted ones included). */
+export async function getReadingAdmin(challengeId: string, bookId: string) {
+  // Scoped like the listing: a reading of another edition is « introuvable » here.
+  const book = await prisma.book.findFirst({ where: { id: bookId, team: { challengeId } }, include: READING_INCLUDE });
   return book && decorate(book);
 }
