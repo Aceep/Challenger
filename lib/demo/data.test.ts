@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { teamDiscordReady } from "@/lib/discord/permissions";
+import { MAX_WEEK_ACTIONS, weekActions } from "@/lib/home/week";
 import { allDone } from "@/lib/tenancy/next-steps";
+import { gameWeek } from "@/lib/time/paris";
 import { effectiveType, readingPoints, round1 } from "@/lib/scoring/reading";
 import {
   DEMO_ADMIN_TEAMS,
@@ -16,7 +18,9 @@ import {
   DEMO_MY_BOOKS,
   DEMO_NEXT_STEPS,
   DEMO_READINGS_ADMIN,
+  DEMO_STORY,
   DEMO_TEAM,
+  DEMO_WEEK_ACTIONS,
 } from "./data";
 
 const sum = (xs: number[]) => round1(xs.reduce((n, x) => n + x, 0));
@@ -66,6 +70,26 @@ describe("données de démo", () => {
     expect(DEMO_HOME.stats.romans).toBe(DEMO_MY_BOOKS.filter((b) => b.type === "ROMAN").length);
     expect(DEMO_HOME.stats.graphiques).toBe(DEMO_MY_BOOKS.filter((b) => b.type === "GRAPHIQUE").length);
     expect(round1(DEMO_HOME.stats.myPoints)).toBe(sum(DEMO_MY_BOOKS.map((b) => b.points)));
+  });
+
+  it("ne raconte sur l'accueil que des actions de la semaine en cours", () => {
+    const week = gameWeek(new Date());
+    expect(DEMO_HOME.week.actions.length).toBeGreaterThan(0);
+    expect(DEMO_HOME.week.actions.length).toBeLessThanOrEqual(MAX_WEEK_ACTIONS);
+    expect(DEMO_HOME.week.actions).toEqual(weekActions(DEMO_WEEK_ACTIONS));
+    for (const a of DEMO_HOME.week.actions) {
+      expect(a.at.getTime(), a.kind).toBeGreaterThanOrEqual(week.start.getTime());
+      expect(a.at.getTime(), a.kind).toBeLessThanOrEqual(Date.now());
+    }
+  });
+
+  it("dit sur l'accueil ce que la page Histoire dit du vote", () => {
+    expect(DEMO_HOME.week.vote).toEqual({
+      chapter: DEMO_STORY.node?.title ?? "",
+      deadline: DEMO_STORY.vote?.deadline,
+      voted: DEMO_STORY.vote?.myChoiceId !== null,
+      tie: !!DEMO_STORY.vote?.tie,
+    });
   });
 
   it("garde l'état Discord de la démo cohérent avec les équipes affichées", () => {

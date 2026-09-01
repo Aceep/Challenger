@@ -61,7 +61,8 @@ export function HomeSkeleton() {
         <StatSkeleton />
       </div>
       <Skeleton className="cta h-12 w-full" style={{ borderRadius: "var(--r-md)" }} />
-      <SkeletonCard lines={3} />
+      {/* « Cette semaine » : le vote, les cases en attente, les actions de la semaine, la vérification. */}
+      <SkeletonCard lines={5} />
     </SkeletonPage>
   );
 }

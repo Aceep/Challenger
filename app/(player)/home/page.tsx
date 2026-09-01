@@ -34,7 +34,7 @@ export default async function HomePage({ searchParams }: PageProps<"/home">) {
         }
         params={await searchParams}
         stats={summary.stats}
-        week={{ vote: summary.vote, pendingCells: summary.pendingCells }}
+        week={summary.week}
         signOutAction={async () => {
           "use server";
           // The edition is a session preference: the next person to log in on
