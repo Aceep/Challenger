@@ -109,7 +109,9 @@ export async function createInvite(challengeId: string, input: z.infer<typeof in
   });
 }
 
-export function deleteInvite(id: string) {
+export async function deleteInvite(challengeId: string, id: string) {
+  const invite = await prisma.invite.findUnique({ where: { id }, select: { challengeId: true } });
+  if (!invite || invite.challengeId !== challengeId) throw new GameError("Cette invitation n'appartient pas à ce défi");
   return prisma.invite.delete({ where: { id } });
 }
 
