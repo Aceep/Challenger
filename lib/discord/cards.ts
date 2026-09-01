@@ -115,7 +115,9 @@ export type ReadingCardInput = {
 export function readingCard(r: ReadingCardInput): DiscordEmbed {
   const lines = [
     `*${r.author}* · ${r.pages} p. · ${BOOK_TYPE_LABEL[r.type]}`,
-    r.points !== 0 && r.teamName ? `**${fmtDelta(r.points)} pts** pour ${r.teamName}` : "",
+    // L'équipe est nommée même sans point à annoncer : la carte peut atterrir
+    // dans le salon général, que toutes les équipes se partagent.
+    r.teamName ? (r.points !== 0 ? `**${fmtDelta(r.points)} pts** pour ${r.teamName}` : `Équipe ${r.teamName}`) : "",
     r.detail.trim(),
   ].filter(Boolean);
   return {
@@ -127,6 +129,28 @@ export function readingCard(r: ReadingCardInput): DiscordEmbed {
     ...(r.kind === "new" ? { footer: { text: fr("Une coquille ? /modifier-un-livre, ou le site — pendant 1 h.") } } : {}),
     url: `${APP_URL()}/books`,
   };
+}
+
+/** Les salons qu'une lecture peut atteindre, du plus précis au plus large. */
+export type ReadingChannels = {
+  /** Le salon *librairie* de l'équipe : la place naturelle de la carte. */
+  library: string | null | undefined;
+  /** Son salon *aventure*, tant que la librairie n'existe pas. */
+  adventure: string | null | undefined;
+  /** Le salon général de l'édition — celui de cette édition, jamais d'une autre. */
+  general: string | null | undefined;
+};
+
+/**
+ * Le salon où publier la carte d'une lecture.
+ *
+ * Une équipe sans salon à elle n'est pas une raison de se taire : la carte
+ * retombe sur le salon général de son édition, pour qu'un livre inscrit sur le
+ * site apparaisse toujours quelque part sur le Discord du défi. Rien n'est
+ * publié — silencieusement — quand l'édition n'a aucun salon configuré.
+ */
+export function readingChannel(c: ReadingChannels): string | null {
+  return c.library || c.adventure || c.general || null;
 }
 
 // ---------------------------------------------------------------------------
