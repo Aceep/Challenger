@@ -59,9 +59,17 @@ export async function createGrid(challengeId: string, input: GridInput) {
   });
 }
 
-export async function updateGrid(gridId: string, input: GridInput) {
+/** Refuses to touch a grid of another edition — `gridId` always comes from a form. */
+async function gridOf(tx: Tx, challengeId: string, gridId: string) {
+  const grid = await tx.bingoGrid.findUnique({ where: { id: gridId }, select: { id: true, challengeId: true, order: true } });
+  if (!grid || grid.challengeId !== challengeId) throw new GameError("Cette grille n'appartient pas à ce défi");
+  return grid;
+}
+
+export async function updateGrid(challengeId: string, gridId: string, input: GridInput) {
   const prompts = checkPrompts(input);
   return prisma.$transaction(async (tx) => {
+    await gridOf(tx, challengeId, gridId);
     const grid = await tx.bingoGrid.update({ where: { id: gridId }, data: { title: input.title, size: input.size } });
     await writeCells(tx, grid.id, input.size, prompts);
     return grid;
@@ -69,9 +77,9 @@ export async function updateGrid(gridId: string, input: GridInput) {
 }
 
 /** Swaps a grid with its neighbour in the series. */
-export async function moveGrid(gridId: string, direction: "up" | "down") {
+export async function moveGrid(challengeId: string, gridId: string, direction: "up" | "down") {
   return prisma.$transaction(async (tx) => {
-    const grid = await tx.bingoGrid.findUniqueOrThrow({ where: { id: gridId } });
+    const grid = await gridOf(tx, challengeId, gridId);
     const other = await tx.bingoGrid.findFirst({
       where: { challengeId: grid.challengeId, order: direction === "up" ? { lt: grid.order } : { gt: grid.order } },
       orderBy: { order: direction === "up" ? "desc" : "asc" },
@@ -84,10 +92,11 @@ export async function moveGrid(gridId: string, direction: "up" | "down") {
 }
 
 /** Deletes a grid and renumbers the rest. */
-export async function deleteGrid(gridId: string) {
+export async function deleteGrid(challengeId: string, gridId: string) {
   return prisma.$transaction(async (tx) => {
-    const grid = await tx.bingoGrid.delete({ where: { id: gridId } });
-    const rest = await tx.bingoGrid.findMany({ where: { challengeId: grid.challengeId }, orderBy: { order: "asc" } });
+    await gridOf(tx, challengeId, gridId);
+    await tx.bingoGrid.delete({ where: { id: gridId } });
+    const rest = await tx.bingoGrid.findMany({ where: { challengeId }, orderBy: { order: "asc" } });
     for (let i = 0; i < rest.length; i++) {
       if (rest[i].order !== i + 1) await tx.bingoGrid.update({ where: { id: rest[i].id }, data: { order: i + 1 } });
     }
