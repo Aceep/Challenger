@@ -15,6 +15,7 @@ const toRow = (b: Listed, viewerId: string, canSeeDeadline: boolean): BookRow =>
   type: b.type,
   finishedAt: b.finishedAt,
   points: b.points,
+  coverUrl: b.coverUrl,
   owner: b.user.name ?? "?",
   editable: b.editable,
   editUntil: b.userId === viewerId && canSeeDeadline && b.editUntil > new Date() ? b.editUntil : null,

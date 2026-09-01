@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import { BookCover } from "@/components/ui/BookCover";
 import { Modal } from "@/components/ui/Modal";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { fmtPoints } from "@/lib/format";
@@ -22,6 +23,8 @@ export type AdminReadingEdit = {
   cellId: string;
   owner: string;
   teamName: string | null;
+  /** OpenLibrary cover, shown as-is: an organiser corrects the facts, not the picture. */
+  coverUrl: string | null;
   quests: Choice[];
   cells: Choice[];
   /** Currently linked quest / cell, kept selectable even when complete. */
@@ -71,10 +74,13 @@ export function ReadingEditModal({ reading, closeHref, backQuery, updateReadingA
   return (
     <Modal title={`Modifier · ${reading.title}`} onClose={() => router.push(closeHref)} isDirty={isDirty}>
       <div ref={root} onFocusCapture={remember} className="flex flex-col gap-5">
-        <p className="text-[13px] text-[color:var(--muted)]">
-          Lecture de <strong>{reading.owner}</strong>
-          {reading.teamName ? ` · ${reading.teamName}` : ""}. Les points, les quêtes et les cases sont recalculés à l&apos;enregistrement.
-        </p>
+        <div className="reading-cell">
+          <BookCover src={reading.coverUrl} title={reading.title} width={44} />
+          <p className="text-[13px] text-[color:var(--muted)]">
+            Lecture de <strong>{reading.owner}</strong>
+            {reading.teamName ? ` · ${reading.teamName}` : ""}. Les points, les quêtes et les cases sont recalculés à l&apos;enregistrement.
+          </p>
+        </div>
 
         <form action={updateReadingAction} data-form="reading" className="form-grid">
           <input type="hidden" name="bookId" value={reading.id} />

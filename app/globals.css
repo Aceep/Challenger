@@ -894,6 +894,29 @@
     position: relative;
     box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.25);
   }
+  /* With a cover, the plate becomes the cover and the points slide onto a
+     scrim at its foot; without one, nothing changes. */
+  .plate .art {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 5px;
+  }
+  .plate.has-cover {
+    box-shadow: none;
+  }
+  .plate.has-cover .pts {
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    padding: 3px 2px 4px;
+    font-size: var(--fs-xs);
+    text-align: center;
+    background: rgba(0, 0, 0, 0.62);
+    border-radius: 0 0 5px 5px;
+  }
   .plate .half {
     position: absolute;
     top: -7px;

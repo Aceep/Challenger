@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Avatar, Button, KyleEmpty, PageTitle, Pill, SectionHeading } from "@/components/ui";
 import { Flash } from "@/components/Flash";
@@ -15,6 +16,8 @@ export type BookRow = {
   type: "ROMAN" | "GRAPHIQUE";
   finishedAt: Date;
   points: number;
+  /** OpenLibrary cover, when the reading was declared through the web autocomplete. */
+  coverUrl?: string | null;
   owner: string;
   /** The viewer may edit (own reading within 1 h, or captain / admin). */
   editable: boolean;
@@ -57,8 +60,9 @@ function Row({
 }) {
   return (
     <li className="card flat book">
-      <span className="plate num" style={{ background: teamColor }} aria-hidden>
-        {fmtDelta(b.points)}
+      <span className={`plate num${b.coverUrl ? " has-cover" : ""}`} style={{ background: teamColor }} aria-hidden>
+        {b.coverUrl && <Image className="art" src={b.coverUrl} alt="" width={48} height={64} sizes="48px" />}
+        <span className="pts">{fmtDelta(b.points)}</span>
         {b.type === "GRAPHIQUE" && <span className="half">½</span>}
       </span>
       <div className="body">
