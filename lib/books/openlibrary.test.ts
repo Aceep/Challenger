@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { buildSearchQuery, coverUrlFor, isAllowedCoverUrl, mapSearchDocs, type OpenLibraryDoc, type OpenLibraryEdition } from "./openlibrary";
+import {
+  buildSearchQuery,
+  coverUrlFor,
+  coverUrlForIsbn,
+  isAllowedCoverUrl,
+  isbnSuggestion,
+  mapSearchDocs,
+  type OpenLibraryBook,
+  type OpenLibraryDoc,
+  type OpenLibraryEdition,
+} from "./openlibrary";
 
 const doc = (o: Partial<OpenLibraryDoc>): OpenLibraryDoc => ({ title: "Les Furtifs", author_name: ["Alain Damasio"], ...o });
 
@@ -73,10 +83,13 @@ describe("coverUrlFor", () => {
 });
 
 describe("mapSearchDocs", () => {
-  it("maps title, first author, median pages and cover", () => {
-    expect(mapSearchDocs([doc({ number_of_pages_median: 816, cover_i: 10675378, key: "/works/OL24217581W" })])).toEqual([
-      { title: "Les Furtifs", author: "Alain Damasio", pages: 816, coverUrl: "https://covers.openlibrary.org/b/id/10675378-M.jpg" },
+  it("maps title, first author, median pages, cover and year of first publication", () => {
+    expect(mapSearchDocs([doc({ number_of_pages_median: 816, cover_i: 10675378, key: "/works/OL24217581W", first_publish_year: 2019 })])).toEqual([
+      { title: "Les Furtifs", author: "Alain Damasio", pages: 816, coverUrl: "https://covers.openlibrary.org/b/id/10675378-M.jpg", year: 2019, isbn: null },
     ]);
+    // The year is the work's, and OpenLibrary does not always know it.
+    expect(mapSearchDocs([doc({ first_publish_year: null })])[0].year).toBeNull();
+    expect(mapSearchDocs([doc({ first_publish_year: 0 })])[0].year).toBeNull();
   });
 
   it("keeps only the first author credited, ignoring the empty ones", () => {
@@ -86,7 +99,7 @@ describe("mapSearchDocs", () => {
   });
 
   it("leaves pages and cover empty when OpenLibrary does not know them", () => {
-    expect(mapSearchDocs([doc({})])[0]).toEqual({ title: "Les Furtifs", author: "Alain Damasio", pages: null, coverUrl: null });
+    expect(mapSearchDocs([doc({})])[0]).toEqual({ title: "Les Furtifs", author: "Alain Damasio", pages: null, coverUrl: null, year: null, isbn: null });
   });
 
   it("rounds a median page count and refuses an absurd one", () => {
@@ -97,7 +110,7 @@ describe("mapSearchDocs", () => {
 
   it("drops the documents without a title and trims the others", () => {
     const out = mapSearchDocs([doc({ title: "" }), doc({ title: "   " }), doc({ title: null }), doc({ title: "  Persepolis  ", author_name: ["Satrapi"] })]);
-    expect(out).toEqual([{ title: "Persepolis", author: "Satrapi", pages: null, coverUrl: null }]);
+    expect(out).toEqual([{ title: "Persepolis", author: "Satrapi", pages: null, coverUrl: null, year: null, isbn: null }]);
   });
 
   it("dedupes on title + author, accents and case aside, and keeps the first (most relevant)", () => {
@@ -123,7 +136,7 @@ describe("mapSearchDocs", () => {
       ...edition({ title: "Bilbo le Hobbit", cover_i: 10584480, number_of_pages: 287, language: ["fre"] }),
     });
     expect(mapSearchDocs([hobbit])).toEqual([
-      { title: "Bilbo le Hobbit", author: "J.R.R. Tolkien", pages: 287, coverUrl: coverUrlFor(10584480) },
+      { title: "Bilbo le Hobbit", author: "J.R.R. Tolkien", pages: 287, coverUrl: coverUrlFor(10584480), year: null, isbn: null },
     ]);
   });
 
@@ -137,7 +150,7 @@ describe("mapSearchDocs", () => {
       ...edition({ title: "Le Petit Prince" }),
     });
     expect(mapSearchDocs([petitPrince])).toEqual([
-      { title: "Le Petit Prince", author: "Antoine de Saint-Exupéry", pages: 114, coverUrl: coverUrlFor(13890892) },
+      { title: "Le Petit Prince", author: "Antoine de Saint-Exupéry", pages: 114, coverUrl: coverUrlFor(13890892), year: null, isbn: null },
     ]);
     // An edition with no title of its own is just the work.
     expect(mapSearchDocs([doc({ ...edition({ title: "   ", cover_i: 7 }) })])[0].title).toBe("Les Furtifs");
@@ -177,7 +190,7 @@ describe("mapSearchDocs", () => {
       doc({ title: "The Little Prince", author_name: ["Antoine de Saint-Exupéry"], language: ["eng"], ...edition({ title: "Le petit prince", cover_i: 1, language: ["fre"] }) }),
       doc({ title: "Le petit prince", author_name: ["Antoine de Saint-Exupéry"], language: ["fre"], ...edition({ title: "LE PETIT PRINCE", cover_i: 2, language: ["fre"] }) }),
     ]);
-    expect(out).toEqual([{ title: "Le petit prince", author: "Antoine de Saint-Exupéry", pages: null, coverUrl: coverUrlFor(1) }]);
+    expect(out).toEqual([{ title: "Le petit prince", author: "Antoine de Saint-Exupéry", pages: null, coverUrl: coverUrlFor(1), year: null, isbn: null }]);
   });
 
   it("counts the limit on the French suggestions left, once deduped", () => {
@@ -196,6 +209,87 @@ describe("mapSearchDocs", () => {
     expect(mapSearchDocs([])).toEqual([]);
     expect(mapSearchDocs(null)).toEqual([]);
     expect(mapSearchDocs(undefined)).toEqual([]);
+  });
+});
+
+describe("isbnSuggestion", () => {
+  // Fixtures trimmed from the real answers for 978-2-07-061275-8 (« Le petit
+  // prince », Folio) — https://openlibrary.org/isbn/9782070612758.json and
+  // https://openlibrary.org/search.json?q=isbn:9782070612758.
+  const ISBN = "9782070612758";
+  const book: OpenLibraryBook = { title: "Le Petit Prince", number_of_pages: 120, covers: [2137711], publish_date: "March 2007" };
+  const found: OpenLibraryDoc = {
+    title: "Le petit prince",
+    author_name: ["Antoine de Saint-Exupéry"],
+    first_publish_year: 1943,
+    number_of_pages_median: 96,
+    cover_i: 10708272,
+    editions: { docs: [{ title: "Le Petit Prince", cover_i: 2137711, language: ["fre"] }] },
+  };
+
+  it("merges the edition one holds with what the work says", () => {
+    // The printing wins on its title, its pages and its cover; the work names
+    // the author and dates the first publication.
+    expect(isbnSuggestion(ISBN, book, found)).toEqual({
+      title: "Le Petit Prince",
+      author: "Antoine de Saint-Exupéry",
+      pages: 120,
+      coverUrl: coverUrlFor(2137711),
+      year: 1943,
+      isbn: ISBN,
+    });
+  });
+
+  it("holds up when only one of the two answers came back", () => {
+    // Solr never fills `editions.number_of_pages`: without the edition record
+    // the count falls back on the work's median.
+    expect(isbnSuggestion(ISBN, null, found)).toEqual({
+      title: "Le Petit Prince",
+      author: "Antoine de Saint-Exupéry",
+      pages: 96,
+      coverUrl: coverUrlFor(2137711),
+      year: 1943,
+      isbn: ISBN,
+    });
+    // No search document: no author, and the year is read off the printing.
+    expect(isbnSuggestion(ISBN, book, null)).toEqual({
+      title: "Le Petit Prince",
+      author: null,
+      pages: 120,
+      coverUrl: coverUrlFor(2137711),
+      year: 2007,
+      isbn: ISBN,
+    });
+    // Nothing at all, or nothing bearing a title: no line rather than a blank one.
+    expect(isbnSuggestion(ISBN, null, null)).toBeNull();
+    expect(isbnSuggestion(ISBN, { number_of_pages: 120 }, { author_name: ["Anonyme"] })).toBeNull();
+  });
+
+  it("falls back on the cover addressed by the ISBN, and only then", () => {
+    expect(isbnSuggestion(ISBN, { title: "Le Petit Prince" }, null)?.coverUrl).toBe(coverUrlForIsbn(ISBN));
+    expect(coverUrlForIsbn(ISBN)).toBe("https://covers.openlibrary.org/b/isbn/9782070612758-M.jpg");
+    expect(isAllowedCoverUrl(coverUrlForIsbn(ISBN))).toBe(true);
+    // « -1 » is OpenLibrary's way of saying « no cover ».
+    expect(isbnSuggestion(ISBN, { title: "Le Petit Prince", covers: [-1] }, null)?.coverUrl).toBe(coverUrlForIsbn(ISBN));
+  });
+
+  it("keeps a book that is not French: the reader is holding it", () => {
+    // The language filter of the title search has no business here.
+    const hobbit: OpenLibraryDoc = { title: "The Hobbit", author_name: ["J.R.R. Tolkien"], language: ["eng"], first_publish_year: 1937 };
+    expect(isbnSuggestion("9780261102217", { title: "The Hobbit", number_of_pages: 389 }, hobbit)).toEqual({
+      title: "The Hobbit",
+      author: "J.R.R. Tolkien",
+      pages: 389,
+      coverUrl: coverUrlForIsbn("9780261102217"),
+      year: 1937,
+      isbn: "9780261102217",
+    });
+  });
+
+  it("refuses an absurd page count and a date it cannot read", () => {
+    expect(isbnSuggestion(ISBN, { title: "Le Petit Prince", number_of_pages: 0 }, found)?.pages).toBe(96);
+    expect(isbnSuggestion(ISBN, { title: "Le Petit Prince", publish_date: "sans date" }, null)?.year).toBeNull();
+    expect(isbnSuggestion(ISBN, { title: "  Le Petit Prince  " }, null)?.title).toBe("Le Petit Prince");
   });
 });
 

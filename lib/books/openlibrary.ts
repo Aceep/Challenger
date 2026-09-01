@@ -90,9 +90,26 @@ export type OpenLibraryDoc = {
   cover_i?: number | null;
   /** Work key, « /works/OL17267881W ». */
   key?: string | null;
+  /** Year the *work* first came out — 1943 for « Le petit prince », whatever the edition. */
+  first_publish_year?: number | null;
   /** Every language the *work* has ever been published in. */
   language?: string[] | null;
   editions?: { docs?: OpenLibraryEdition[] | null } | null;
+};
+
+/**
+ * One edition record of https://openlibrary.org/isbn/<isbn>.json — the exact
+ * book someone holds. It is the only place OpenLibrary states the page count
+ * *of that printing* (Solr never returns `editions.number_of_pages`), which is
+ * what the points are computed on. It names no author: only author keys.
+ */
+export type OpenLibraryBook = {
+  title?: string | null;
+  number_of_pages?: number | null;
+  /** Cover ids of this printing, first one first; « -1 » stands for none. */
+  covers?: number[] | null;
+  /** Free text — « March 2007 », « 1983 » — of this printing, not of the work. */
+  publish_date?: string | null;
 };
 
 /** One line of the title autocomplete — exactly what the form prefills. */
@@ -101,6 +118,10 @@ export type BookSuggestion = {
   author: string | null;
   pages: number | null;
   coverUrl: string | null;
+  /** First publication of the work, to tell two books of the same name apart. */
+  year: number | null;
+  /** Set only when the line comes from an ISBN lookup — the list says so. */
+  isbn: string | null;
 };
 
 /** The only host a cover may come from. */
@@ -115,6 +136,15 @@ export const MAX_SUGGESTIONS = 8;
 /** Medium cover (~180 px wide) of an OpenLibrary cover id; null when the work has none. */
 export function coverUrlFor(coverId: number | null | undefined): string | null {
   return typeof coverId === "number" && Number.isInteger(coverId) && coverId > 0 ? `${COVER_PREFIX}b/id/${coverId}-M.jpg` : null;
+}
+
+/**
+ * Cover of an edition addressed by its ISBN. Last resort only: OpenLibrary
+ * answers this one even when it has no cover (with a blank placeholder), so a
+ * cover id is always preferred to it.
+ */
+export function coverUrlForIsbn(isbn: string): string {
+  return `${COVER_PREFIX}b/isbn/${isbn}-M.jpg`;
 }
 
 /**
@@ -139,6 +169,16 @@ const norm = (s: string) =>
 const firstAuthor = (names: string[] | null | undefined): string | null => names?.map((n) => n.trim()).find(Boolean) ?? null;
 
 const pageCount = (n: number | null | undefined): number | null => (typeof n === "number" && Number.isFinite(n) && n > 0 ? Math.round(n) : null);
+
+/** A four-digit year, 1000 to 2999 — nothing older is being read for the challenge. */
+const YEAR = /\b([12][0-9]{3})\b/;
+
+/** The year of a `first_publish_year`, or the one read in a « March 2007 ». */
+const publishYear = (year: number | null | undefined, date?: string | null): number | null => {
+  if (typeof year === "number" && Number.isInteger(year) && year > 0) return year;
+  const found = typeof date === "string" ? YEAR.exec(date) : null;
+  return found ? Number(found[1]) : null;
+};
 
 /** MARC code of French, the language of the site — the one the list is kept to. */
 const FRENCH = "fre";
@@ -169,6 +209,35 @@ function toSuggestion(doc: OpenLibraryDoc): BookSuggestion | null {
     author: firstAuthor(doc.author_name),
     pages: pageCount(edition?.number_of_pages) ?? pageCount(doc.number_of_pages_median),
     coverUrl: coverUrlFor(edition?.cover_i) ?? coverUrlFor(doc.cover_i),
+    year: publishYear(doc.first_publish_year),
+    isbn: null,
+  };
+}
+
+/**
+ * The one line of an ISBN lookup — the exact book someone has in hand.
+ *
+ * Two answers are merged, because neither is complete: `/isbn/<isbn>.json`
+ * knows the printing (its title, spelled with its accents, its page count, its
+ * cover) but names no author, and `search.json?q=isbn:…` names the author and
+ * dates the work. What the edition says wins; the work fills the gaps.
+ *
+ * No language filter here, unlike the title search: the reader is holding the
+ * book, whatever OpenLibrary believes it is written in.
+ *
+ * Null when neither answer bears a title — there is nothing to show.
+ */
+export function isbnSuggestion(isbn: string, book: OpenLibraryBook | null | undefined, doc: OpenLibraryDoc | null | undefined): BookSuggestion | null {
+  const edition = doc?.editions?.docs?.[0] ?? undefined;
+  const title = book?.title?.trim() || edition?.title?.trim() || doc?.title?.trim();
+  if (!title) return null;
+  return {
+    title,
+    author: firstAuthor(doc?.author_name),
+    pages: pageCount(book?.number_of_pages) ?? pageCount(edition?.number_of_pages) ?? pageCount(doc?.number_of_pages_median),
+    coverUrl: coverUrlFor(book?.covers?.[0]) ?? coverUrlFor(edition?.cover_i) ?? coverUrlFor(doc?.cover_i) ?? coverUrlForIsbn(isbn),
+    year: publishYear(doc?.first_publish_year, book?.publish_date),
+    isbn,
   };
 }
 
