@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { coverUrlFor, isAllowedCoverUrl, mapSearchDocs, type OpenLibraryDoc } from "./openlibrary";
+import { coverUrlFor, isAllowedCoverUrl, mapSearchDocs, type OpenLibraryDoc, type OpenLibraryEdition } from "./openlibrary";
 
 const doc = (o: Partial<OpenLibraryDoc>): OpenLibraryDoc => ({ title: "Les Furtifs", author_name: ["Alain Damasio"], ...o });
+
+/** The `editions` block OpenLibrary attaches to a work when asked with `lang=fr`. */
+const edition = (o: OpenLibraryEdition): Pick<OpenLibraryDoc, "editions"> => ({ editions: { docs: [o] } });
 
 describe("coverUrlFor", () => {
   it("builds the medium cover of a cover id", () => {
@@ -52,6 +55,85 @@ describe("mapSearchDocs", () => {
       doc({ title: "Les Furtifs", author_name: ["Quelqu’un d’autre"], cover_i: 4 }),
     ]);
     expect(out.map((s) => s.coverUrl)).toEqual([coverUrlFor(1), coverUrlFor(4)]);
+  });
+
+  // Fixtures below are trimmed from real answers of
+  // https://openlibrary.org/search.json?lang=fr&fields=…,editions.title,editions.language
+  it("shows the French edition of a work — title, cover, pages", () => {
+    // « the hobbit » → the work is English, its best French edition is Bilbo.
+    const hobbit = doc({
+      title: "The Hobbit",
+      author_name: ["J.R.R. Tolkien"],
+      language: ["eng", "fre", "ger"],
+      number_of_pages_median: 310,
+      cover_i: 14627509,
+      ...edition({ title: "Bilbo le Hobbit", cover_i: 10584480, number_of_pages: 287, language: ["fre"] }),
+    });
+    expect(mapSearchDocs([hobbit])).toEqual([
+      { title: "Bilbo le Hobbit", author: "J.R.R. Tolkien", pages: 287, coverUrl: coverUrlFor(10584480) },
+    ]);
+  });
+
+  it("falls back on the work for whatever the edition does not say", () => {
+    // OpenLibrary rarely fills `number_of_pages`, and often has no cover of the edition.
+    const petitPrince = doc({
+      title: "Le Petit Prince",
+      author_name: ["Antoine de Saint-Exupéry"],
+      number_of_pages_median: 114,
+      cover_i: 13890892,
+      ...edition({ title: "Le Petit Prince" }),
+    });
+    expect(mapSearchDocs([petitPrince])).toEqual([
+      { title: "Le Petit Prince", author: "Antoine de Saint-Exupéry", pages: 114, coverUrl: coverUrlFor(13890892) },
+    ]);
+    // An edition with no title of its own is just the work.
+    expect(mapSearchDocs([doc({ ...edition({ title: "   ", cover_i: 7 }) })])[0].title).toBe("Les Furtifs");
+    // And an absurd edition page count falls back too, rather than passing through.
+    expect(mapSearchDocs([doc({ number_of_pages_median: 816, ...edition({ number_of_pages: 0 }) })])[0].pages).toBe(816);
+  });
+
+  it("keeps only the French suggestions, in their order of relevance", () => {
+    const out = mapSearchDocs([
+      doc({ title: "Hoàng tu bé", language: ["vie"], ...edition({ title: "Hoàng tu bé", language: ["vie"] }) }),
+      doc({ title: "Den lille Prins", language: ["dan"], ...edition({ title: "Den lille Prins", language: ["dan"] }) }),
+      doc({ title: "Le petit prince", language: ["fre", "eng"], ...edition({ title: "Le petit prince", language: ["fre"] }) }),
+      doc({ title: "O principezinho", language: ["por"], ...edition({ title: "O Principezinho", language: ["por"] }) }),
+      doc({ title: "Pour le petit prince", language: ["fre"], ...edition({ title: "Pour le petit prince.", language: ["fre"] }) }),
+    ]);
+    expect(out.map((s) => s.title)).toEqual(["Le petit prince", "Pour le petit prince."]);
+  });
+
+  it("turns away only what is positively not French", () => {
+    // A bilingual edition is French enough; « fre » on the work is enough too.
+    const bilingual = doc({ title: "The Little Prince", language: ["eng"], ...edition({ title: "The little prince", language: ["eng", "fre"] }) });
+    const frenchWork = doc({ title: "Les Furtifs", language: ["fre"], ...edition({ title: "Les Furtifs" }) });
+    const english = doc({ title: "A Little Princess", language: ["eng"], ...edition({ title: "A Little Princess", language: ["eng"] }) });
+    expect(mapSearchDocs([english, bilingual, frenchWork]).map((s) => s.title)).toEqual(["The little prince", "Les Furtifs"]);
+    // Silence is not a refusal: an unlabelled work — small French books often
+    // are — stays in the list.
+    expect(mapSearchDocs([doc({ title: "Sans langue", language: null, editions: null })]).map((s) => s.title)).toEqual(["Sans langue"]);
+    expect(mapSearchDocs([doc({ title: "Sans langue", language: [], ...edition({ title: "Sans langue" }) })]).map((s) => s.title)).toEqual(["Sans langue"]);
+    // An English edition of a work published in French too is kept: OpenLibrary
+    // knows the book exists here, and `lang=fr` already asked for its edition.
+    expect(mapSearchDocs([doc({ title: "The Hobbit", language: ["eng", "fre"], ...edition({ title: "The Hobbit", language: ["eng"] }) })])).toHaveLength(1);
+  });
+
+  it("merges the multilingual twins of a work once they all bear their French title", () => {
+    const out = mapSearchDocs([
+      // The English work, whose French edition bears the very title of the French work.
+      doc({ title: "The Little Prince", author_name: ["Antoine de Saint-Exupéry"], language: ["eng"], ...edition({ title: "Le petit prince", cover_i: 1, language: ["fre"] }) }),
+      doc({ title: "Le petit prince", author_name: ["Antoine de Saint-Exupéry"], language: ["fre"], ...edition({ title: "LE PETIT PRINCE", cover_i: 2, language: ["fre"] }) }),
+    ]);
+    expect(out).toEqual([{ title: "Le petit prince", author: "Antoine de Saint-Exupéry", pages: null, coverUrl: coverUrlFor(1) }]);
+  });
+
+  it("counts the limit on the French suggestions left, once deduped", () => {
+    const docs = [
+      doc({ title: "Roman anglais", language: ["eng"] }),
+      ...Array.from({ length: 5 }, (_, i) => doc({ title: `Roman ${i}`, language: ["fre"] })),
+      doc({ title: "ROMAN 0", language: ["fre"] }),
+    ];
+    expect(mapSearchDocs(docs, 3).map((s) => s.title)).toEqual(["Roman 0", "Roman 1", "Roman 2"]);
   });
 
   it("never returns more than the limit, and copes with an empty answer", () => {
