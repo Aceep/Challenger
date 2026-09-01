@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { mapSearchDocs, MAX_SUGGESTIONS, type BookSuggestion, type OpenLibraryDoc } from "@/lib/books/openlibrary";
+import { buildSearchQuery, mapSearchDocs, MAX_SUGGESTIONS, type BookSuggestion, type OpenLibraryDoc } from "@/lib/books/openlibrary";
 import { requireUser } from "@/lib/dal";
 import { APP_URL } from "@/lib/discord/help";
 
@@ -14,6 +14,10 @@ import { APP_URL } from "@/lib/discord/help";
  * The site is French: the search asks OpenLibrary for the French edition of
  * each work (`lang=fr` + `editions.*`), and `mapSearchDocs` keeps that list
  * French — a work known to exist in other languages only is left out.
+ *
+ * The list comes while the title is still being typed: `buildSearchQuery` turns
+ * the half-typed last word into a prefix, so « le petit pri » already shows
+ * « Le petit prince ».
  */
 
 const SEARCH_URL = "https://openlibrary.org/search.json";
@@ -34,8 +38,13 @@ const empty = () => NextResponse.json([] as BookSuggestion[]);
 
 export async function GET(request: Request) {
   await requireUser();
-  const q = (new URL(request.url).searchParams.get("q") ?? "").trim();
-  if (q.length < MIN_QUERY) return empty();
+  // Passed on raw, trailing space and all: that space is how `buildSearchQuery`
+  // tells a word still being typed from one just finished.
+  const typed = new URL(request.url).searchParams.get("q") ?? "";
+  if (typed.trim().length < MIN_QUERY) return empty();
+  const q = buildSearchQuery(typed);
+  // Nothing searchable left — « ??? » was only punctuation.
+  if (!q) return empty();
 
   const url = new URL(SEARCH_URL);
   url.searchParams.set("q", q);
