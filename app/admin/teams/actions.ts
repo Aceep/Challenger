@@ -75,7 +75,7 @@ export async function setDeputyAction(formData: FormData) {
   const teamId = String(formData.get("teamId") ?? "");
   const userId = String(formData.get("userId") ?? "") || null;
   await withFlash("/admin/teams", async () => {
-    if (teamId) await setDeputy(teamId, userId, { id: admin.id, role: "ORGANIZER" });
+    if (teamId) await setDeputy(teamId, userId, admin.id);
     return "Adjoint·e mis·e à jour.";
   }, REVALIDATE);
 }
