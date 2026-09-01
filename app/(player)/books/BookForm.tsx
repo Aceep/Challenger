@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useActionState, useId, useRef, useState } from "react";
 import { BookCover } from "@/components/ui/BookCover";
 import { PageTitle, Pill } from "@/components/ui";
 import { AlertIcon, SearchIcon } from "@/components/ui/icons";
@@ -35,6 +35,12 @@ type Props = {
   submitLabel: string;
   /** Sunday verification window is open (non-admins cannot write). */
   locked?: string | null;
+  /**
+   * Rate of the edition this reading belongs to — what both points previews
+   * count with (the suggestions of the search bar, and the field itself).
+   * Left out, `readingPoints` falls back on the standard 0,1 pt per page.
+   */
+  pointsPerPage?: number;
   /** `/demo` when rendered by the read-only demo. */
   prefix?: string;
   /** Rendered inside a modal: no page shell, « Annuler » calls onCancel. */
@@ -42,8 +48,25 @@ type Props = {
   onCancel?: () => void;
 };
 
-export function BookForm({ action, values, quests, cells, currentQuest, currentCell, title, submitLabel, locked, prefix = "", embedded, onCancel }: Props) {
+export function BookForm({
+  action,
+  values,
+  quests,
+  cells,
+  currentQuest,
+  currentCell,
+  title,
+  submitLabel,
+  locked,
+  pointsPerPage,
+  prefix = "",
+  embedded,
+  onCancel,
+}: Props) {
   const [state, formAction, pending] = useActionState(action, null);
+  const titleId = useId();
+  // « Je ne trouve pas mon livre » hands the relay to the author field.
+  const authorInput = useRef<HTMLInputElement>(null);
   const [bookTitle, setBookTitle] = useState(values.title);
   const [author, setAuthor] = useState(values.author);
   const [pages, setPages] = useState<number | "">(values.pages);
@@ -55,7 +78,7 @@ export function BookForm({ action, values, quests, cells, currentQuest, currentC
   const questOptions = currentQuest && !quests.some((q) => q.value === currentQuest.value) ? [currentQuest, ...quests] : quests;
   const cellOptions = currentCell && !cells.some((c) => c.value === currentCell.value) ? [currentCell, ...cells] : cells;
   const effective = pages ? effectiveType(pages, type === "GRAPHIQUE") : type;
-  const preview = pages ? readingPoints(pages) : 0;
+  const preview = pages ? readingPoints(pages, pointsPerPage) : 0;
 
   const Shell = embedded ? "div" : "main";
   return (
@@ -70,9 +93,12 @@ export function BookForm({ action, values, quests, cells, currentQuest, currentC
       <form action={formAction} className="flex flex-col gap-4" data-book-form>
         {values.id && <input type="hidden" name="bookId" value={values.id} />}
         <input type="hidden" name="coverUrl" value={coverUrl} />
-        <label className="field">
-          Titre
+        {/* A <div>, not a <label>: the search sheet carries a « Fermer » button,
+            which a label would treat as a click on the field it labels. */}
+        <div className="field">
+          <label htmlFor={titleId}>Titre</label>
           <TitleAutocomplete
+            id={titleId}
             value={bookTitle}
             onChange={setBookTitle}
             onPick={(s) => {
@@ -81,10 +107,12 @@ export function BookForm({ action, values, quests, cells, currentQuest, currentC
               if (s.pages) setPages(s.pages);
               setCoverUrl(s.coverUrl ?? "");
             }}
+            pointsPerPage={pointsPerPage}
+            onManualEntry={() => authorInput.current?.focus()}
             autoFocus={!values.id}
             disabled={isDemo}
           />
-        </label>
+        </div>
         {coverUrl && (
           <div className="cover-picked">
             <BookCover src={coverUrl} title={bookTitle || "cette lecture"} width={44} />
@@ -96,7 +124,7 @@ export function BookForm({ action, values, quests, cells, currentQuest, currentC
         )}
         <label className="field">
           Auteur·ice
-          <input name="author" required maxLength={120} value={author} onChange={(e) => setAuthor(e.target.value)} />
+          <input ref={authorInput} name="author" required maxLength={120} value={author} onChange={(e) => setAuthor(e.target.value)} />
         </label>
         <label className="field">
           Nombre de pages

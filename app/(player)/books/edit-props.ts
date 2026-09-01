@@ -14,13 +14,17 @@ export async function loadBookEdit(bookId: string, actor: { id: string; role: Ac
   if (!book) return null;
   if (!canEditBook(book, { id: actor.id, role: actor.role, isCaptainOfOwner: book.team?.captainId === actor.id })) return null;
   // Selects are built for the reading's (frozen) team so a captain edits a teammate's reading correctly.
-  const ownerTeam = book.team ? await prisma.team.findUniqueOrThrow({ where: { id: book.team.id }, select: { id: true, challengeId: true } }) : null;
+  const ownerTeam = book.team
+    ? await prisma.team.findUniqueOrThrow({ where: { id: book.team.id }, select: { id: true, challengeId: true, challenge: { select: { pointsPerPage: true } } } })
+    : null;
   const [quests, cells] = ownerTeam ? await Promise.all([questChoices(ownerTeam.challengeId, ownerTeam.id), cellChoices(ownerTeam.id)]) : [[], []];
   return {
     title: book.userId === actor.id ? "Modifier ma lecture" : `Modifier la lecture de ${book.user.name ?? "?"}`,
     quests,
     cells,
     locked: actor.role !== "ORGANIZER" && isVerificationWindow(new Date()) ? VERIFICATION_MESSAGE : null,
+    // The rate of the edition the reading belongs to, not of the one being browsed.
+    pointsPerPage: ownerTeam?.challenge.pointsPerPage,
     currentQuest: book.questBook ? { value: book.questBook.questId, name: questLabel(book.questBook.quest) } : null,
     currentCell: book.bingoFill ? { value: book.bingoFill.cellId, name: `${cellLabel(book.bingoFill.cell.row, book.bingoFill.cell.col)} — ${book.bingoFill.cell.prompt}` } : null,
     values: {

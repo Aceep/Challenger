@@ -1,8 +1,13 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import { Pill } from "@/components/ui";
 import { BookCover } from "@/components/ui/BookCover";
+import { CloseIcon, PencilIcon } from "@/components/ui/icons";
+import { highlightParts } from "@/lib/books/highlight";
 import type { BookSuggestion } from "@/lib/books/openlibrary";
+import { fmtPoints } from "@/lib/format";
+import { readingPoints } from "@/lib/scoring/reading";
 
 /** Long enough for a two-word title to settle, short enough to feel instant. */
 const DEBOUNCE_MS = 300;
@@ -17,29 +22,76 @@ const MIN_QUERY = 2;
 type Phase = "idle" | "searching" | "done";
 
 type Props = {
+  /** Id of the field, so the « Titre » label of the form points at it. */
+  id: string;
   value: string;
   onChange: (title: string) => void;
   /** A line was picked: prefill the author, the pages and the cover. */
   onPick: (suggestion: BookSuggestion) => void;
+  /**
+   * Rate of the current challenge: what the « 96 p. ≈ 9,6 pts » badge counts
+   * with. Left out, `readingPoints` falls back on the standard 0,1 pt per page.
+   */
+  pointsPerPage?: number;
+  /** « Je ne trouve pas mon livre » — the form takes the relay and focuses the author. */
+  onManualEntry: () => void;
   autoFocus?: boolean;
   /** Off on /demo, where the search route (signed-in only) would bounce to the login. */
   disabled?: boolean;
 };
 
 /** What the live region says — a screen reader hears the count, the eye reads the list. */
-function announce(phase: Phase, count: number) {
+function announce(phase: Phase, items: BookSuggestion[]) {
   if (phase === "searching") return "Recherche en cours…";
   if (phase !== "done") return "";
-  if (count === 0) return "Aucun livre trouvé.";
-  return count === 1 ? "1 livre proposé." : `${count} livres proposés.`;
+  if (items.length === 0) return "Aucun livre trouvé.";
+  if (items[0].isbn) return "ISBN reconnu : 1 livre proposé.";
+  return items.length === 1 ? "1 livre proposé." : `${items.length} livres proposés.`;
+}
+
+/** « Antoine de Saint-Exupéry · 1943 », and what is missing said plainly. */
+function metaOf(s: BookSuggestion): string {
+  const parts = [s.author, s.year ? String(s.year) : null, s.pages ? null : "pages à compléter"].filter(Boolean);
+  return parts.length > 0 ? parts.join(" · ") : "à compléter à la main";
+}
+
+/** One line of the list: the cover, the title with what was typed lit up, the points it is worth. */
+function Suggestion({ suggestion, query, pointsPerPage }: { suggestion: BookSuggestion; query: string; pointsPerPage?: number }) {
+  const points = suggestion.pages ? readingPoints(suggestion.pages, pointsPerPage) : 0;
+  return (
+    <>
+      <BookCover src={suggestion.coverUrl} title={suggestion.title} width={30} />
+      <span className="combo-text">
+        <span className="combo-title">
+          {highlightParts(suggestion.title, query).map((part, i) => (part.match ? <mark key={i}>{part.text}</mark> : <span key={i}>{part.text}</span>))}
+        </span>
+        <span className="combo-meta">
+          {suggestion.isbn && <span className="combo-flag">ISBN reconnu</span>}
+          <span className="combo-meta-text">{metaOf(suggestion)}</span>
+        </span>
+      </span>
+      {suggestion.pages ? (
+        <Pill stamp xs tone="ok" className="combo-points">
+          {suggestion.pages} p. ≈ {fmtPoints(points)} pt{points >= 2 ? "s" : ""}
+        </Pill>
+      ) : null}
+    </>
+  );
 }
 
 /**
- * Titre — a combobox on OpenLibrary. Typing searches, ↑ ↓ walk the list, Entrée
- * picks, Échap closes; everything stays a plain text input, so a book nobody
- * indexed is still typed by hand. A failing search is silent on purpose.
+ * Titre — a search bar on OpenLibrary. Typing searches by title, and an ISBN
+ * typed or copied off the back cover fetches that exact edition; ↑ ↓ walk the
+ * list, Entrée picks, Échap closes. The last line is always « Je ne trouve pas
+ * mon livre », so a book nobody indexed is one keystroke from being typed by
+ * hand — and everything stays a plain text input all the same. A failing search
+ * is silent on purpose.
+ *
+ * Under 768 px the open list is a full-screen sheet: the field pinned at the
+ * top, the list scrolling under it, lines one can hit with a thumb. Above, it
+ * is the popup under the field. One DOM, one combobox, the media query decides.
  */
-export function TitleAutocomplete({ value, onChange, onPick, autoFocus, disabled }: Props) {
+export function TitleAutocomplete({ id, value, onChange, onPick, pointsPerPage, onManualEntry, autoFocus, disabled }: Props) {
   const [items, setItems] = useState<BookSuggestion[]>([]);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
@@ -48,7 +100,11 @@ export function TitleAutocomplete({ value, onChange, onPick, autoFocus, disabled
   const quiet = useRef(true);
   // Only the latest run may end the wait: an aborted one must not stop the spinner.
   const run = useRef(0);
+  const input = useRef<HTMLInputElement>(null);
   const listId = useId();
+  // The list is the suggestions plus the way out, which is an option like any other.
+  const manualIndex = items.length;
+  const optionId = (i: number) => `${listId}-${i}`;
 
   useEffect(() => {
     if (disabled) return;
@@ -59,7 +115,7 @@ export function TitleAutocomplete({ value, onChange, onPick, autoFocus, disabled
     // Too short is handled by `type()`, which empties the list as it is typed.
     const q = value.trim();
     if (q.length < MIN_QUERY) return;
-    const id = ++run.current;
+    const runId = ++run.current;
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       try {
@@ -71,7 +127,7 @@ export function TitleAutocomplete({ value, onChange, onPick, autoFocus, disabled
       } catch {
         // Aborted, offline, or an answer we cannot read: the three fields are typed by hand.
       } finally {
-        if (run.current === id) setPhase("done");
+        if (run.current === runId) setPhase("done");
       }
     }, DEBOUNCE_MS);
     return () => {
@@ -80,13 +136,28 @@ export function TitleAutocomplete({ value, onChange, onPick, autoFocus, disabled
     };
   }, [value, disabled]);
 
+  // Walking the list with the keyboard must bring the line into sight — in the
+  // sheet, most of the list is below the fold.
+  useEffect(() => {
+    if (open && active >= 0) document.getElementById(`${listId}-${active}`)?.scrollIntoView({ block: "nearest" });
+    // `optionId` is `listId` and the index — no need to re-run when the closure changes.
+  }, [open, active, listId]);
+
   const close = () => {
     setOpen(false);
     setActive(-1);
   };
 
+  /** The sheet's « Fermer »: the keyboard goes down with it. */
+  const dismiss = () => {
+    close();
+    input.current?.blur();
+  };
+
   const type = (next: string) => {
     onChange(next);
+    // On the demo the route would bounce to the login: the field stays a plain input.
+    if (disabled) return;
     // Nothing left to match: drop the list right away rather than after the debounce.
     if (next.trim().length < MIN_QUERY) {
       setItems([]);
@@ -107,14 +178,25 @@ export function TitleAutocomplete({ value, onChange, onPick, autoFocus, disabled
     close();
   };
 
+  /** « Je ne trouve pas mon livre » — the list steps aside and the author field takes over. */
+  const manual = () => {
+    setItems([]);
+    setPhase("idle");
+    close();
+    onManualEntry();
+  };
+
+  const choose = (i: number) => (i === manualIndex ? manual() : pick(items[i]));
+
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!open || items.length === 0) return;
+    if (!open) return;
+    const count = manualIndex + 1;
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
-      setActive((i) => (e.key === "ArrowDown" ? (i + 1) % items.length : i <= 0 ? items.length - 1 : i - 1));
+      setActive((i) => (e.key === "ArrowDown" ? (i + 1) % count : i <= 0 ? count - 1 : i - 1));
     } else if (e.key === "Enter" && active >= 0) {
       e.preventDefault();
-      pick(items[active]);
+      choose(active);
     } else if (e.key === "Escape") {
       // Prevents the surrounding <dialog> from taking the Échap for itself.
       e.preventDefault();
@@ -125,18 +207,35 @@ export function TitleAutocomplete({ value, onChange, onPick, autoFocus, disabled
   const searching = phase === "searching" && !disabled;
   // A new search over an answered one: the old lines stay readable, dimmed and topped by the bar.
   const stale = searching && items.length > 0;
+  const query = value.trim();
 
   return (
-    <div className="combo">
+    <div className={open ? "combo is-open" : "combo"}>
+      {/* The head of the sheet — shown by the media query alone, on a phone with the list open. */}
+      <div className="combo-head">
+        <span className="combo-head-title">Chercher un livre</span>
+        <button
+          type="button"
+          className="combo-close"
+          aria-label="Fermer la recherche"
+          // mousedown, not click: the blur must not close the list before us.
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={dismiss}
+        >
+          <CloseIcon />
+        </button>
+      </div>
       <div className="combo-input">
         <input
+          ref={input}
+          id={id}
           name="title"
           required
           maxLength={200}
           value={value}
           onChange={(e) => type(e.target.value)}
           onKeyDown={onKeyDown}
-          onFocus={() => items.length > 0 && setOpen(true)}
+          onFocus={() => !disabled && items.length > 0 && setOpen(true)}
           onBlur={() => setTimeout(close, 120)}
           autoFocus={autoFocus}
           autoComplete="off"
@@ -144,7 +243,7 @@ export function TitleAutocomplete({ value, onChange, onPick, autoFocus, disabled
           aria-expanded={open}
           aria-controls={listId}
           aria-autocomplete="list"
-          aria-activedescendant={open && active >= 0 ? `${listId}-${active}` : undefined}
+          aria-activedescendant={open && active >= 0 ? optionId(active) : undefined}
           aria-describedby={`${listId}-hint`}
         />
         {searching && (
@@ -154,10 +253,12 @@ export function TitleAutocomplete({ value, onChange, onPick, autoFocus, disabled
         )}
       </div>
       <span id={`${listId}-hint`} className="hint">
-        {disabled ? "Sur la démo, la recherche est désactivée." : "Tape trois lettres : Kyle cherche le livre et remplit l’auteur·ice, les pages et la couverture."}
+        {disabled
+          ? "Sur la démo, la recherche est désactivée."
+          : "Tape le titre — ou l’ISBN du livre que tu as en main : Kyle remplit l’auteur·ice, les pages et la couverture."}
       </span>
       <span role="status" aria-live="polite" className="sr-only">
-        {disabled ? "" : announce(phase, items.length)}
+        {disabled ? "" : announce(phase, items)}
       </span>
       {open && (
         <div className="combo-pop">
@@ -172,7 +273,7 @@ export function TitleAutocomplete({ value, onChange, onPick, autoFocus, disabled
             {items.map((s, i) => (
               <li
                 key={`${s.title}-${s.author ?? ""}-${i}`}
-                id={`${listId}-${i}`}
+                id={optionId(i)}
                 role="option"
                 aria-selected={i === active}
                 className={i === active ? "is-active" : undefined}
@@ -183,13 +284,7 @@ export function TitleAutocomplete({ value, onChange, onPick, autoFocus, disabled
                 }}
                 onMouseEnter={() => setActive(i)}
               >
-                <BookCover src={s.coverUrl} title={s.title} width={30} />
-                <span className="combo-text">
-                  <span className="combo-title">{s.title}</span>
-                  <span className="combo-meta">
-                    {[s.author, s.pages ? `${s.pages} p.` : null].filter(Boolean).join(" · ") || "auteur·ice et pages à compléter"}
-                  </span>
-                </span>
+                <Suggestion suggestion={s} query={query} pointsPerPage={pointsPerPage} />
               </li>
             ))}
             {items.length === 0 && (
@@ -200,10 +295,30 @@ export function TitleAutocomplete({ value, onChange, onPick, autoFocus, disabled
                     Recherche en cours…
                   </>
                 ) : (
-                  "Aucun livre trouvé — remplis la fiche à la main."
+                  "Aucun livre trouvé."
                 )}
               </li>
             )}
+            {/* Always the last line, answer or no answer: nobody is ever stuck in the list. */}
+            <li
+              id={optionId(manualIndex)}
+              role="option"
+              aria-selected={active === manualIndex}
+              className={active === manualIndex ? "combo-manual is-active" : "combo-manual"}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                manual();
+              }}
+              onMouseEnter={() => setActive(manualIndex)}
+            >
+              <PencilIcon />
+              <span className="combo-text">
+                <span className="combo-title">Je ne trouve pas mon livre</span>
+                <span className="combo-meta">
+                  <span className="combo-meta-text">Remplir la fiche à la main</span>
+                </span>
+              </span>
+            </li>
           </ul>
         </div>
       )}
