@@ -7,7 +7,7 @@ import { DEMO_CHALLENGE } from "@/lib/demo/data";
 
 export default function DemoPlayerLayout({ children }: LayoutProps<"/demo">) {
   return (
-    <div className="player-shell mx-auto flex min-h-dvh w-full max-w-lg flex-col" style={{ "--edition": DEMO_CHALLENGE.color } as CSSProperties}>
+    <div className="demo-shell player-shell mx-auto flex min-h-dvh w-full max-w-lg flex-col" style={{ "--edition": DEMO_CHALLENGE.color } as CSSProperties}>
       <DemoBanner tour="player" />
       <div className="flex flex-1 flex-col">
         <EditionBar name={DEMO_CHALLENGE.name} color={DEMO_CHALLENGE.color} href="/demo/help#edition" />
