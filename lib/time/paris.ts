@@ -111,3 +111,29 @@ export function dueSundayKey(date: Date): string {
   if (weekday === 0 && hour >= 20) return sundayKey(date);
   return sundayKey(new Date(date.getTime() - 7 * 86_400_000));
 }
+
+/** `YYYY-MM-DD` moved by `days` calendar days (noon UTC arithmetic: DST never shifts it). */
+export function shiftDay(day: string, days: number): string {
+  const d = new Date(`${day}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/** The Sunday (YYYY-MM-DD, Paris) whose 21:00 opened the playing week of `date`. */
+export function weekStartSundayKey(date: Date): string {
+  const { weekday, hour } = parisClock(date);
+  const day = parisDay(date);
+  if (weekday === 0 && hour >= WINDOW_END_HOUR) return day;
+  return shiftDay(day, -(weekday === 0 ? 7 : weekday));
+}
+
+/**
+ * The playing week around `date`: from Sunday 21:00 (the verification window
+ * closes and a new week opens) to the next Sunday 19:00 (the window opens
+ * again). The two hours of the window belong to the week they close, so during
+ * it `date` is past `end` — that is the week being verified.
+ */
+export function gameWeek(date: Date): { start: Date; end: Date } {
+  const day = weekStartSundayKey(date);
+  return { start: parisInstant(day, WINDOW_END_HOUR), end: parisInstant(shiftDay(day, 7), WINDOW_START_HOUR) };
+}
