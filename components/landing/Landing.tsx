@@ -46,7 +46,7 @@ export function Landing({ examples }: { examples: LandingExample[] }) {
               Visite guidée avec Kyle
             </Link>
           </div>
-          <p className="text-[13px] text-[color:var(--muted)]">
+          <p className="hint">
             Déjà un défi sur ton serveur ? Tape <code>/challenger rejoindre</code> sur Discord, ou{" "}
             <Link href="/login" className="underline">
               connecte-toi

@@ -1878,6 +1878,12 @@
     margin-top: var(--fs-d3);
     flex-wrap: wrap;
   }
+  /* The « déjà un défi ? » line follows the buttons, it is not glued to them. */
+  .hero .hint {
+    margin-top: var(--sp-4);
+    font-size: var(--fs-sm);
+    color: var(--muted);
+  }
   .hero .mascot {
     display: grid;
     place-items: center;
