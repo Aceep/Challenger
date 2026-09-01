@@ -9,10 +9,14 @@ import { isVerificationWindow } from "@/lib/time/paris";
 import type { BookEditProps } from "./BookEditModal";
 
 /** Everything the edit modal needs for one reading, or null when it cannot be edited by `user`. */
-export async function loadBookEdit(bookId: string, actor: { id: string; role: ActorRole; name?: string | null }): Promise<BookEditProps | null> {
-  const book = await getBook(bookId);
+export async function loadBookEdit(
+  bookId: string,
+  actor: { id: string; role: ActorRole; challengeId: string | null; isSuperAdmin?: boolean; name?: string | null },
+): Promise<BookEditProps | null> {
+  // Scoped read: a reading played in another edition is not offered for edition here.
+  const book = await getBook(bookId, actor);
   if (!book) return null;
-  if (!canEditBook(book, { id: actor.id, role: actor.role, isCaptainOfOwner: book.team?.captainId === actor.id })) return null;
+  if (!canEditBook(book, { id: actor.id, role: actor.role, isCaptainOfOwner: book.team?.captainId === actor.id, challengeId: actor.challengeId, isSuperAdmin: actor.isSuperAdmin })) return null;
   // Selects are built for the reading's (frozen) team so a captain edits a teammate's reading correctly.
   const ownerTeam = book.team
     ? await prisma.team.findUniqueOrThrow({ where: { id: book.team.id }, select: { id: true, challengeId: true, challenge: { select: { pointsPerPage: true } } } })

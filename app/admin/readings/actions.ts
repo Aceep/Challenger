@@ -12,7 +12,7 @@ const REVALIDATE = ["/admin/readings", "/admin", "/books", "/bingo", "/quests", 
 /** An organiser acts for the whole challenge: no team, no captaincy, no Sunday window. */
 async function adminActor(): Promise<BookActor> {
   const { user, challenge } = await requireOrganizer();
-  return { id: user.id, role: "ORGANIZER", challengeId: challenge.id, teamId: null, isCaptain: false };
+  return { id: user.id, role: "ORGANIZER", challengeId: challenge.id, teamId: null, isCaptain: false, isSuperAdmin: user.isSuperAdmin };
 }
 
 /** Keeps the current filters (`?team=…&q=…`) when redirecting back to the table. */

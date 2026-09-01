@@ -11,7 +11,14 @@ const PATHS = ["/bingo", "/home", "/leaderboard", "/books", "/team"];
 
 async function run(fn: (actor: BookActor) => Promise<BookResult>, okLabel: string) {
   const { user, challenge, role, team } = await getCurrentPlayer();
-  const actor: BookActor = { id: user.id, role: role ?? "PLAYER", challengeId: challenge?.id ?? null, teamId: team?.id ?? null, isCaptain: team?.captainId === user.id };
+  const actor: BookActor = {
+    id: user.id,
+    role: role ?? "PLAYER",
+    challengeId: challenge?.id ?? null,
+    teamId: team?.id ?? null,
+    isCaptain: team?.captainId === user.id,
+    isSuperAdmin: user.isSuperAdmin,
+  };
   await withFlash("/bingo", async () => {
     const { result, before, after: top } = await withLeaderWatch(challenge?.id, () => fn(actor));
     if (team && challenge) after(() => announceRankChange(challenge.id, before, top));

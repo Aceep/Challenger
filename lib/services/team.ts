@@ -1,8 +1,8 @@
 import { GameError } from "@/lib/errors";
 import "server-only";
 import { prisma } from "@/lib/db";
-import type { ActorRole } from "@/lib/scoring/books";
 import { round1 } from "@/lib/scoring/reading";
+import { roleIn } from "@/lib/services/membership";
 import { num } from "@/lib/services/points";
 
 export async function getTeamStats(teamId: string) {
@@ -51,10 +51,15 @@ export async function getTeamStats(teamId: string) {
   };
 }
 
-/** The captain (or an admin) names the team's adjoint among its members. */
-export async function setDeputy(teamId: string, userId: string | null, actor: { id: string; role: ActorRole }) {
+/**
+ * The captain (or an admin) names the team's adjoint among its members. The role
+ * is re-derived inside the team's **own** edition: organising the edition being
+ * browsed says nothing about the one the team plays in.
+ */
+export async function setDeputy(teamId: string, userId: string | null, actorId: string) {
   const team = await prisma.team.findUniqueOrThrow({ where: { id: teamId }, include: { members: { select: { userId: true } } } });
-  if (actor.role !== "ORGANIZER" && team.captainId !== actor.id) throw new GameError("Seul·e le·la capitaine peut nommer l'adjoint·e");
+  const role = await roleIn(actorId, team.challengeId);
+  if (role !== "ORGANIZER" && team.captainId !== actorId) throw new GameError("Seul·e le·la capitaine peut nommer l'adjoint·e");
   if (userId && !team.members.some((m) => m.userId === userId)) throw new GameError("Ce joueur n'est pas dans l'équipe");
   if (userId && userId === team.captainId) throw new GameError("Le·la capitaine ne peut pas être son·sa propre adjoint·e");
   return prisma.team.update({ where: { id: teamId }, data: { deputyId: userId } });

@@ -38,7 +38,7 @@ export default async function AdminHome({ searchParams }: PageProps<"/admin">) {
     prisma.book.count({ where: { deletedAt: null, ...ofChallenge } }),
     prisma.book.count({ where: { deletedAt: null, createdAt: { gte: since }, ...ofChallenge } }),
     prisma.challengeMember.count({ where: { challengeId: challenge.id } }),
-    prisma.book.findMany({ where: { createdAt: { gte: since }, ...ofChallenge }, distinct: ["userId"], select: { userId: true } }),
+    prisma.book.findMany({ where: { deletedAt: null, createdAt: { gte: since }, ...ofChallenge }, distinct: ["userId"], select: { userId: true } }),
     prisma.book.findMany({
       where: ofChallenge,
       orderBy: { updatedAt: "desc" },
