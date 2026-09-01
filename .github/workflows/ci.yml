@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    name: Lint, types, tests, build
+    runs-on: ubuntu-latest
+
+    # Valeurs factices, jamais de vrais secrets ici.
+    # Seule DATABASE_URL est nécessaire : « next build » évalue les modules
+    # serveur en collectant les pages, et lib/db.ts lève « DATABASE_URL is not
+    # set » à l'import. Aucune connexion n'est ouverte pendant le build — cette
+    # URL ne pointe nulle part, et c'est très bien ainsi.
+    env:
+      DATABASE_URL: postgresql://user:pass@localhost:5432/db
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      # `postinstall` lance `prisma generate` : le client est généré dans
+      # lib/generated/prisma, qui n'est pas versionné.
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      # Les types de routes (PageProps, RouteContext…) sont générés : sans eux,
+      # tsc échoue sur des références manquantes.
+      - name: Générer les types de routes
+        run: npx next typegen
+
+      - name: Vérifier les types
+        run: npm run typecheck
+
+      - name: Tests unitaires
+        run: npm test
+
+      - name: Build
+        run: npm run build
