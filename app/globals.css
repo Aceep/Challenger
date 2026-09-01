@@ -773,6 +773,25 @@
     flex: none;
     color: var(--kyle-deep);
   }
+  /* Always the last line of the list, and visible even scrolled to the middle. */
+  .combo-list li.combo-manual {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    margin-top: var(--sp-1);
+    border-top: 1px dotted var(--ink-rule);
+    border-radius: 0;
+    background: var(--surface);
+  }
+  .combo-list li.combo-manual.is-active {
+    background: var(--hi);
+  }
+  .combo-list li.combo-manual svg {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    color: var(--muted);
+  }
   .combo-text {
     display: flex;
     flex-direction: column;

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { BookCover } from "@/components/ui/BookCover";
 import { PageTitle, Pill } from "@/components/ui";
 import { AlertIcon, SearchIcon } from "@/components/ui/icons";
@@ -64,6 +64,8 @@ export function BookForm({
   onCancel,
 }: Props) {
   const [state, formAction, pending] = useActionState(action, null);
+  // « Je ne trouve pas mon livre » hands the relay to the author field.
+  const authorInput = useRef<HTMLInputElement>(null);
   const [bookTitle, setBookTitle] = useState(values.title);
   const [author, setAuthor] = useState(values.author);
   const [pages, setPages] = useState<number | "">(values.pages);
@@ -102,6 +104,7 @@ export function BookForm({
               setCoverUrl(s.coverUrl ?? "");
             }}
             pointsPerPage={pointsPerPage}
+            onManualEntry={() => authorInput.current?.focus()}
             autoFocus={!values.id}
             disabled={isDemo}
           />
@@ -117,7 +120,7 @@ export function BookForm({
         )}
         <label className="field">
           Auteur·ice
-          <input name="author" required maxLength={120} value={author} onChange={(e) => setAuthor(e.target.value)} />
+          <input ref={authorInput} name="author" required maxLength={120} value={author} onChange={(e) => setAuthor(e.target.value)} />
         </label>
         <label className="field">
           Nombre de pages
