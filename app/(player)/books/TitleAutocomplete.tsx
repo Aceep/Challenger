@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Pill } from "@/components/ui";
 import { BookCover } from "@/components/ui/BookCover";
+import { PencilIcon } from "@/components/ui/icons";
 import { highlightParts } from "@/lib/books/highlight";
 import type { BookSuggestion } from "@/lib/books/openlibrary";
 import { fmtPoints } from "@/lib/format";
@@ -30,6 +31,8 @@ type Props = {
    * with. Left out, `readingPoints` falls back on the standard 0,1 pt per page.
    */
   pointsPerPage?: number;
+  /** « Je ne trouve pas mon livre » — the form takes the relay and focuses the author. */
+  onManualEntry: () => void;
   autoFocus?: boolean;
   /** Off on /demo, where the search route (signed-in only) would bounce to the login. */
   disabled?: boolean;
@@ -77,11 +80,12 @@ function Suggestion({ suggestion, query, pointsPerPage }: { suggestion: BookSugg
 /**
  * Titre — a search bar on OpenLibrary. Typing searches by title, and an ISBN
  * typed or copied off the back cover fetches that exact edition; ↑ ↓ walk the
- * list, Entrée picks, Échap closes; everything stays a plain text input, so a
- * book nobody indexed is still typed by hand. A failing search is silent on
- * purpose.
+ * list, Entrée picks, Échap closes. The last line is always « Je ne trouve pas
+ * mon livre », so a book nobody indexed is one keystroke from being typed by
+ * hand — and everything stays a plain text input all the same. A failing search
+ * is silent on purpose.
  */
-export function TitleAutocomplete({ value, onChange, onPick, pointsPerPage, autoFocus, disabled }: Props) {
+export function TitleAutocomplete({ value, onChange, onPick, pointsPerPage, onManualEntry, autoFocus, disabled }: Props) {
   const [items, setItems] = useState<BookSuggestion[]>([]);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
@@ -91,6 +95,9 @@ export function TitleAutocomplete({ value, onChange, onPick, pointsPerPage, auto
   // Only the latest run may end the wait: an aborted one must not stop the spinner.
   const run = useRef(0);
   const listId = useId();
+  // The list is the suggestions plus the way out, which is an option like any other.
+  const manualIndex = items.length;
+  const optionId = (i: number) => `${listId}-${i}`;
 
   useEffect(() => {
     if (disabled) return;
@@ -122,6 +129,12 @@ export function TitleAutocomplete({ value, onChange, onPick, pointsPerPage, auto
     };
   }, [value, disabled]);
 
+  // Walking the list with the keyboard must bring the line into sight.
+  useEffect(() => {
+    if (open && active >= 0) document.getElementById(`${listId}-${active}`)?.scrollIntoView({ block: "nearest" });
+    // `optionId` is `listId` and the index — no need to re-run when the closure changes.
+  }, [open, active, listId]);
+
   const close = () => {
     setOpen(false);
     setActive(-1);
@@ -151,14 +164,25 @@ export function TitleAutocomplete({ value, onChange, onPick, pointsPerPage, auto
     close();
   };
 
+  /** « Je ne trouve pas mon livre » — the list steps aside and the author field takes over. */
+  const manual = () => {
+    setItems([]);
+    setPhase("idle");
+    close();
+    onManualEntry();
+  };
+
+  const choose = (i: number) => (i === manualIndex ? manual() : pick(items[i]));
+
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!open || items.length === 0) return;
+    if (!open) return;
+    const count = manualIndex + 1;
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
-      setActive((i) => (e.key === "ArrowDown" ? (i + 1) % items.length : i <= 0 ? items.length - 1 : i - 1));
+      setActive((i) => (e.key === "ArrowDown" ? (i + 1) % count : i <= 0 ? count - 1 : i - 1));
     } else if (e.key === "Enter" && active >= 0) {
       e.preventDefault();
-      pick(items[active]);
+      choose(active);
     } else if (e.key === "Escape") {
       // Prevents the surrounding <dialog> from taking the Échap for itself.
       e.preventDefault();
@@ -189,7 +213,7 @@ export function TitleAutocomplete({ value, onChange, onPick, pointsPerPage, auto
           aria-expanded={open}
           aria-controls={listId}
           aria-autocomplete="list"
-          aria-activedescendant={open && active >= 0 ? `${listId}-${active}` : undefined}
+          aria-activedescendant={open && active >= 0 ? optionId(active) : undefined}
           aria-describedby={`${listId}-hint`}
         />
         {searching && (
@@ -219,7 +243,7 @@ export function TitleAutocomplete({ value, onChange, onPick, pointsPerPage, auto
             {items.map((s, i) => (
               <li
                 key={`${s.title}-${s.author ?? ""}-${i}`}
-                id={`${listId}-${i}`}
+                id={optionId(i)}
                 role="option"
                 aria-selected={i === active}
                 className={i === active ? "is-active" : undefined}
@@ -241,10 +265,30 @@ export function TitleAutocomplete({ value, onChange, onPick, pointsPerPage, auto
                     Recherche en cours…
                   </>
                 ) : (
-                  "Aucun livre trouvé — remplis la fiche à la main."
+                  "Aucun livre trouvé."
                 )}
               </li>
             )}
+            {/* Always the last line, answer or no answer: nobody is ever stuck in the list. */}
+            <li
+              id={optionId(manualIndex)}
+              role="option"
+              aria-selected={active === manualIndex}
+              className={active === manualIndex ? "combo-manual is-active" : "combo-manual"}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                manual();
+              }}
+              onMouseEnter={() => setActive(manualIndex)}
+            >
+              <PencilIcon />
+              <span className="combo-text">
+                <span className="combo-title">Je ne trouve pas mon livre</span>
+                <span className="combo-meta">
+                  <span className="combo-meta-text">Remplir la fiche à la main</span>
+                </span>
+              </span>
+            </li>
           </ul>
         </div>
       )}
