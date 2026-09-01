@@ -1029,8 +1029,16 @@
   }
   .list > li,
   .list > div {
-    display: flex;
     min-width: 0;
+  }
+  /* Only a row that *wraps* a card is turned into a flex line — that is what
+     stretches the card it holds to the row height. A row that is itself the
+     card keeps the display its own class asks for: `.list > li` (0,1,1) beats
+     `.book` (0,1,0), so without this exception the reading grid collapsed into
+     a flex line and its body stopped filling the card. */
+  .list > li:not(.card),
+  .list > div:not(.card) {
+    display: flex;
   }
   .list > li > .card,
   .list > div > .card,
