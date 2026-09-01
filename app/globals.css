@@ -689,6 +689,34 @@
     flex-direction: column;
     gap: var(--sp-1);
   }
+  /* The head of the phone sheet: only the media query below ever shows it. */
+  .combo-head {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    padding: var(--sp-3) 0;
+  }
+  .combo-head-title {
+    font-family: var(--font-display);
+    font-size: var(--fs-d1);
+    font-weight: 700;
+  }
+  .combo-close {
+    display: inline-grid;
+    place-items: center;
+    flex: none;
+    width: 36px;
+    height: 36px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--surface-2);
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .combo-close:hover {
+    color: var(--ink);
+  }
   /* The field alone, so the spinner sits inside its right edge. */
   .combo-input {
     position: relative;
@@ -842,6 +870,47 @@
   .combo-points {
     flex: none;
     white-space: nowrap;
+  }
+
+  /* Under 768 px the open list is a full-screen sheet: field pinned on top,
+     list scrolling under it. One DOM, one combobox — the query decides. */
+  @media (max-width: 767px) {
+    .combo.is-open {
+      position: fixed;
+      inset: 0;
+      z-index: 80;
+      height: 100dvh;
+      gap: var(--sp-2);
+      padding: env(safe-area-inset-top) var(--sp-4) 0;
+      background: var(--surface);
+      animation: combo-sheet-in var(--dur) var(--ease) both;
+    }
+    .combo.is-open .combo-head {
+      display: flex;
+    }
+    .combo.is-open .combo-pop {
+      position: static;
+      flex: 1 1 auto;
+      min-height: 0;
+      margin-top: var(--sp-1);
+      border: 0;
+      border-radius: 0;
+      box-shadow: none;
+    }
+    .combo.is-open .combo-list {
+      max-height: none;
+      height: 100%;
+      padding-inline: 0;
+      padding-bottom: calc(var(--sp-4) + env(safe-area-inset-bottom));
+      /* The page behind must not scroll along with the sheet. */
+      overscroll-behavior: contain;
+    }
+    /* Lines one can hit with a thumb. */
+    .combo.is-open .combo-list li {
+      gap: var(--sp-3);
+      min-height: 56px;
+      padding: var(--sp-3) var(--sp-2);
+    }
   }
 
   .data-table {
@@ -2518,6 +2587,16 @@ button[aria-busy="true"] {
     transform: translateX(250%);
   }
 }
+@keyframes combo-sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
 @keyframes toast-in {
   from {
     opacity: 0;
@@ -2704,6 +2783,7 @@ button[aria-busy="true"] {
   .kyle-react.hop,
   .kyle-react.shake,
   .cell.pop,
+  .combo.is-open,
   .combo-bar::after {
     animation: none;
   }

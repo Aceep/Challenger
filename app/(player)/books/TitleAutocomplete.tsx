@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Pill } from "@/components/ui";
 import { BookCover } from "@/components/ui/BookCover";
-import { PencilIcon } from "@/components/ui/icons";
+import { CloseIcon, PencilIcon } from "@/components/ui/icons";
 import { highlightParts } from "@/lib/books/highlight";
 import type { BookSuggestion } from "@/lib/books/openlibrary";
 import { fmtPoints } from "@/lib/format";
@@ -22,6 +22,8 @@ const MIN_QUERY = 2;
 type Phase = "idle" | "searching" | "done";
 
 type Props = {
+  /** Id of the field, so the « Titre » label of the form points at it. */
+  id: string;
   value: string;
   onChange: (title: string) => void;
   /** A line was picked: prefill the author, the pages and the cover. */
@@ -84,8 +86,12 @@ function Suggestion({ suggestion, query, pointsPerPage }: { suggestion: BookSugg
  * mon livre », so a book nobody indexed is one keystroke from being typed by
  * hand — and everything stays a plain text input all the same. A failing search
  * is silent on purpose.
+ *
+ * Under 768 px the open list is a full-screen sheet: the field pinned at the
+ * top, the list scrolling under it, lines one can hit with a thumb. Above, it
+ * is the popup under the field. One DOM, one combobox, the media query decides.
  */
-export function TitleAutocomplete({ value, onChange, onPick, pointsPerPage, onManualEntry, autoFocus, disabled }: Props) {
+export function TitleAutocomplete({ id, value, onChange, onPick, pointsPerPage, onManualEntry, autoFocus, disabled }: Props) {
   const [items, setItems] = useState<BookSuggestion[]>([]);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
@@ -94,6 +100,7 @@ export function TitleAutocomplete({ value, onChange, onPick, pointsPerPage, onMa
   const quiet = useRef(true);
   // Only the latest run may end the wait: an aborted one must not stop the spinner.
   const run = useRef(0);
+  const input = useRef<HTMLInputElement>(null);
   const listId = useId();
   // The list is the suggestions plus the way out, which is an option like any other.
   const manualIndex = items.length;
@@ -129,7 +136,8 @@ export function TitleAutocomplete({ value, onChange, onPick, pointsPerPage, onMa
     };
   }, [value, disabled]);
 
-  // Walking the list with the keyboard must bring the line into sight.
+  // Walking the list with the keyboard must bring the line into sight — in the
+  // sheet, most of the list is below the fold.
   useEffect(() => {
     if (open && active >= 0) document.getElementById(`${listId}-${active}`)?.scrollIntoView({ block: "nearest" });
     // `optionId` is `listId` and the index — no need to re-run when the closure changes.
@@ -138,6 +146,12 @@ export function TitleAutocomplete({ value, onChange, onPick, pointsPerPage, onMa
   const close = () => {
     setOpen(false);
     setActive(-1);
+  };
+
+  /** The sheet's « Fermer »: the keyboard goes down with it. */
+  const dismiss = () => {
+    close();
+    input.current?.blur();
   };
 
   const type = (next: string) => {
@@ -196,9 +210,25 @@ export function TitleAutocomplete({ value, onChange, onPick, pointsPerPage, onMa
   const query = value.trim();
 
   return (
-    <div className="combo">
+    <div className={open ? "combo is-open" : "combo"}>
+      {/* The head of the sheet — shown by the media query alone, on a phone with the list open. */}
+      <div className="combo-head">
+        <span className="combo-head-title">Chercher un livre</span>
+        <button
+          type="button"
+          className="combo-close"
+          aria-label="Fermer la recherche"
+          // mousedown, not click: the blur must not close the list before us.
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={dismiss}
+        >
+          <CloseIcon />
+        </button>
+      </div>
       <div className="combo-input">
         <input
+          ref={input}
+          id={id}
           name="title"
           required
           maxLength={200}

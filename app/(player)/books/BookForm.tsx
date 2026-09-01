@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useId, useRef, useState } from "react";
 import { BookCover } from "@/components/ui/BookCover";
 import { PageTitle, Pill } from "@/components/ui";
 import { AlertIcon, SearchIcon } from "@/components/ui/icons";
@@ -64,6 +64,7 @@ export function BookForm({
   onCancel,
 }: Props) {
   const [state, formAction, pending] = useActionState(action, null);
+  const titleId = useId();
   // « Je ne trouve pas mon livre » hands the relay to the author field.
   const authorInput = useRef<HTMLInputElement>(null);
   const [bookTitle, setBookTitle] = useState(values.title);
@@ -92,9 +93,12 @@ export function BookForm({
       <form action={formAction} className="flex flex-col gap-4" data-book-form>
         {values.id && <input type="hidden" name="bookId" value={values.id} />}
         <input type="hidden" name="coverUrl" value={coverUrl} />
-        <label className="field">
-          Titre
+        {/* A <div>, not a <label>: the search sheet carries a « Fermer » button,
+            which a label would treat as a click on the field it labels. */}
+        <div className="field">
+          <label htmlFor={titleId}>Titre</label>
           <TitleAutocomplete
+            id={titleId}
             value={bookTitle}
             onChange={setBookTitle}
             onPick={(s) => {
@@ -108,7 +112,7 @@ export function BookForm({
             autoFocus={!values.id}
             disabled={isDemo}
           />
-        </label>
+        </div>
         {coverUrl && (
           <div className="cover-picked">
             <BookCover src={coverUrl} title={bookTitle || "cette lecture"} width={44} />
