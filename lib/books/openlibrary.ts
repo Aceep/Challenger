@@ -8,6 +8,19 @@
  * `Book.coverUrl` and by the Discord card before putting it in an embed.
  */
 
+/**
+ * One edition of a work, as returned by the `editions` field: asked with
+ * `lang=fr`, OpenLibrary hands back the *best edition in French* of each work
+ * (« The Hobbit » → « Bilbo le Hobbit »). Everything in it may be missing.
+ */
+export type OpenLibraryEdition = {
+  title?: string | null;
+  cover_i?: number | null;
+  number_of_pages?: number | null;
+  /** MARC codes, « fre », « eng »… A bilingual edition lists several. */
+  language?: string[] | null;
+};
+
 /** One document of https://openlibrary.org/search.json, limited to the fields we ask for. */
 export type OpenLibraryDoc = {
   title?: string | null;
@@ -16,6 +29,9 @@ export type OpenLibraryDoc = {
   cover_i?: number | null;
   /** Work key, « /works/OL17267881W ». */
   key?: string | null;
+  /** Every language the *work* has ever been published in. */
+  language?: string[] | null;
+  editions?: { docs?: OpenLibraryEdition[] | null } | null;
 };
 
 /** One line of the title autocomplete — exactly what the form prefills. */
@@ -63,24 +79,61 @@ const firstAuthor = (names: string[] | null | undefined): string | null => names
 
 const pageCount = (n: number | null | undefined): number | null => (typeof n === "number" && Number.isFinite(n) && n > 0 ? Math.round(n) : null);
 
+/** MARC code of French, the language of the site — the one the list is kept to. */
+const FRENCH = "fre";
+
+const languagesOf = (languages: string[] | null | undefined): string[] => languages?.map((l) => l?.trim().toLowerCase()).filter(Boolean) ?? [];
+
 /**
- * Search documents → suggestions: a title is required, the author is the first
- * one credited, the page count comes from the median edition, and two documents
- * sharing a title and an author are one suggestion (the first wins, OpenLibrary
- * sorts by relevance).
+ * Does this suggestion belong to a French list? Yes when the edition or the work
+ * says « fre » — a bilingual « eng, fre » edition counts — and yes as well when
+ * neither says anything: many small French books carry no language on
+ * OpenLibrary, and only what is *positively* something else is turned away.
+ */
+function isFrench(doc: OpenLibraryDoc, edition: OpenLibraryEdition | undefined): boolean {
+  const languages = [...languagesOf(edition?.language), ...languagesOf(doc.language)];
+  return languages.length === 0 || languages.includes(FRENCH);
+}
+
+/** One document turned into a line of the list — null when it is not one of ours. */
+function toSuggestion(doc: OpenLibraryDoc): BookSuggestion | null {
+  const edition = doc?.editions?.docs?.[0] ?? undefined;
+  if (!isFrench(doc, edition)) return null;
+  // The edition speaks for the work: its title, its cover, its page count, each
+  // falling back on the work when OpenLibrary does not know it.
+  const title = edition?.title?.trim() || doc?.title?.trim();
+  if (!title) return null;
+  return {
+    title,
+    author: firstAuthor(doc.author_name),
+    pages: pageCount(edition?.number_of_pages) ?? pageCount(doc.number_of_pages_median),
+    coverUrl: coverUrlFor(edition?.cover_i) ?? coverUrlFor(doc.cover_i),
+  };
+}
+
+/**
+ * Search documents → suggestions. A title is required; the author is the first
+ * one credited; the French edition of a work replaces it whenever OpenLibrary
+ * knows one (`lang=fr` on the route), so a query typed in English still shows
+ * the book as it is read here.
+ *
+ * The list is French, and only French: a work published in other languages
+ * only — « Den lille Prins », « The Hobbit companion » — is left out rather
+ * than pushed down. Two suggestions sharing a title and an author are one line
+ * (the first wins, OpenLibrary sorts by relevance), which is what merges the
+ * multilingual twins of a work once they all bear their French title.
  */
 export function mapSearchDocs(docs: readonly OpenLibraryDoc[] | null | undefined, limit = MAX_SUGGESTIONS): BookSuggestion[] {
   const seen = new Set<string>();
   const out: BookSuggestion[] = [];
   for (const doc of docs ?? []) {
     if (out.length >= limit) break;
-    const title = doc?.title?.trim();
-    if (!title) continue;
-    const author = firstAuthor(doc.author_name);
-    const key = `${norm(title)}|${author ? norm(author) : ""}`;
+    const suggestion = toSuggestion(doc);
+    if (!suggestion) continue;
+    const key = `${norm(suggestion.title)}|${suggestion.author ? norm(suggestion.author) : ""}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    out.push({ title, author, pages: pageCount(doc.number_of_pages_median), coverUrl: coverUrlFor(doc.cover_i) });
+    out.push(suggestion);
   }
   return out;
 }

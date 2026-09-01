@@ -10,10 +10,20 @@ import { APP_URL } from "@/lib/discord/help";
  * Signed-in only, and *never* an error: a network hiccup, a 503 or a malformed
  * answer all come back as an empty list — typing the three fields by hand has
  * to stay possible, always.
+ *
+ * The site is French: the search asks OpenLibrary for the French edition of
+ * each work (`lang=fr` + `editions.*`), and `mapSearchDocs` keeps that list
+ * French — a work known to exist in other languages only is left out.
  */
 
 const SEARCH_URL = "https://openlibrary.org/search.json";
-const FIELDS = "title,author_name,number_of_pages_median,cover_i,key";
+/**
+ * The work, then its best edition in the language asked for: `editions.*` is
+ * what turns « The Hobbit » into « Bilbo le Hobbit ».
+ */
+const FIELDS = "title,author_name,number_of_pages_median,cover_i,key,language,editions,editions.title,editions.cover_i,editions.number_of_pages,editions.language";
+/** ISO 639-1, two letters — « fre » is silently ignored and searches every language. */
+const LANG = "fr";
 /** OpenLibrary asks that every client identifies itself and says where to complain. */
 const userAgent = () => `Challenger-AceepKyle/1.0 (+${APP_URL()})`;
 const TIMEOUT_MS = 5000;
@@ -31,7 +41,7 @@ export async function GET(request: Request) {
   url.searchParams.set("q", q);
   url.searchParams.set("limit", String(MAX_SUGGESTIONS));
   url.searchParams.set("fields", FIELDS);
-  url.searchParams.set("lang", "fre");
+  url.searchParams.set("lang", LANG);
 
   try {
     const res = await fetch(url, { headers: { "User-Agent": userAgent(), Accept: "application/json" }, signal: AbortSignal.timeout(TIMEOUT_MS) });
