@@ -1,12 +1,73 @@
 /**
- * OpenLibrary — the *pure* half of the book autocomplete: the shape of a search
- * document, and how it becomes a suggestion of the form. No I/O here (the fetch
- * lives in `app/api/books/search/route.ts`), so everything below is unit-tested.
+ * OpenLibrary — the *pure* half of the book autocomplete: the query built from
+ * what is being typed, the shape of a search document, and how it becomes a
+ * suggestion of the form. No I/O here (the fetch lives in
+ * `app/api/books/search/route.ts`), so everything below is unit-tested.
  *
  * Covers are served by `covers.openlibrary.org`, and only from there:
  * `isAllowedCoverUrl` is the single gate, used by the service before storing a
  * `Book.coverUrl` and by the Discord card before putting it in an embed.
  */
+
+/* ------------------------------------------------------------------ *
+ * The query — searching while the word is still being typed
+ * ------------------------------------------------------------------ */
+
+/**
+ * Solr syntax characters. Typed by hand they either break the query or silently
+ * change its meaning: `saint-exupér` reads as « NOT exupér » and finds nothing,
+ * `pri(` returns nothing at all, `1984:` looks for a field named « 1984 ».
+ * A space in their place — « sang-mêlé » becomes two words, both required.
+ */
+const SOLR_SYNTAX = /[*?:"()[\]{}~^\\/+\-&|!]/g;
+
+/**
+ * Shortest prefix worth a star. Below three letters OpenLibrary chews on the
+ * term list for ten seconds and answers 500 (`le petit (pr OR pr*)`), so a
+ * shorter last word is left alone — one more keystroke and the star comes.
+ */
+const MIN_PREFIX = 3;
+
+/** Both apostrophes: the elided head of « d’Azkaban » stays out of the star. */
+const ELISION = /^(.*['’])(.*)$/;
+
+/**
+ * The query sent to `search.json`, built so that the *last* word may still be
+ * half-typed — « le petit pri » has to find « Le petit prince ».
+ *
+ * OpenLibrary searches whole words: it stems and un-elides what it indexes, and
+ * a query is analysed the same way — except a wildcard term, which Solr passes
+ * through raw. So a star is not a free widening:
+ * - `les fourmis*` misses « Les fourmis » (indexed as *fourmi*, stemmed) — the
+ *   star on a *finished* word breaks the search it was meant to help;
+ * - `d'azk*` misses « d’Azkaban » (indexed as *azkaban*, elision removed).
+ *
+ * Hence the shape kept: the last word is searched **twice**, as itself and as a
+ * prefix — `le petit (pri OR pri*)` — the analysed half answering for the words
+ * the raw half cannot see. What the bare query used to find, it still finds.
+ *
+ * The star is dropped when the input ends on a space (the word is finished),
+ * when the prefix is too short, and after the apostrophe of an elision, which
+ * is left glued in front: `d'(azk OR azk*)`.
+ *
+ * Returns "" when nothing searchable is left — the caller then asks nothing.
+ */
+export function buildSearchQuery(input: string): string {
+  const cleaned = input.replace(SOLR_SYNTAX, " ");
+  const words = cleaned.split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "";
+  const plain = words.join(" ");
+  // A trailing space is the reader telling us the word is finished.
+  if (/\s$/.test(cleaned)) return plain;
+
+  const last = words[words.length - 1];
+  const elision = ELISION.exec(last);
+  const elided = elision ? elision[1] : "";
+  const prefix = elision ? elision[2] : last;
+  if (prefix.length < MIN_PREFIX) return plain;
+
+  return [...words.slice(0, -1), `${elided}(${prefix} OR ${prefix}*)`].join(" ");
+}
 
 /**
  * One edition of a work, as returned by the `editions` field: asked with

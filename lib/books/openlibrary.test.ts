@@ -1,10 +1,63 @@
 import { describe, expect, it } from "vitest";
-import { coverUrlFor, isAllowedCoverUrl, mapSearchDocs, type OpenLibraryDoc, type OpenLibraryEdition } from "./openlibrary";
+import { buildSearchQuery, coverUrlFor, isAllowedCoverUrl, mapSearchDocs, type OpenLibraryDoc, type OpenLibraryEdition } from "./openlibrary";
 
 const doc = (o: Partial<OpenLibraryDoc>): OpenLibraryDoc => ({ title: "Les Furtifs", author_name: ["Alain Damasio"], ...o });
 
 /** The `editions` block OpenLibrary attaches to a work when asked with `lang=fr`. */
 const edition = (o: OpenLibraryEdition): Pick<OpenLibraryDoc, "editions"> => ({ editions: { docs: [o] } });
+
+describe("buildSearchQuery", () => {
+  it("searches the half-typed last word as a prefix too", () => {
+    // The bug this fixes: « le petit pri » found « Le parti pris des choses »,
+    // never « Le petit prince ».
+    expect(buildSearchQuery("le petit pri")).toBe("le petit (pri OR pri*)");
+    expect(buildSearchQuery("bilbo le hob")).toBe("bilbo le (hob OR hob*)");
+    expect(buildSearchQuery("fourm")).toBe("(fourm OR fourm*)");
+  });
+
+  it("searches the word as itself as well, for the star sees only the raw index", () => {
+    // `les fourmis*` alone misses « Les fourmis » — indexed stemmed, as *fourmi*.
+    expect(buildSearchQuery("les fourmis")).toBe("les (fourmis OR fourmis*)");
+    expect(buildSearchQuery("la horde du contrevent")).toBe("la horde du (contrevent OR contrevent*)");
+  });
+
+  it("leaves a finished word alone — a trailing space says so", () => {
+    expect(buildSearchQuery("le petit ")).toBe("le petit");
+    expect(buildSearchQuery("  les fourmis\t")).toBe("les fourmis");
+  });
+
+  it("keeps the elided head out of the prefix", () => {
+    // « d'azk* » would miss « d’Azkaban », indexed un-elided as *azkaban*.
+    expect(buildSearchQuery("harry potter et le prisonnier d'azk")).toBe("harry potter et le prisonnier d'(azk OR azk*)");
+    expect(buildSearchQuery("l’étrang")).toBe("l’(étrang OR étrang*)");
+    // Only the last apostrophe divides, and an empty tail is no prefix at all.
+    expect(buildSearchQuery("aujourd'hui")).toBe("aujourd'(hui OR hui*)");
+    expect(buildSearchQuery("le prisonnier d'")).toBe("le prisonnier d'");
+  });
+
+  it("stars nothing under three letters, which OpenLibrary answers with a 500", () => {
+    expect(buildSearchQuery("le petit p")).toBe("le petit p");
+    expect(buildSearchQuery("le petit pr")).toBe("le petit pr");
+    expect(buildSearchQuery("le petit pri")).toBe("le petit (pri OR pri*)");
+    expect(buildSearchQuery("d'az")).toBe("d'az");
+  });
+
+  it("neutralises the Solr syntax, which typed by hand means something else", () => {
+    // « - » reads as a NOT and finds nothing; the others break the query outright.
+    expect(buildSearchQuery("saint-exupéry")).toBe("saint (exupéry OR exupéry*)");
+    expect(buildSearchQuery("1984 : le roman")).toBe("1984 le (roman OR roman*)");
+    expect(buildSearchQuery("harry potter (2)")).toBe("harry potter 2");
+    expect(buildSearchQuery("le petit pri*")).toBe("le petit pri");
+    expect(buildSearchQuery("le petit pri~")).toBe("le petit pri");
+    expect(buildSearchQuery("sang-mêlé")).toBe("sang (mêlé OR mêlé*)");
+  });
+
+  it("asks nothing when nothing searchable is left", () => {
+    expect(buildSearchQuery("")).toBe("");
+    expect(buildSearchQuery("   ")).toBe("");
+    expect(buildSearchQuery("+*?[]{}")).toBe("");
+  });
+});
 
 describe("coverUrlFor", () => {
   it("builds the medium cover of a cover id", () => {
