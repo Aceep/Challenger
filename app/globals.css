@@ -1013,6 +1013,11 @@
     color: var(--muted);
     margin-top: 2px;
   }
+  /* « hier », « mardi » — when an action of the week happened. */
+  .agenda .when {
+    color: var(--muted);
+    white-space: nowrap;
+  }
   .agenda a {
     text-decoration: underline;
     text-underline-offset: 3px;

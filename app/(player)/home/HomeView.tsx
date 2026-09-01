@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { Button, Card, KyleEmpty, PageTitle, ScoreCard, Stat } from "@/components/ui";
 import { Flash } from "@/components/Flash";
-import { FlagIcon, LogoutIcon, PlusIcon, SearchIcon, TargetIcon, VoteIcon } from "@/components/ui/icons";
+import { BooksIcon, FlagIcon, LogoutIcon, PlusIcon, QuestIcon, SearchIcon, TargetIcon, VoteIcon } from "@/components/ui/icons";
 import { fmtPoints } from "@/lib/format";
+import { dayLabel, type WeekAction } from "@/lib/home/week";
 
 export type HomeViewProps = {
   userName: string;
@@ -13,9 +14,14 @@ export type HomeViewProps = {
   score: number;
   rank: { position: number; total: number; gapPoints: number; ahead: string } | null;
   stats: { romans: number; graphiques: number; myPoints: number; teamShare: number | null };
-  /** "Cette semaine" bullets. */
+  /**
+   * "Cette semaine" bullets — the playing week, from Sunday 21 h (the
+   * verification window closes) to the next Sunday 19 h (it opens again).
+   */
   week: {
-    vote: { chapter: string; deadline: Date } | null;
+    /** What the player did since the week opened, newest first. */
+    actions: WeekAction[];
+    vote: { chapter: string; deadline: Date; voted: boolean; tie: boolean } | null;
     pendingCells: { label: string; missing: string }[];
   };
   /** `?ok=` / `?error=` — where switching edition lands its confirmation. */
@@ -35,6 +41,36 @@ function remaining(deadline: Date, now: Date) {
   if (h < 1) return "clos dans moins d’une heure";
   if (h < 48) return `clos dans ${h} h`;
   return `clos dans ${Math.round(h / 24)} jours`;
+}
+
+const ACTION_ICON = { book: BooksIcon, cell: TargetIcon, quest: QuestIcon };
+
+/** One line of the week's recap: what was done, and which day. */
+function ActionLine({ action, now }: { action: WeekAction; now: Date }) {
+  const Icon = ACTION_ICON[action.kind];
+  return (
+    <li>
+      <Icon className="ico" />
+      <p>
+        {action.kind === "book" && (
+          <>
+            <strong>Lecture inscrite</strong> — «&#8239;{action.title}&#8239;», +{fmtPoints(action.points)} pts
+          </>
+        )}
+        {action.kind === "cell" && (
+          <>
+            <strong>Case {action.label} remplie</strong> — «&#8239;{action.title}&#8239;»
+          </>
+        )}
+        {action.kind === "quest" && (
+          <>
+            <strong>Quête #{action.number} terminée</strong> — {action.title}
+          </>
+        )}{" "}
+        <span className="when">{dayLabel(action.at, now)}</span>
+      </p>
+    </li>
+  );
 }
 
 /** Player home screen — pure view, reused by /demo. */
@@ -143,8 +179,20 @@ export function HomeView({ userName, team, challengeName, challengeOver, score, 
               <li>
                 <VoteIcon className="ico" />
                 <p>
-                  <strong>Vote en cours</strong> — {week.vote.chapter}, {remaining(week.vote.deadline, now)} ·{" "}
-                  <Link href={p("/story")}>voter</Link>
+                  {week.vote.tie ? (
+                    <>
+                      <strong>Égalité sur le vote</strong> — «&#8239;{week.vote.chapter}&#8239;», au capitaine de trancher
+                    </>
+                  ) : week.vote.voted ? (
+                    <>
+                      <strong>Ton vote est enregistré</strong> — «&#8239;{week.vote.chapter}&#8239;», {remaining(week.vote.deadline, now)}
+                    </>
+                  ) : (
+                    <>
+                      <strong>Tu n’as pas encore voté</strong> — «&#8239;{week.vote.chapter}&#8239;», {remaining(week.vote.deadline, now)}
+                    </>
+                  )}{" "}
+                  · <Link href={p("/story")}>{week.vote.voted || week.vote.tie ? "revoir" : "voter"}</Link>
                 </p>
               </li>
             )}
@@ -156,6 +204,18 @@ export function HomeView({ userName, team, challengeName, challengeOver, score, 
                 </p>
               </li>
             ))}
+            {week.actions.length > 0 ? (
+              week.actions.map((a) => (
+                <ActionLine key={`${a.kind}-${a.at.getTime()}-${a.kind === "book" ? a.title : a.kind === "cell" ? a.label : a.number}`} action={a} now={now} />
+              ))
+            ) : (
+              <li>
+                <BooksIcon className="ico" />
+                <p>
+                  <strong>Rien d’inscrit cette semaine</strong> — elle a commencé dimanche à 21 h.
+                </p>
+              </li>
+            )}
             <li>
               <SearchIcon className="ico" />
               <p>

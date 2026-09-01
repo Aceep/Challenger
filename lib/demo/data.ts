@@ -26,7 +26,9 @@ import type { EditorStory } from "@/app/admin/story/StoryEditor";
 import type { TeamStoryRow } from "@/app/admin/story/StoryAdminView";
 import type { AdminTeamRow } from "@/app/admin/teams/TeamsView";
 import { botInviteUrl, discordSetupState } from "@/lib/discord/permissions";
+import type { WeekAction } from "@/lib/home/week";
 import { nextSteps, type NextStep } from "@/lib/tenancy/next-steps";
+import { gameWeek } from "@/lib/time/paris";
 
 // ---------------------------------------------------------------------------
 // Édition et équipes
@@ -41,6 +43,8 @@ const HOUR = 3_600_000;
 const inHours = (h: number) => new Date(NOW + h * HOUR);
 const daysAgo = (d: number) => new Date(NOW - d * 24 * HOUR);
 const inDays = (d: number) => new Date(NOW + d * 24 * HOUR);
+/** Somewhere inside the current playing week: 0 = now, 1 = Sunday 21 h, when it opened. */
+const inWeek = (share: number) => new Date(NOW - share * Math.max(NOW - gameWeek(new Date(NOW)).start.getTime(), 1));
 
 export const DEMO_CHALLENGE = {
   id: "demo-challenge-automne",
@@ -638,6 +642,20 @@ export const DEMO_LEADERBOARD: LeaderboardRowView[] = [
 // Accueil
 // ---------------------------------------------------------------------------
 
+/** La lecture que Léa vient d'inscrire : elle remplit une case et boucle une quête. */
+const DEMO_WEEK_BOOK = DEMO_MY_BOOKS.find((b) => b.id === "demo-book-trois-corps")!;
+const DEMO_WEEK_HALF = DEMO_MY_BOOKS.find((b) => b.id === "demo-book-blacksad")!;
+const DEMO_WEEK_QUEST = DEMO_QUESTS.find((q) => q.number === DEMO_WEEK_BOOK.questNumber)!;
+const DEMO_VOTE = DEMO_STORY.vote;
+
+/** Ce que Léa a fait depuis dimanche 21 h, de la plus récente à la plus ancienne. */
+export const DEMO_WEEK_ACTIONS: WeekAction[] = [
+  { kind: "quest", at: inWeek(0.1), number: DEMO_WEEK_QUEST.number, title: DEMO_WEEK_QUEST.title },
+  { kind: "cell", at: inWeek(0.1), label: DEMO_WEEK_BOOK.cellLabel!, title: DEMO_WEEK_BOOK.title },
+  { kind: "book", at: inWeek(0.1), title: DEMO_WEEK_BOOK.title, points: DEMO_WEEK_BOOK.points },
+  { kind: "book", at: inWeek(0.6), title: DEMO_WEEK_HALF.title, points: DEMO_WEEK_HALF.points },
+];
+
 export const DEMO_HOME: Omit<HomeViewProps, "demo"> = {
   userName: DEMO_PLAYER.name,
   team: { name: DEMO_TEAM.name, color: DEMO_TEAM.color },
@@ -652,7 +670,9 @@ export const DEMO_HOME: Omit<HomeViewProps, "demo"> = {
     teamShare: Math.round((DEMO_MY_BOOKS.reduce((n, b) => n + b.points, 0) / DEMO_TEAM.points) * 100),
   },
   week: {
-    vote: { chapter: "chapitre 4", deadline: inHours(31) },
+    // La lecture de Léa, la case qu'elle a remplie et la quête qu'elle a bouclée — même histoire que /demo/livres.
+    actions: DEMO_WEEK_ACTIONS,
+    vote: DEMO_VOTE ? { chapter: DEMO_STORY.node?.title ?? "", deadline: DEMO_VOTE.deadline, voted: DEMO_VOTE.myChoiceId !== null, tie: !!DEMO_VOTE.tie } : null,
     pendingCells: [{ label: "B2", missing: "il manque ½ graphique (ou un roman)" }],
   },
 };
