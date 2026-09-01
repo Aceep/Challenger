@@ -19,6 +19,7 @@ export default async function DemoBooksPage({ searchParams }: PageProps<"/demo/b
           title: book.title,
           author: book.author,
           pages: book.pages,
+          coverUrl: book.coverUrl ?? null,
           type: book.type,
           finishedAt: book.finishedAt.toISOString().slice(0, 10),
           questId: "",

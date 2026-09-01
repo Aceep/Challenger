@@ -87,6 +87,7 @@ export async function announceReading(bookId: string, o: { kind: "new" | "update
     author: book.author,
     pages: book.pages,
     type: book.type,
+    coverUrl: book.coverUrl,
     points: o.points,
     detail: o.detail,
     kind: o.kind,

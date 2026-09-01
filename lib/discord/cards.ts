@@ -6,6 +6,7 @@
  * so it is unit-tested. French typography is applied by `fr()` — never type a
  * narrow space by hand, write a plain one and let the helper harden it.
  */
+import { isAllowedCoverUrl } from "@/lib/books/openlibrary";
 import { BOOK_TYPE_LABEL, fmtDelta } from "@/lib/format";
 import { APP_URL } from "@/lib/discord/help";
 import { hexToInt } from "@/lib/discord/permissions";
@@ -17,6 +18,7 @@ export type DiscordEmbed = {
   author?: { name: string };
   fields?: { name: string; value: string; inline?: boolean }[];
   footer?: { text: string };
+  thumbnail?: { url: string };
   url?: string;
 };
 
@@ -105,6 +107,8 @@ export type ReadingCardInput = {
   /** `describeResult(r, false)` */
   detail: string;
   kind: "new" | "update";
+  /** `Book.coverUrl`; anything but a covers.openlibrary.org URL is ignored. */
+  coverUrl?: string | null;
 };
 
 /** The public card posted in the librairie for every reading, whatever the surface. */
@@ -119,6 +123,7 @@ export function readingCard(r: ReadingCardInput): DiscordEmbed {
     title: fr(`📚 ${r.title}`),
     description: fr(lines.join("\n")).slice(0, EMBED_LIMIT),
     color: hexToInt(r.teamColor),
+    ...(isAllowedCoverUrl(r.coverUrl) ? { thumbnail: { url: r.coverUrl } } : {}),
     ...(r.kind === "new" ? { footer: { text: fr("Une coquille ? /modifier-un-livre, ou le site — pendant 1 h.") } } : {}),
     url: `${APP_URL()}/books`,
   };
