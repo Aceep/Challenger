@@ -70,9 +70,10 @@ export function HomeSkeleton() {
  * One `card flat book` row: the cover plate, then title, author, facts, what it
  * validates, and the footer with its two actions.
  *
- * The real body is sized by its text, so the bars carry their own width in
- * pixels (a percentage of a body with no text would collapse to nothing) and
- * `my-1` gives each one the line box of the sentence it stands for.
+ * Each bar carries its width in pixels — it stands for a sentence of a given
+ * length, not for a share of a card whose width changes with the viewport —
+ * and `my-1` gives it the line box of that sentence. The body fills the card,
+ * so the footer puts its two squares flush right, exactly like the real one.
  */
 function BookRowSkeleton() {
   return (
