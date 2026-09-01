@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useActionState, useState } from "react";
+import { BookCover } from "@/components/ui/BookCover";
 import { PageTitle, Pill } from "@/components/ui";
 import { AlertIcon, SearchIcon } from "@/components/ui/icons";
 import { fmtPoints } from "@/lib/format";
 import type { ActionState } from "@/lib/forms";
 import { effectiveType, readingPoints } from "@/lib/scoring/reading";
+import { TitleAutocomplete } from "./TitleAutocomplete";
 
 export type BookFormValues = {
   id?: string;
@@ -17,6 +19,8 @@ export type BookFormValues = {
   finishedAt: string;
   questId: string;
   cellId: string;
+  /** Cover picked in the autocomplete; absent when the reading was typed by hand or came from Discord. */
+  coverUrl?: string | null;
 };
 
 type Props = {
@@ -40,9 +44,14 @@ type Props = {
 
 export function BookForm({ action, values, quests, cells, currentQuest, currentCell, title, submitLabel, locked, prefix = "", embedded, onCancel }: Props) {
   const [state, formAction, pending] = useActionState(action, null);
+  const [bookTitle, setBookTitle] = useState(values.title);
+  const [author, setAuthor] = useState(values.author);
   const [pages, setPages] = useState<number | "">(values.pages);
+  const [coverUrl, setCoverUrl] = useState(values.coverUrl ?? "");
   const [type, setType] = useState(values.type);
   const today = new Date().toISOString().slice(0, 10);
+  // The demo is public: the search route asks for a session, so the combobox stays a plain input there.
+  const isDemo = prefix === "/demo";
   const questOptions = currentQuest && !quests.some((q) => q.value === currentQuest.value) ? [currentQuest, ...quests] : quests;
   const cellOptions = currentCell && !cells.some((c) => c.value === currentCell.value) ? [currentCell, ...cells] : cells;
   const effective = pages ? effectiveType(pages, type === "GRAPHIQUE") : type;
@@ -60,13 +69,34 @@ export function BookForm({ action, values, quests, cells, currentQuest, currentC
       )}
       <form action={formAction} className="flex flex-col gap-4" data-book-form>
         {values.id && <input type="hidden" name="bookId" value={values.id} />}
+        <input type="hidden" name="coverUrl" value={coverUrl} />
         <label className="field">
           Titre
-          <input name="title" required maxLength={200} defaultValue={values.title} autoFocus={!values.id} />
+          <TitleAutocomplete
+            value={bookTitle}
+            onChange={setBookTitle}
+            onPick={(s) => {
+              setBookTitle(s.title);
+              if (s.author) setAuthor(s.author);
+              if (s.pages) setPages(s.pages);
+              setCoverUrl(s.coverUrl ?? "");
+            }}
+            autoFocus={!values.id}
+            disabled={isDemo}
+          />
         </label>
+        {coverUrl && (
+          <div className="cover-picked">
+            <BookCover src={coverUrl} title={bookTitle || "cette lecture"} width={44} />
+            <span className="hint">Couverture trouvée sur OpenLibrary. Elle accompagnera la lecture partout — dans l’appli comme sur Discord.</span>
+            <button type="button" className="btn sm ghost" onClick={() => setCoverUrl("")}>
+              Retirer
+            </button>
+          </div>
+        )}
         <label className="field">
           Auteur·ice
-          <input name="author" required maxLength={120} defaultValue={values.author} />
+          <input name="author" required maxLength={120} value={author} onChange={(e) => setAuthor(e.target.value)} />
         </label>
         <label className="field">
           Nombre de pages
@@ -77,7 +107,7 @@ export function BookForm({ action, values, quests, cells, currentQuest, currentC
             min={1}
             max={5000}
             required
-            defaultValue={values.pages}
+            value={pages}
             onChange={(e) => setPages(e.target.value ? Number(e.target.value) : "")}
           />
           <span className="hint">

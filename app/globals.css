@@ -634,6 +634,111 @@
     color: var(--muted);
   }
 
+  /* --- book covers ------------------------------------------------------- */
+  /* One footprint, two renderings: the cover when OpenLibrary gave one, a paper
+     tile bearing the initial otherwise — so a list never jumps. */
+  .cover-art,
+  .cover-tile {
+    flex: none;
+    border-radius: var(--r-xs);
+    background: var(--surface-2);
+  }
+  .cover-art {
+    object-fit: cover;
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow-raised);
+  }
+  .cover-tile {
+    display: grid;
+    place-items: center;
+    border: 1px dashed var(--line-strong);
+    color: var(--muted);
+    font-family: var(--font-display);
+    font-weight: 700;
+    line-height: 1;
+  }
+  /* Cover + text on one baseline: the admin table, the admin modal header. */
+  .reading-cell {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    min-width: 0;
+  }
+  /* The cover picked in the form, with the sentence that explains it and « Retirer ». */
+  .cover-picked {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    padding: var(--sp-3);
+    border: var(--bw) solid var(--line);
+    border-radius: var(--r-sm);
+    background: var(--surface-2);
+  }
+  .cover-picked .hint {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: var(--fs-xs);
+    font-weight: 400;
+    color: var(--muted);
+  }
+
+  /* --- title autocomplete ------------------------------------------------ */
+  .combo {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-1);
+  }
+  .combo-list {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + var(--sp-1));
+    left: 0;
+    right: 0;
+    max-height: 320px;
+    overflow-y: auto;
+    margin: 0;
+    padding: var(--sp-1);
+    list-style: none;
+    border: var(--bw) solid var(--line-strong);
+    border-radius: var(--r-sm);
+    background: var(--surface);
+    box-shadow: var(--shadow-modal);
+  }
+  .combo-list li {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    padding: var(--sp-2);
+    border-radius: var(--r-xs);
+    cursor: pointer;
+  }
+  .combo-list li.is-active {
+    background: var(--hi);
+  }
+  .combo-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  .combo-title,
+  .combo-meta {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .combo-title {
+    font-size: var(--fs-sm);
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  .combo-meta {
+    font-size: var(--fs-xs);
+    font-weight: 400;
+    color: var(--muted);
+  }
+
   .data-table {
     border-collapse: collapse;
     width: 100%;
@@ -788,6 +893,29 @@
     letter-spacing: -0.01em;
     position: relative;
     box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.25);
+  }
+  /* With a cover, the plate becomes the cover and the points slide onto a
+     scrim at its foot; without one, nothing changes. */
+  .plate .art {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 5px;
+  }
+  .plate.has-cover {
+    box-shadow: none;
+  }
+  .plate.has-cover .pts {
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    padding: 3px 2px 4px;
+    font-size: var(--fs-xs);
+    text-align: center;
+    background: rgba(0, 0, 0, 0.62);
+    border-radius: 0 0 5px 5px;
   }
   .plate .half {
     position: absolute;

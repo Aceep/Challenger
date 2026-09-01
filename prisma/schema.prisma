@@ -235,6 +235,8 @@ model Book {
   isGraphic   Boolean   @default(false)
   /// Effective type: GRAPHIQUE when declared or when pages < 150.
   type        BookType  @default(ROMAN)
+  /// Cover picked in the web autocomplete; always a covers.openlibrary.org URL.
+  coverUrl    String?
   /// Reading points, computed once and stored (rules may evolve).
   points      Decimal   @default(0) @db.Decimal(6, 1)
   finishedAt  DateTime  @default(now())
