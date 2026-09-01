@@ -78,7 +78,7 @@ const PLAYER: TourStep[] = [
     path: "/help",
     target: "help-discord",
     title: "Et sur Discord ?",
-    body: "Les mêmes actions, sans quitter la conversation : **/ajouter-un-livre**, **/score**, **/quete**, **/histoire**, **/help**. Les commandes de lecture ne marchent que dans le salon *librairie* de ton équipe.",
+    body: "Les mêmes actions, sans quitter la conversation : **/ajouter-un-livre**, **/score**, **/quete**, **/bingo**, **/histoire**, **/help**. Les commandes de lecture ne marchent que dans le salon *librairie* de ton équipe.",
   },
   {
     id: "help-sections",

@@ -86,6 +86,7 @@ export const SLASH_COMMANDS: SlashCommand[] = [
   },
   { name: "score", description: "Afficher le classement des équipes" },
   { name: "quete", description: "Lister les quêtes ouvertes et leur avancement" },
+  { name: "bingo", description: "Voir la grille de ton équipe : cases validées, en attente ½ et libres" },
   { name: "histoire", description: "Voir le chapitre en cours de ton équipe" },
   { name: "help", description: "Les commandes et les règles du défi" },
 ];

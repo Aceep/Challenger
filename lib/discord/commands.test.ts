@@ -65,4 +65,11 @@ describe("commandes slash", () => {
     expect(GLOBAL_COMMANDS.map((c) => c.name)).toEqual(["challenger"]);
     expect(SLASH_COMMANDS.map((c) => c.name)).not.toContain("challenger");
   });
+
+  it("déclare /bingo par serveur, sans option : elle répond sur l'équipe de qui la tape", () => {
+    const bingo = SLASH_COMMANDS.find((c) => c.name === "bingo");
+    expect(bingo).toBeDefined();
+    expect(bingo?.options ?? []).toEqual([]);
+    expect(GLOBAL_COMMANDS.map((c) => c.name)).not.toContain("bingo");
+  });
 });
