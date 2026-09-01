@@ -6,7 +6,7 @@ import { DEMO_CHALLENGE, DEMO_EDITION_OPTIONS, DEMO_OPEN_QUESTIONS } from "@/lib
 
 export default function DemoAdminLayout({ children }: LayoutProps<"/demo/admin">) {
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="demo-shell flex min-h-dvh flex-col">
       <DemoBanner tour="admin" />
       <AdminShell
         who="Alycia (démo)"

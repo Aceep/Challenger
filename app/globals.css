@@ -1029,8 +1029,16 @@
   }
   .list > li,
   .list > div {
-    display: flex;
     min-width: 0;
+  }
+  /* Only a row that *wraps* a card is turned into a flex line — that is what
+     stretches the card it holds to the row height. A row that is itself the
+     card keeps the display its own class asks for: `.list > li` (0,1,1) beats
+     `.book` (0,1,0), so without this exception the reading grid collapsed into
+     a flex line and its body stopped filling the card. */
+  .list > li:not(.card),
+  .list > div:not(.card) {
+    display: flex;
   }
   .list > li > .card,
   .list > div > .card,
@@ -1878,6 +1886,12 @@
     margin-top: var(--fs-d3);
     flex-wrap: wrap;
   }
+  /* The « déjà un défi ? » line follows the buttons, it is not glued to them. */
+  .hero .hint {
+    margin-top: var(--sp-4);
+    font-size: var(--fs-sm);
+    color: var(--muted);
+  }
   .hero .mascot {
     display: grid;
     place-items: center;
@@ -2090,6 +2104,22 @@
   color: var(--ink);
 }
 
+/* The demo strip carries the only way back to the site (« Accueil », « Se
+   connecter »), so it follows the scroll instead of leaving with the first
+   screen. `--demo-bar` is the height it takes on one line: the sticky rails read
+   it to start below the strip. Outside the demo it is never set, and the 0px
+   fallback leaves them exactly where they were. */
+.demo-shell {
+  --demo-bar: 53px;
+}
+.demo-bar {
+  position: sticky;
+  top: 0;
+  /* Above the page, below the « Plus » sheet (20 shared, later in the DOM),
+     the modal (60) and Kyle's tour (70). */
+  z-index: 20;
+}
+
 /* First line of the « Plus » sheet. */
 .sheet-edition {
   display: flex;
@@ -2115,9 +2145,10 @@
   text-decoration: underline;
 }
 
-/* « Changer » in the edition bar links to Aide › Édition. */
+/* « Changer » in the edition bar links to Aide › Édition — below the demo strip
+   when there is one, since it stays on screen. */
 #edition {
-  scroll-margin-top: 48px;
+  scroll-margin-top: calc(48px + var(--demo-bar, 0px));
 }
 
 /* Admin rail folds into a top bar on phones. */
@@ -2155,8 +2186,8 @@
 @media (min-width: 768px) {
   .rail {
     position: sticky;
-    top: 0;
-    height: 100dvh;
+    top: var(--demo-bar, 0px);
+    height: calc(100dvh - var(--demo-bar, 0px));
     overflow-y: auto;
   }
 }
@@ -2240,6 +2271,16 @@
     grid-column: 1 / -1;
     grid-row: 1;
   }
+  /* A grid item may only travel inside its own area, and the strip's row is
+     exactly its height: it leaves the flow, and the shell keeps its place. */
+  .player-shell > .demo-bar {
+    position: fixed;
+    inset-inline: 0;
+    top: 0;
+  }
+  .demo-shell.player-shell {
+    padding-top: var(--demo-bar);
+  }
   .player-shell > .flex-1 {
     grid-column: 2;
     grid-row: 2;
@@ -2249,9 +2290,9 @@
     grid-column: 1;
     grid-row: 2;
     position: sticky;
-    top: 0;
+    top: var(--demo-bar, 0px);
     bottom: auto;
-    height: 100dvh;
+    height: calc(100dvh - var(--demo-bar, 0px));
     display: flex;
     flex-direction: column;
     gap: var(--sp-1);

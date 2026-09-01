@@ -66,17 +66,30 @@ export function HomeSkeleton() {
   );
 }
 
-/** One `card flat book` row: point plate, title, author, meta, footer. */
+/**
+ * One `card flat book` row: the cover plate, then title, author, facts, what it
+ * validates, and the footer with its two actions.
+ *
+ * Each bar carries its width in pixels — it stands for a sentence of a given
+ * length, not for a share of a card whose width changes with the viewport —
+ * and `my-1` gives it the line box of that sentence. The body fills the card,
+ * so the footer puts its two squares flush right, exactly like the real one.
+ */
 function BookRowSkeleton() {
   return (
     <li className="card flat book" aria-hidden>
-      <Skeleton className="plate" style={{ borderRadius: 5 }} />
-      <div className="body">
-        <Skeleton className="h-4 w-3/5" />
-        <Skeleton className="line w-2/5" />
-        <Skeleton className="line w-1/3" />
+      <Skeleton className="h-16 w-12 shrink-0" style={{ borderRadius: 5 }} />
+      <div className="body min-w-0">
+        <Skeleton className="h-[19px] w-[190px] max-w-full" />
+        <Skeleton className="line my-1 w-[130px] max-w-full" />
+        <Skeleton className="line my-1 w-[96px] max-w-full" />
+        <Skeleton className="line my-1 w-[150px] max-w-full" />
         <div className="foot">
-          <Skeleton className="line w-2/5" />
+          <Skeleton className="line w-[130px] max-w-full" />
+          <span className="actions">
+            <Skeleton className="h-[30px] w-[30px]" style={{ borderRadius: "var(--r-sm)" }} />
+            <Skeleton className="h-[30px] w-[30px]" style={{ borderRadius: "var(--r-sm)" }} />
+          </span>
         </div>
       </div>
     </li>
@@ -89,14 +102,16 @@ export function BooksSkeleton() {
     <SkeletonPage gap={6}>
       <TitleSkeleton w="45%" action={110} />
       <ul className="list" aria-hidden>
-        {Array.from({ length: 3 }, (_, i) => (
+        {Array.from({ length: 4 }, (_, i) => (
           <BookRowSkeleton key={i} />
         ))}
       </ul>
       <section className="section">
         <SectionHeadingSkeleton w="45%" />
         <ul className="list" aria-hidden>
-          <BookRowSkeleton />
+          {Array.from({ length: 2 }, (_, i) => (
+            <BookRowSkeleton key={i} />
+          ))}
         </ul>
       </section>
     </SkeletonPage>
