@@ -689,21 +689,65 @@
     flex-direction: column;
     gap: var(--sp-1);
   }
-  .combo-list {
+  /* The field alone, so the spinner sits inside its right edge. */
+  .combo-input {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+  .combo-input input {
+    padding-right: 38px;
+  }
+  /* `.spinner` measures 1em: its size is set by the font-size it inherits. */
+  .combo-spin {
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    transform: translateY(-50%);
+    display: grid;
+    place-items: center;
+    font-size: 15px;
+    color: var(--kyle-deep);
+    pointer-events: none;
+  }
+  /* The popup: the refresh bar on top, the list below. */
+  .combo-pop {
     position: absolute;
     z-index: 20;
     top: calc(100% + var(--sp-1));
     left: 0;
     right: 0;
+    overflow: hidden;
+    border: var(--bw) solid var(--line-strong);
+    border-radius: var(--r-sm);
+    background: var(--surface);
+    box-shadow: var(--shadow-modal);
+  }
+  /* A new search over an answered one: the old lines stay readable, just dimmed. */
+  .combo-bar {
+    display: block;
+    height: 2px;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--kyle) 22%, transparent);
+  }
+  .combo-bar::after {
+    content: "";
+    display: block;
+    width: 40%;
+    height: 100%;
+    border-radius: var(--r-pill);
+    background: var(--kyle-deep);
+    animation: combo-sweep 1.1s var(--ease) infinite;
+  }
+  .combo-list {
     max-height: 320px;
     overflow-y: auto;
     margin: 0;
     padding: var(--sp-1);
     list-style: none;
-    border: var(--bw) solid var(--line-strong);
-    border-radius: var(--r-sm);
-    background: var(--surface);
-    box-shadow: var(--shadow-modal);
+  }
+  .combo-list.is-stale {
+    opacity: 0.5;
   }
   .combo-list li {
     display: flex;
@@ -715,6 +759,19 @@
   }
   .combo-list li.is-active {
     background: var(--hi);
+  }
+  /* « Recherche en cours… » / « Aucun livre trouvé » — a line, never an option. */
+  .combo-list li.combo-status {
+    gap: var(--sp-2);
+    padding: var(--sp-3) var(--sp-2);
+    cursor: default;
+    font-size: var(--fs-sm);
+    font-weight: 400;
+    color: var(--muted);
+  }
+  .combo-list li.combo-status .spinner {
+    flex: none;
+    color: var(--kyle-deep);
   }
   .combo-text {
     display: flex;
@@ -2405,6 +2462,14 @@ button[aria-busy="true"] {
     transform: rotate(360deg);
   }
 }
+@keyframes combo-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
 @keyframes toast-in {
   from {
     opacity: 0;
@@ -2590,8 +2655,13 @@ button[aria-busy="true"] {
   .toast,
   .kyle-react.hop,
   .kyle-react.shake,
-  .cell.pop {
+  .cell.pop,
+  .combo-bar::after {
     animation: none;
+  }
+  /* Still a bar, just a still one. */
+  .combo-bar::after {
+    width: 100%;
   }
   .btn:active,
   .cell:active,
