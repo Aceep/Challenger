@@ -1,0 +1,38 @@
+# Appelle /api/cron/tick toutes les heures — le plan Vercel Hobby ne permet que
+# des crons quotidiens et imprécis, alors que le tick veut la minute près
+# (fenêtre du dimanche, classement de 20 h, expiration des votes).
+#
+# Deux limites propres aux crons GitHub, à connaître avant de s'y fier :
+#   • l'horaire est un « au plus tôt », pas une garantie : un déclenchement peut
+#     être retardé de quelques minutes quand les runners sont chargés ;
+#   • GitHub désactive les crons d'un dépôt resté 60 jours sans activité. Il faut
+#     alors les réactiver à la main depuis l'onglet Actions.
+#
+# Le secret de dépôt CRON_SECRET (Settings › Secrets and variables › Actions)
+# doit valoir exactement la variable CRON_SECRET du projet Vercel, sinon
+# /api/cron/tick répond 401. Tant qu'il est absent, le job réussit sans rien
+# appeler : on ne veut pas d'un échec horaire sur un dépôt fraîchement cloné.
+
+name: Tick horaire
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+jobs:
+  tick:
+    name: Déclencher /api/cron/tick
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Appeler le tick
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::notice::CRON_SECRET absent — tick ignoré. Ajoutez le secret de dépôt CRON_SECRET (même valeur que sur Vercel) pour l'activer."
+            exit 0
+          fi
+          curl -fsS --max-time 30 "https://challenger-aceepkyle.vercel.app/api/cron/tick?secret=${CRON_SECRET}"
+          echo
