@@ -777,10 +777,11 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
+    flex: 1 1 auto;
     min-width: 0;
   }
   .combo-title,
-  .combo-meta {
+  .combo-meta-text {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -790,10 +791,38 @@
     font-weight: 700;
     line-height: 1.2;
   }
+  /* What was typed, lit up inside the title — never the browser's raw yellow. */
+  .combo-title mark {
+    border-radius: 3px;
+    padding: 0 1px;
+    background: var(--hi);
+    color: inherit;
+  }
   .combo-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    min-width: 0;
     font-size: var(--fs-xs);
     font-weight: 400;
     color: var(--muted);
+  }
+  /* « ISBN reconnu » — the line comes from the number on the back of the book. */
+  .combo-flag {
+    flex: none;
+    padding: 1px 6px;
+    border-radius: var(--r-pill);
+    background: var(--olive-soft);
+    color: var(--olive-ink);
+    font-size: var(--fs-nav);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  /* « 96 p. ≈ 9,6 pts » — the barème of the edition, read on the spot. */
+  .combo-points {
+    flex: none;
+    white-space: nowrap;
   }
 
   .data-table {

@@ -18,6 +18,7 @@ export default async function NewBookPage() {
       quests={quests}
       cells={cells}
       locked={locked}
+      pointsPerPage={challenge?.pointsPerPage}
       values={{ title: "", author: "", pages: "", type: "ROMAN", finishedAt: "", questId: "", cellId: "" }}
     />
   );
