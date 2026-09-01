@@ -28,6 +28,7 @@ export async function loadBookEdit(bookId: string, actor: { id: string; role: Ac
       title: book.title,
       author: book.author,
       pages: book.pages,
+      coverUrl: book.coverUrl,
       type: book.isGraphic ? "GRAPHIQUE" : "ROMAN",
       finishedAt: book.finishedAt.toISOString().slice(0, 10),
       questId: book.questBook?.questId ?? "",

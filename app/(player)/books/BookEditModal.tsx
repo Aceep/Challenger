@@ -24,7 +24,8 @@ export function BookEditModal({ edit, prefix, action }: { edit: BookEditProps; p
   const snapshot = () => {
     const m = new Map<string, string>();
     root.current?.querySelectorAll<HTMLInputElement | HTMLSelectElement>("[data-book-form] input[name], [data-book-form] select[name]").forEach((el) => {
-      if (el.type !== "hidden") m.set(el.name, el.value);
+      // Hidden inputs are plumbing (`bookId`) — except the cover, which one may deliberately remove.
+      if (el.type !== "hidden" || el.name === "coverUrl") m.set(el.name, el.value);
     });
     return m;
   };

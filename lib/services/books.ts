@@ -3,6 +3,7 @@ import "server-only";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { fmtDelta } from "@/lib/format";
+import { isAllowedCoverUrl } from "@/lib/books/openlibrary";
 import { assertWritable, canEditBook, editDeadline, type ActorRole } from "@/lib/scoring/books";
 import { effectiveType, readingPoints, type BookType } from "@/lib/scoring/reading";
 import { attachBookToCell, detachBookFromCell, resettleCell, snapshotCellPositions, type CellAttachResult } from "@/lib/services/bingo";
@@ -13,12 +14,20 @@ type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
 
 const optionalId = z.string().optional().transform((s) => s || null);
 
+/** Cover of the OpenLibrary autocomplete; anything else is dropped by `safeCover`. */
+const optionalCover = z.string().trim().max(500).optional().transform((s) => s || null);
+
+/** A cover is stored only when it comes from covers.openlibrary.org — the form is not to be trusted. */
+const safeCover = (url: string | null | undefined) => (isAllowedCoverUrl(url) ? url : null);
+
 export const bookSchema = z.object({
   title: z.string().trim().min(1, "Titre requis").max(200),
   author: z.string().trim().min(1, "Auteur·ice requis·e").max(120),
   pages: z.coerce.number().int("Nombre entier").min(1, "Au moins 1 page").max(5000),
   /** Declared type. Under 150 pages the reading is a graphique whatever is declared. */
   type: z.enum(["ROMAN", "GRAPHIQUE"]).default("ROMAN"),
+  /** Cover URL filled by the web autocomplete; absent from the Discord flow. */
+  coverUrl: optionalCover,
   finishedAt: z.coerce.date().optional(),
   /** Quest to attach the reading to. */
   questId: optionalId,
@@ -79,6 +88,7 @@ export async function logBook(actor: BookActor, input: BookInput): Promise<BookR
         pages: input.pages,
         isGraphic: input.type === "GRAPHIQUE",
         type,
+        coverUrl: safeCover(input.coverUrl),
         points: readingPoints(input.pages, membership?.team.challenge.pointsPerPage),
         finishedAt: input.finishedAt ?? new Date(),
         updatedById: actor.id,
@@ -123,6 +133,7 @@ export async function updateBook(actor: BookActor, bookId: string, patch: BookPa
       data: {
         ...(patch.title !== undefined && { title: patch.title }),
         ...(patch.author !== undefined && { author: patch.author }),
+        ...(patch.coverUrl !== undefined && { coverUrl: safeCover(patch.coverUrl) }),
         pages,
         isGraphic: declaredGraphic,
         type,
