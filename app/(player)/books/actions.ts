@@ -36,7 +36,9 @@ export async function logBookAction(_prev: ActionState, formData: FormData): Pro
     if (challengeId) after(() => announceRankChange(challengeId, before, top));
     if (teamId && result.cell?.grid) after(() => announceGridChange(teamId, result.cell!.grid!));
     const detail = describeResult(result, false);
-    if (teamId) after(() => announceReading(result.book.id, { kind: "new", points: result.points, detail }));
+    // L'équipe qui compte est celle de la lecture, pas celle de la personne
+    // connectée : `announceReading` la lit sur le livre et se tait tout seul.
+    after(() => announceReading(result.book.id, { kind: "new", points: result.points, detail }));
     message = describeResult(result);
   } catch (e) {
     return { error: userMessage(e) };
@@ -57,7 +59,9 @@ export async function updateBookAction(_prev: ActionState, formData: FormData): 
     if (challengeId) after(() => announceRankChange(challengeId, before, top));
     if (teamId && result.cell?.grid) after(() => announceGridChange(teamId, result.cell!.grid!));
     const detail = describeResult(result, false);
-    if (teamId) after(() => announceReading(result.book.id, { kind: "update", points: result.points, detail }));
+    // Idem : un·e capitaine ou un·e organisateur·ice qui corrige la lecture
+    // d'une autre personne doit produire la même carte.
+    after(() => announceReading(result.book.id, { kind: "update", points: result.points, detail }));
     message = ["Lecture modifiée", describeResult(result)].filter(Boolean).join(" · ");
   } catch (e) {
     return { error: userMessage(e) };
