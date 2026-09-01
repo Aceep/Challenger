@@ -1,5 +1,6 @@
 import { BookForm } from "@/app/(player)/books/BookForm";
 import { demoStateAction } from "@/lib/demo/actions";
+import { DEMO_CHALLENGE_FORM } from "@/lib/demo/data";
 
 export default function DemoNewBookPage() {
   return (
@@ -8,6 +9,7 @@ export default function DemoNewBookPage() {
       title="J'ai fini une lecture"
       submitLabel="Enregistrer"
       prefix="/demo"
+      pointsPerPage={DEMO_CHALLENGE_FORM.pointsPerPage}
       quests={[
         { value: "demo-quest-3", name: "#3 — Un roman traduit d'une langue asiatique — 20 pts" },
         { value: "demo-quest-1", name: "#1 — Un livre de moins de 200 pages (½ fait) — 10 pts" },

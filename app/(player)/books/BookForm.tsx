@@ -35,6 +35,12 @@ type Props = {
   submitLabel: string;
   /** Sunday verification window is open (non-admins cannot write). */
   locked?: string | null;
+  /**
+   * Rate of the edition this reading belongs to — what both points previews
+   * count with (the suggestions of the search bar, and the field itself).
+   * Left out, `readingPoints` falls back on the standard 0,1 pt per page.
+   */
+  pointsPerPage?: number;
   /** `/demo` when rendered by the read-only demo. */
   prefix?: string;
   /** Rendered inside a modal: no page shell, « Annuler » calls onCancel. */
@@ -42,7 +48,21 @@ type Props = {
   onCancel?: () => void;
 };
 
-export function BookForm({ action, values, quests, cells, currentQuest, currentCell, title, submitLabel, locked, prefix = "", embedded, onCancel }: Props) {
+export function BookForm({
+  action,
+  values,
+  quests,
+  cells,
+  currentQuest,
+  currentCell,
+  title,
+  submitLabel,
+  locked,
+  pointsPerPage,
+  prefix = "",
+  embedded,
+  onCancel,
+}: Props) {
   const [state, formAction, pending] = useActionState(action, null);
   const [bookTitle, setBookTitle] = useState(values.title);
   const [author, setAuthor] = useState(values.author);
@@ -55,7 +75,7 @@ export function BookForm({ action, values, quests, cells, currentQuest, currentC
   const questOptions = currentQuest && !quests.some((q) => q.value === currentQuest.value) ? [currentQuest, ...quests] : quests;
   const cellOptions = currentCell && !cells.some((c) => c.value === currentCell.value) ? [currentCell, ...cells] : cells;
   const effective = pages ? effectiveType(pages, type === "GRAPHIQUE") : type;
-  const preview = pages ? readingPoints(pages) : 0;
+  const preview = pages ? readingPoints(pages, pointsPerPage) : 0;
 
   const Shell = embedded ? "div" : "main";
   return (
@@ -81,6 +101,7 @@ export function BookForm({ action, values, quests, cells, currentQuest, currentC
               if (s.pages) setPages(s.pages);
               setCoverUrl(s.coverUrl ?? "");
             }}
+            pointsPerPage={pointsPerPage}
             autoFocus={!values.id}
             disabled={isDemo}
           />

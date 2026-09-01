@@ -14,6 +14,8 @@ export type BookEditProps = {
   currentQuest: { value: string; name: string } | null;
   currentCell: { value: string; name: string } | null;
   locked: string | null;
+  /** Rate of the edition the reading belongs to; absent for a reading with no team. */
+  pointsPerPage?: number;
 };
 
 /** Edit a reading in a modal (full page on phones); closing with unsaved changes asks first. */
@@ -53,6 +55,7 @@ export function BookEditModal({ edit, prefix, action }: { edit: BookEditProps; p
           currentQuest={edit.currentQuest}
           currentCell={edit.currentCell}
           locked={edit.locked}
+          pointsPerPage={edit.pointsPerPage}
           values={edit.values}
         />
       </div>
