@@ -4,7 +4,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { fmtDelta } from "@/lib/format";
 import { isAllowedCoverUrl } from "@/lib/books/openlibrary";
-import { assertWritable, canEditBook, editDeadline, type ActorRole } from "@/lib/scoring/books";
+import { assertWritable, canEditBook, editDeadline, inActorEdition, type ActorRole } from "@/lib/scoring/books";
 import { effectiveType, readingPoints, type BookType } from "@/lib/scoring/reading";
 import { attachBookToCell, detachBookFromCell, resettleCell, snapshotCellPositions, type CellAttachResult } from "@/lib/services/bingo";
 import { awardPoints, num } from "@/lib/services/points";
@@ -41,7 +41,22 @@ export const bookPatchSchema = bookSchema.partial();
 export type BookPatch = z.infer<typeof bookPatchSchema>;
 
 /** Who is writing, in which challenge. `challengeId` is null when they belong to none. */
-export type BookActor = { id: string; role: ActorRole; challengeId: string | null; teamId: string | null; isCaptain: boolean };
+export type BookActor = {
+  id: string;
+  role: ActorRole;
+  challengeId: string | null;
+  teamId: string | null;
+  isCaptain: boolean;
+  /** Platform owner: organiser of every edition, so no edition boundary. */
+  isSuperAdmin?: boolean;
+};
+
+/**
+ * Readings of one edition: those credited to a team of it, plus the ones
+ * attached to no team, which belong to no edition. Someone in no edition only
+ * ever sees the latter.
+ */
+const ofEdition = (challengeId: string | null) => (challengeId ? { OR: [{ team: { challengeId } }, { teamId: null }] } : { teamId: null });
 
 export type BookResult = {
   book: { id: string; title: string; pages: number; type: BookType; points: number };
@@ -103,9 +118,11 @@ export async function logBook(actor: BookActor, input: BookInput): Promise<BookR
 
 async function loadEditable(tx: Tx, bookId: string, actor: BookActor) {
   const book = await tx.book.findUnique({ where: { id: bookId, deletedAt: null }, include: { team: { include: { challenge: true } } } });
-  if (!book) throw new GameError("Lecture introuvable");
+  // A reading of another edition simply does not exist from here — organising one
+  // edition grants nothing on its neighbour.
+  if (!book || !inActorEdition(book, actor)) throw new GameError("Lecture introuvable");
   const isCaptainOfOwner = !!book.team && book.team.captainId === actor.id;
-  if (!canEditBook(book, { id: actor.id, role: actor.role, isCaptainOfOwner })) {
+  if (!canEditBook(book, { id: actor.id, role: actor.role, isCaptainOfOwner, challengeId: actor.challengeId, isSuperAdmin: actor.isSuperAdmin })) {
     throw new GameError(
       book.userId === actor.id
         ? `Modification possible pendant 1 h après l'ajout (jusqu'à ${editDeadline(book).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" })}) ; ensuite, demande à ton·ta capitaine.`
@@ -186,21 +203,31 @@ const bookInclude = {
   questBook: { include: { quest: { select: { number: true, title: true } } } },
   bingoFill: { include: { cell: { select: { row: true, col: true } } } },
   user: { select: { name: true } },
-  team: { select: { id: true, captainId: true } },
+  team: { select: { id: true, captainId: true, challengeId: true } },
 } as const;
 
-function decorate<T extends { userId: string; createdAt: Date; points: { toString(): string }; team: { captainId: string | null } | null }>(b: T, actor: BookActor) {
+function decorate<T extends { userId: string; createdAt: Date; points: { toString(): string }; team: { captainId: string | null; challengeId: string } | null }>(b: T, actor: BookActor) {
   return {
     ...b,
     points: num(b.points),
-    editable: canEditBook(b, { id: actor.id, role: actor.role, isCaptainOfOwner: b.team?.captainId === actor.id }),
+    editable: canEditBook(b, {
+      id: actor.id,
+      role: actor.role,
+      isCaptainOfOwner: b.team?.captainId === actor.id,
+      challengeId: actor.challengeId,
+      isSuperAdmin: actor.isSuperAdmin,
+    }),
     editUntil: editDeadline(b),
   };
 }
 
-/** A player's readings with points, links and edit permission for `actor`. */
+/** A player's readings **of the edition being played**, with points, links and edit permission for `actor`. */
 export async function listBooks(userId: string, actor: BookActor) {
-  const books = await prisma.book.findMany({ where: { userId, deletedAt: null }, orderBy: { finishedAt: "desc" }, include: bookInclude });
+  const books = await prisma.book.findMany({
+    where: { userId, deletedAt: null, ...ofEdition(actor.challengeId) },
+    orderBy: { finishedAt: "desc" },
+    include: bookInclude,
+  });
   return books.map((b) => decorate(b, actor));
 }
 
@@ -210,14 +237,15 @@ export async function listTeamBooks(teamId: string, exceptUserId: string, actor:
   return books.map((b) => decorate(b, actor));
 }
 
-export async function getBook(bookId: string) {
-  const b = await prisma.book.findUnique({
-    where: { id: bookId, deletedAt: null },
+/** One reading, seen from an edition: a reading of another one is « introuvable ». */
+export async function getBook(bookId: string, scope: { challengeId: string | null; isSuperAdmin?: boolean }) {
+  const b = await prisma.book.findFirst({
+    where: { id: bookId, deletedAt: null, ...(scope.isSuperAdmin ? {} : ofEdition(scope.challengeId)) },
     include: {
       questBook: { select: { questId: true, quest: { select: { number: true, title: true } } } },
       bingoFill: { select: { cellId: true, cell: { select: { row: true, col: true, prompt: true } } } },
       user: { select: { id: true, name: true } },
-      team: { select: { id: true, captainId: true } },
+      team: { select: { id: true, captainId: true, challengeId: true } },
     },
   });
   return b && { ...b, points: num(b.points) };

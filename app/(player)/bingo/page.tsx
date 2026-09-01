@@ -29,12 +29,12 @@ export default async function BingoPage({ searchParams }: PageProps<"/bingo">) {
     prisma.book.findMany({
       where: { teamId: team.id, deletedAt: null },
       orderBy: { finishedAt: "desc" },
-      include: { user: { select: { name: true } }, bingoFill: { select: { cellId: true } } },
+      include: { user: { select: { name: true } }, bingoFill: { select: { cellId: true } }, team: { select: { challengeId: true } } },
     }),
   ]);
   const isCaptain = team.captainId === user.id;
   const books = teamBooks
-    .filter((b) => canEditBook(b, { id: user.id, role: role ?? "PLAYER", isCaptainOfOwner: isCaptain }))
+    .filter((b) => canEditBook(b, { id: user.id, role: role ?? "PLAYER", isCaptainOfOwner: isCaptain, challengeId: challenge.id, isSuperAdmin: user.isSuperAdmin }))
     .map((b) => ({ id: b.id, title: b.title, type: b.type, owner: b.user.name ?? "?", placedOn: b.bingoFill?.cellId ?? null }));
 
   return (

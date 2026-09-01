@@ -29,14 +29,14 @@ export default async function BooksPage({ searchParams }: PageProps<"/books">) {
   const { user, challenge, role, team } = await getCurrentPlayer();
   const params = await searchParams;
   const isCaptain = team?.captainId === user.id;
-  const actor = { id: user.id, role: role ?? "PLAYER", challengeId: challenge?.id ?? null, teamId: team?.id ?? null, isCaptain } as const;
+  const actor = { id: user.id, role: role ?? "PLAYER", challengeId: challenge?.id ?? null, teamId: team?.id ?? null, isCaptain, isSuperAdmin: user.isSuperAdmin } as const;
   const [books, teamBooks] = await Promise.all([
     listBooks(user.id, actor),
     isCaptain && team ? listTeamBooks(team.id, user.id, actor) : Promise.resolve([]),
   ]);
   const showDeadline = !isCaptain && role !== "ORGANIZER";
   const editId = Array.isArray(params.edit) ? params.edit[0] : params.edit;
-  const editing = editId ? await loadBookEdit(editId, { ...user, role: role ?? "PLAYER" }) : null;
+  const editing = editId ? await loadBookEdit(editId, { ...user, role: role ?? "PLAYER", challengeId: challenge?.id ?? null }) : null;
   const flash = editId && !editing ? { ...params, error: "Cette lecture n’est plus modifiable (délai d’1 h dépassé — demande à ton·ta capitaine)." } : params;
 
   return (
