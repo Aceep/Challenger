@@ -41,7 +41,7 @@ export function QuestForm({ quest, nextNumber, teams, action, doneHref, onCancel
         <p className="num rounded-[10px] border-[1.5px] border-dashed border-[color:var(--line)] px-3 py-2.5 font-display text-[18px] font-black">#{quest?.number ?? nextNumber}</p>
         <span className="hint">Attribué automatiquement, dans l&apos;ordre de création.</span>
       </div>
-      <label className="field" style={{ gridColumn: "span 2" }}>
+      <label className="field span-2">
         Titre
         <input name="title" required autoFocus defaultValue={quest?.title ?? ""} placeholder="ex. Un livre dont le titre contient une couleur" />
       </label>
