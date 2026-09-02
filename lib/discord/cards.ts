@@ -19,6 +19,8 @@ export type DiscordEmbed = {
   fields?: { name: string; value: string; inline?: boolean }[];
   footer?: { text: string };
   thumbnail?: { url: string };
+  /** Grande image sous l'embed — `attachment://fichier.png` pour une pièce jointe. */
+  image?: { url: string };
   url?: string;
 };
 

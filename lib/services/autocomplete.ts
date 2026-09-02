@@ -43,6 +43,30 @@ export async function cellChoices(teamId: string, q = ""): Promise<Choice[]> {
 }
 
 /**
+ * Toutes les cases de la grille en cours, pour l'option *case* de `/bingo` —
+ * celle-ci détaille une case, y compris déjà validée, là où `cellChoices` ne
+ * propose que ce qu'on peut encore remplir. La valeur est la **coordonnée**
+ * (« D1 ») et non l'identifiant : on doit pouvoir la taper à la main.
+ */
+export async function bingoCellChoices(teamId: string, q = ""): Promise<Choice[]> {
+  const grid = await prisma.$transaction((tx) => activeGridForTeam(tx, teamId));
+  if (!grid) return [];
+  const cells = await prisma.bingoCell.findMany({
+    where: { gridId: grid.id },
+    orderBy: [{ row: "asc" }, { col: "asc" }],
+    include: { fills: { where: { teamId, book: { deletedAt: null } }, include: { book: { select: { type: true } } } } },
+  });
+  return cells
+    .map((c) => {
+      const weights = c.fills.map((f) => bookWeight(f.book.type));
+      const state = isComplete(weights) ? " ✅" : weights.length ? " ½" : "";
+      return { name: `${cellLabel(c.row, c.col)} — ${c.prompt}${state}`.slice(0, 100), value: cellLabel(c.row, c.col) };
+    })
+    .filter((c) => matches(c.name, q))
+    .slice(0, 25);
+}
+
+/**
  * Readings the actor may edit **in this edition**: own recent ones, plus the
  * whole team's for the captain. Without a team the readings attached to none are
  * the only ones proposed — those of another edition never are.

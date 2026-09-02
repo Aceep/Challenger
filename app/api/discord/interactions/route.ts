@@ -1,7 +1,8 @@
 import { InteractionResponseType, InteractionType, verifyKey } from "discord-interactions";
 import { after, NextResponse } from "next/server";
 import { cancelBookPending, chooseBookOption, openBookModal, saveBookPending, submitBookModal, type FlowCtx, type InteractionReply } from "@/lib/discord/book-flow";
-import { bingoCard } from "@/lib/discord/bingo";
+import { bingoCard, bingoCellCard } from "@/lib/discord/bingo";
+import { GRID_IMAGE_FILENAME, renderGridPng } from "@/lib/bingo/grid-image";
 import { readingConfirmation, type DiscordEmbed } from "@/lib/discord/cards";
 import { BOOK_MODAL_ID, NONE, modalValues, parseBookId } from "@/lib/discord/components";
 import { hasManageGuild, parseChallengerInteraction } from "@/lib/discord/challenger";
@@ -10,7 +11,7 @@ import { getGuild } from "@/lib/discord/rest";
 import { userMessage } from "@/lib/errors";
 import { fmtPoints } from "@/lib/format";
 import { HELP_TITLE, helpText } from "@/lib/discord/help";
-import { cellChoices, editableBookChoices, questChoices } from "@/lib/services/autocomplete";
+import { bingoCellChoices, cellChoices, editableBookChoices, questChoices } from "@/lib/services/autocomplete";
 import { createChallengeFromGuild, joinChallengeFromGuild } from "@/lib/services/challenger";
 import { syncMemberRoles } from "@/lib/services/discord-setup";
 import { getTeamBoard } from "@/lib/services/bingo";
@@ -37,6 +38,23 @@ const ephemeralEmbed = (title: string, description: string) =>
   reply(InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE, { embeds: [{ title, description }], flags: 64 });
 /** Same, for a card built whole by a pure module (colour, footer, link). */
 const ephemeralCard = (embed: DiscordEmbed) => reply(InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE, { embeds: [embed], flags: 64 });
+
+/**
+ * Une carte avec une image à elle : Discord n'accepte un fichier qu'en
+ * `multipart/form-data` — `payload_json` porte la réponse habituelle, `files[0]`
+ * l'octet du PNG, et l'embed le désigne par `attachment://…`. La frontière est
+ * posée par le runtime à partir du `FormData`.
+ */
+function ephemeralCardWithImage(embed: DiscordEmbed, png: Buffer, filename: string) {
+  const payload = {
+    type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+    data: { embeds: [embed], attachments: [{ id: 0, filename }], flags: 64 },
+  };
+  const form = new FormData();
+  form.append("payload_json", JSON.stringify(payload));
+  form.append("files[0]", new Blob([new Uint8Array(png)], { type: "image/png" }), filename);
+  return new NextResponse(form);
+}
 const choices = (list: { name: string; value: string }[]) => reply(InteractionResponseType.APPLICATION_COMMAND_AUTOCOMPLETE_RESULT, { choices: list });
 /** The « J'ai fini un livre » handlers already return a complete response body. */
 const fromFlow = (r: InteractionReply) => NextResponse.json(r);
@@ -188,7 +206,9 @@ export async function POST(request: Request) {
       const q = String(focused?.value ?? "");
       if (!team) return choices([]);
       if (focused?.name === "quete") return choices(await questChoices(challenge.id, team.id, q));
-      if (focused?.name === "case") return choices(await cellChoices(team.id, q));
+      // La même option `case` sert deux gestes : poser une lecture (les cases
+      // qu'on peut encore remplir) et détailler une case de `/bingo` (toutes).
+      if (focused?.name === "case") return choices(interaction.data?.name === "bingo" ? await bingoCellChoices(team.id, q) : await cellChoices(team.id, q));
       if (focused?.name === "livre") return choices(await editableBookChoices(actor, q));
       return choices([]);
     }
@@ -300,15 +320,27 @@ export async function POST(request: Request) {
       case "bingo": {
         if (!team) return ephemeral("Rejoins une équipe d’abord : le bingo se joue en équipe.");
         const board = await getTeamBoard(team.id);
-        return ephemeralCard(
-          bingoCard({
-            teamName: team.name,
-            teamColor: team.color,
-            grid: board.grid,
-            total: board.total,
-            bonus: { line: challenge.bingoLineBonus, full: challenge.bingoFullBonus },
-          }),
-        );
+        const input = {
+          teamName: team.name,
+          teamColor: team.color,
+          grid: board.grid,
+          total: board.total,
+          bonus: { line: challenge.bingoLineBonus, full: challenge.bingoFullBonus },
+        };
+        // `/bingo case:D1` — le détail d'une case, sans image.
+        const coord = String(opts.case ?? "").trim();
+        if (coord) return ephemeralCard(bingoCellCard(input, coord));
+
+        const card = bingoCard(input);
+        if (!card.grid) return ephemeralCard(card.embed);
+        try {
+          return ephemeralCardWithImage(card.embed, renderGridPng(card.grid), GRID_IMAGE_FILENAME);
+        } catch (e) {
+          // Le dessin est un confort : si le canvas natif manque, la carte part
+          // sans son image plutôt que la commande de rendre une erreur.
+          console.error("[bingo] image non dessinée", e);
+          return ephemeralCard({ ...card.embed, image: undefined });
+        }
       }
       case "histoire": {
         if (!team) return ephemeral("Rejoins une équipe d'abord.");
