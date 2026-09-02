@@ -19,7 +19,8 @@ export function NewChallengeView({ defaults, action }: NewChallengeViewProps) {
       <NewChallengeForm defaults={defaults} action={action} />
 
       <KyleEmpty>
-        Tu as reçu une invitation, ou ton serveur a déjà un défi&#8239;? Tape <code>/challenger rejoindre</code> sur Discord, il n’y a rien à créer.
+        Ton serveur a déjà un défi&#8239;? Il n’y a rien à créer&#8239;: demande une invitation aux organisateur·ices, elle s’appliquera à ta prochaine
+        connexion.
       </KyleEmpty>
     </main>
   );

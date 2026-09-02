@@ -46,9 +46,10 @@ export function helpSections(channels: { library: string; adventure: string }): 
       ],
     },
     {
-      title: "🚪 Rejoindre ou créer un défi",
+      title: "🚪 Entrer dans un défi",
       lines: [
-        "**/challenger rejoindre** — rejoindre le défi de ce serveur ; **/challenger creer** (admins du serveur) — en créer un.",
+        "On ne rejoint pas un défi soi-même : les organisateur·ices invitent, et l’invitation s’applique à ta prochaine connexion.",
+        "**/challenger creer** (admins du serveur) — ouvrir le défi lecture de ce serveur.",
       ],
     },
     {

@@ -111,8 +111,7 @@ export function HomeView({ userName, team, challengeName, challengeOver, score, 
             Tu n’as pas encore de défi.
           </KyleEmpty>
           <p className="meta">
-            ou rejoins un défi : sur le serveur Discord de ton défi, tape <code>/challenger rejoindre</code>. Une invitation reçue s’applique à ta
-            prochaine connexion.
+            ou rejoins un défi : demande une invitation aux organisateur·ices du défi, elle s’applique à ta prochaine connexion.
           </p>
         </>
       ) : (
