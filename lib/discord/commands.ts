@@ -86,7 +86,16 @@ export const SLASH_COMMANDS: SlashCommand[] = [
   },
   { name: "score", description: "Afficher le classement des équipes" },
   { name: "quete", description: "Lister les quêtes ouvertes et leur avancement" },
-  { name: "bingo", description: "Voir la grille de ton équipe : cases validées, en attente ½ et libres" },
+  // `case` est une **option** et non une sous-commande : Discord interdit
+  // d'invoquer nue une commande qui porte des sous-commandes, et `/bingo` tout
+  // seul — la grille — reste de loin le geste le plus fréquent. L'autocomplétion
+  // (`bingoCellChoices`) propose les coordonnées de la grille en cours, et une
+  // coordonnée tapée à la main est acceptée telle quelle.
+  {
+    name: "bingo",
+    description: "Voir la grille de ton équipe : cases validées, en attente ½ et libres",
+    options: [{ type: STRING, name: "case", description: "Détail d'une case précise (ex. D1) : thème complet, état, lectures posées", required: false, autocomplete: true }],
+  },
   { name: "histoire", description: "Voir le chapitre en cours de ton équipe" },
   { name: "help", description: "Les commandes et les règles du défi" },
 ];

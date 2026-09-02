@@ -66,10 +66,18 @@ describe("commandes slash", () => {
     expect(SLASH_COMMANDS.map((c) => c.name)).not.toContain("challenger");
   });
 
-  it("déclare /bingo par serveur, sans option : elle répond sur l'équipe de qui la tape", () => {
+  it("déclare /bingo par serveur : elle répond sur l'équipe de qui la tape", () => {
     const bingo = SLASH_COMMANDS.find((c) => c.name === "bingo");
     expect(bingo).toBeDefined();
-    expect(bingo?.options ?? []).toEqual([]);
     expect(GLOBAL_COMMANDS.map((c) => c.name)).not.toContain("bingo");
+  });
+
+  it("garde la case de /bingo facultative et autocomplétée — /bingo nu doit rester la grille", () => {
+    const option = SLASH_COMMANDS.find((c) => c.name === "bingo")?.options?.find((o) => o.name === "case");
+    expect(option).toBeDefined();
+    expect(option?.required ?? false).toBe(false);
+    expect(option?.autocomplete).toBe(true);
+    // Une sous-commande (type 1) rendrait `/bingo` seul impossible à envoyer.
+    expect(option?.type).not.toBe(SUB_COMMAND);
   });
 });
