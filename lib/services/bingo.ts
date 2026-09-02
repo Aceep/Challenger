@@ -163,7 +163,8 @@ export async function getTeamBoard(teamId: string) {
       col: c.col,
       label: cellLabel(c.row, c.col),
       prompt: c.prompt,
-      books: c.fills.map((f) => ({ id: f.book.id, title: f.book.title, type: f.book.type, owner: f.book.user.name ?? "?" })),
+      // `at` : la date de pose, pour que Discord nomme la ou les dernières validations.
+      books: c.fills.map((f) => ({ id: f.book.id, title: f.book.title, type: f.book.type, owner: f.book.user.name ?? "?", at: f.createdAt })),
       weight: weights.reduce((n, w) => n + w, 0),
       complete: isComplete(weights),
     };
