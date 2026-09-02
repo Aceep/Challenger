@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Card, Eyebrow, KyleEmpty, Pill } from "@/components/ui";
+import { DataTable } from "@/components/ui/DataTable";
 import { Flash } from "@/components/Flash";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { StatusPill, type FaqStatus } from "@/app/(player)/faq/FaqListView";
@@ -157,62 +158,50 @@ export function FaqAdminView({ forum, questions, hasChallenge, params, demo, set
             {questions.length === 0 ? (
               <p className="text-[13px] text-[color:var(--muted)]">Aucune question pour l&apos;instant.</p>
             ) : (
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Statut</th>
-                    <th>Question</th>
-                    <th>Auteur·rice</th>
-                    <th className="text-right">Réponses</th>
-                    <th>Posée le</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {questions.map((q) => (
-                    <tr key={q.id}>
-                      <td>
-                        <StatusPill status={q.status} />
-                      </td>
-                      <td>
-                        <Link href={p(`/faq/${q.id}`)} className="underline">
-                          {q.pinned ? "📌 " : ""}
-                          {q.title}
-                        </Link>
-                      </td>
-                      <td>{q.author}</td>
-                      <td className="num text-right">{q.messages}</td>
-                      <td className="num">{dateFmt.format(q.createdAt)}</td>
-                      <td className="whitespace-nowrap">
-                        <span className="inline-flex flex-wrap items-center gap-2">
-                          <form action={pinAction} className="inline">
+              <DataTable head={["Statut", "Question", "Auteur·rice", { label: "Réponses", className: "text-right" }, "Posée le", ""]}>
+                {questions.map((q) => (
+                  <tr key={q.id}>
+                    <td>
+                      <StatusPill status={q.status} />
+                    </td>
+                    <td>
+                      <Link href={p(`/faq/${q.id}`)} className="underline">
+                        {q.pinned ? "📌 " : ""}
+                        {q.title}
+                      </Link>
+                    </td>
+                    <td>{q.author}</td>
+                    <td className="num text-right">{q.messages}</td>
+                    <td className="num">{dateFmt.format(q.createdAt)}</td>
+                    <td className="whitespace-nowrap">
+                      <span className="inline-flex flex-wrap items-center gap-2">
+                        <form action={pinAction} className="inline">
+                          <input type="hidden" name="questionId" value={q.id} />
+                          <input type="hidden" name="pinned" value={q.pinned ? "0" : "1"} />
+                          <SubmitButton className="btn small ghost" pendingLabel="…">
+                            {q.pinned ? "Désépingler" : "Épingler"}
+                          </SubmitButton>
+                        </form>
+                        {q.status !== "RESOLVED" && (
+                          <form action={resolveAction} className="inline">
                             <input type="hidden" name="questionId" value={q.id} />
-                            <input type="hidden" name="pinned" value={q.pinned ? "0" : "1"} />
                             <SubmitButton className="btn small ghost" pendingLabel="…">
-                              {q.pinned ? "Désépingler" : "Épingler"}
+                              Résoudre
                             </SubmitButton>
                           </form>
-                          {q.status !== "RESOLVED" && (
-                            <form action={resolveAction} className="inline">
-                              <input type="hidden" name="questionId" value={q.id} />
-                              <SubmitButton className="btn small ghost" pendingLabel="…">
-                                Résoudre
-                              </SubmitButton>
-                            </form>
-                          )}
-                          {q.discordUrl && (
-                            <a href={q.discordUrl} target="_blank" rel="noreferrer" className="text-[13px] underline">
-                              Discord ↗
-                            </a>
-                          )}
-                          {q.discordDeleted && <Pill tone="no">sujet Discord supprimé</Pill>}
-                          <DeleteQuestionButton questionId={q.id} title={q.title} hasThread={!!q.discordUrl} action={deleteAction} iconOnly />
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        )}
+                        {q.discordUrl && (
+                          <a href={q.discordUrl} target="_blank" rel="noreferrer" className="text-[13px] underline">
+                            Discord ↗
+                          </a>
+                        )}
+                        {q.discordDeleted && <Pill tone="no">sujet Discord supprimé</Pill>}
+                        <DeleteQuestionButton questionId={q.id} title={q.title} hasThread={!!q.discordUrl} action={deleteAction} iconOnly />
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </DataTable>
             )}
           </Card>
         </>

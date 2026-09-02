@@ -32,7 +32,9 @@ describe("message d'installation", () => {
   it("sans défi : donne les trois étapes, à commencer par /challenger creer", () => {
     const d = embed(null).description!;
     expect(d).toContain("/challenger creer");
-    expect(d).toContain("/challenger rejoindre");
+    // Les joueur·euses entrent par invitation, plus par une commande Discord.
+    expect(d).not.toContain("rejoindre");
+    expect(d).toContain("invitation");
     expect(d).toContain("Gérer le serveur");
     expect(d).toContain("Configurer le serveur Discord");
     expect(d).toContain(APP);
@@ -47,10 +49,10 @@ describe("message d'installation", () => {
     expect(embed({ name: "Défi 2026" }).description).toContain("une heure");
   });
 
-  it("avec un défi : ne propose plus d'en créer un, mais de le rejoindre ou de le piloter", () => {
+  it("avec un défi : ne propose plus d'en créer un, mais l'invitation ou le pilotage", () => {
     const d = embed({ name: "Défi 2026" }).description!;
     expect(d).toContain("Défi 2026");
-    expect(d).toContain("/challenger rejoindre");
+    expect(d).toContain("invitation");
     expect(d).toContain(`${APP}/admin/challenge`);
     expect(d).not.toContain("/challenger creer");
   });
