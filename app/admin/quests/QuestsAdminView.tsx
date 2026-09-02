@@ -108,7 +108,9 @@ export function QuestsAdminView({
               ]}
             >
               {quests.map((q) => (
-                <tr key={q.id}>
+                /* `current` marks the quest detailed below, so the highlight says
+                   which one is open instead of merely following the cursor. */
+                <tr key={q.id} className={focusedQuest?.id === q.id ? "current" : undefined}>
                   <td className="num">#{q.number}</td>
                   <td>
                     <strong>{q.title}</strong> {q.fromStory && <Pill tone="no">issue de l&apos;histoire</Pill>}
