@@ -1756,6 +1756,13 @@
   .form-grid .wide {
     grid-column: 1 / -1;
   }
+  /* Two of the three columns — a long field beside a short one. It has to be a
+     class: an inline `grid-column` would survive the media query below and, the
+     grid being down to a single column, would conjure an implicit second one
+     the form then overflows into. */
+  .form-grid .span-2 {
+    grid-column: span 2;
+  }
 
   .mini-grid {
     display: grid;
@@ -2009,7 +2016,8 @@
   .form-grid {
     grid-template-columns: 1fr;
   }
-  .form-grid .wide {
+  .form-grid .wide,
+  .form-grid .span-2 {
     grid-column: auto;
   }
 }
@@ -2068,6 +2076,27 @@
   }
   .data-table.stacked td:not([data-label])::before {
     content: none;
+  }
+  /* Once the row is a card, a highlight belongs to the card. Painting the
+     cells instead — what `tr:hover td` / `tr:active td` / `tr.current td` do
+     on a real table — draws a ragged band behind the text only: the cells sit
+     inside the row padding, and the matrix ones are inline-block, so the
+     colour stops at the end of each word. Hence the card here, cells clear. */
+  .data-table.stacked tbody tr:hover,
+  .data-table.stacked tbody tr.current {
+    background: var(--hi);
+  }
+  .data-table.stacked tbody tr:active {
+    background: var(--kyle);
+  }
+  .data-table.stacked tbody tr.current {
+    border-color: var(--kyle-deep);
+  }
+  .data-table.stacked tbody tr:hover td,
+  .data-table.stacked tbody tr:active td,
+  .data-table.stacked tbody tr.current td {
+    background: transparent;
+    color: inherit;
   }
 }
 
