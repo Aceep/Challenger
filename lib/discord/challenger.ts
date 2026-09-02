@@ -32,7 +32,7 @@ export function hasManageGuild(permissions?: string | null): boolean {
 
 export const CHALLENGER_COMMAND: SlashCommand = {
   name: "challenger",
-  description: "Créer le défi lecture de ce serveur, ou le rejoindre",
+  description: "Créer le défi lecture de ce serveur",
   dm_permission: false,
   options: [
     {
@@ -41,7 +41,6 @@ export const CHALLENGER_COMMAND: SlashCommand = {
       description: "Créer le défi lecture de ce serveur (réservé à « Gérer le serveur »)",
       options: [{ type: STRING, name: "nom", description: "Nom du défi, visible par tout le monde", required: true, max_length: 100 }],
     },
-    { type: SUB_COMMAND, name: "rejoindre", description: "Rejoindre le défi lecture de ce serveur" },
   ],
 };
 
@@ -55,13 +54,20 @@ export const GLOBAL_COMMANDS: SlashCommand[] = [CHALLENGER_COMMAND];
 /** What the interaction payload carries for a sub-command. */
 type IncomingOption = { name: string; type?: number; value?: string | number | boolean; options?: IncomingOption[] };
 
-export type ChallengerInteraction = { sub: "creer"; name: string } | { sub: "rejoindre" };
+export type ChallengerInteraction = { sub: "creer"; name: string };
 
-/** Reads `data.options` of a `/challenger` interaction; null when it is neither sub-command. */
+/**
+ * Reads `data.options` of a `/challenger` interaction; null when the sub-command
+ * is not `creer`.
+ *
+ * `rejoindre` used to sit here: joining is now the organiser's invitation only.
+ * Discord keeps offering a retired sub-command until the global commands are
+ * re-registered (up to an hour of propagation), so that null is a normal case —
+ * the route answers it with the explanation, never with an error.
+ */
 export function parseChallengerInteraction(options?: IncomingOption[] | null): ChallengerInteraction | null {
-  const sub = (options ?? []).find((o) => o.name === "creer" || o.name === "rejoindre");
+  const sub = (options ?? []).find((o) => o.name === "creer");
   if (!sub) return null;
-  if (sub.name === "rejoindre") return { sub: "rejoindre" };
   const name = sub.options?.find((o) => o.name === "nom")?.value;
   return { sub: "creer", name: typeof name === "string" ? name.trim() : "" };
 }

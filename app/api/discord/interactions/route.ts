@@ -11,8 +11,7 @@ import { userMessage } from "@/lib/errors";
 import { fmtPoints } from "@/lib/format";
 import { HELP_TITLE, helpText } from "@/lib/discord/help";
 import { cellChoices, editableBookChoices, questChoices } from "@/lib/services/autocomplete";
-import { createChallengeFromGuild, joinChallengeFromGuild } from "@/lib/services/challenger";
-import { syncMemberRoles } from "@/lib/services/discord-setup";
+import { createChallengeFromGuild } from "@/lib/services/challenger";
 import { getTeamBoard } from "@/lib/services/bingo";
 import { bookPatchSchema, bookSchema, deleteBook, describeResult, logBook, updateBook } from "@/lib/services/books";
 import { getLeaderboard, withLeaderWatch } from "@/lib/services/leaderboard";
@@ -74,48 +73,42 @@ type Interaction = {
 const appUrl = () => process.env.AUTH_URL ?? "https://challenger-aceepkyle.vercel.app";
 
 /**
- * `/challenger creer` and `/challenger rejoindre` — the only commands that work
- * on a server with no challenge, and for a Discord id with no account. Creating
- * speaks for the whole server, so it asks for « Gérer le serveur ».
+ * On ne rejoint plus un défi soi-même : l'organisation invite, et l'invitation
+ * prend effet à la connexion suivante (`consumePendingInvites`). Le même texte
+ * répond à l'ancienne sous-commande `/challenger rejoindre`, que Discord
+ * continue d'afficher tant que les commandes globales ne sont pas ré-enregistrées.
+ */
+const joinByInvite = () =>
+  `On ne rejoint plus un défi soi-même : demande une invitation aux organisateur·ices, elle s’appliquera à ta prochaine connexion sur ${appUrl()}/login. Pour ouvrir le défi de ce serveur : \`/challenger creer\`.`;
+
+/**
+ * `/challenger creer` — the only command that works on a server with no
+ * challenge, and for a Discord id with no account. Creating speaks for the
+ * whole server, so it asks for « Gérer le serveur ». Any other sub-command
+ * (a retired one Discord still offers, or a payload we do not know) gets the
+ * invitation explanation rather than a raw error.
  */
 async function challengerCommand(interaction: Interaction, discordId: string) {
   const guildId = interaction.guild_id;
   if (!guildId) return ephemeral("Cette commande se lance depuis un serveur Discord.");
   const parsed = parseChallengerInteraction(interaction.data?.options);
-  if (!parsed) return ephemeral("Choisis `/challenger creer` ou `/challenger rejoindre`.");
+  if (!parsed) return ephemeral(joinByInvite());
 
   try {
-    if (parsed.sub === "creer") {
-      if (!hasManageGuild(interaction.member?.permissions)) {
-        return ephemeral("Créer le défi de ce serveur demande la permission « Gérer le serveur ».");
-      }
-      const guild = await getGuild(guildId);
-      const result = await createChallengeFromGuild({ guildId, guildName: guild.ok ? guild.data.name : null, discordId, name: parsed.name });
-      if (result.kind === "exists") {
-        return ephemeral(
-          `Ce serveur a déjà un défi : « ${result.challenge.name} ». Tape \`/challenger rejoindre\` pour y participer, ou ouvre ${appUrl()}/admin/challenge.`,
-        );
-      }
-      return ephemeral(
-        result.pendingLogin
-          ? `✅ Défi « ${result.challenge.name} » créé pour ce serveur. Connecte-toi avec Discord sur ${appUrl()}/login : tu en deviendras l’organisateur·ice et tu finiras la configuration (équipes, salons, joueurs).`
-          : `✅ Défi « ${result.challenge.name} » créé ! Termine la configuration ici : ${appUrl()}/admin/challenge`,
-      );
+    if (!hasManageGuild(interaction.member?.permissions)) {
+      return ephemeral("Créer le défi de ce serveur demande la permission « Gérer le serveur ».");
     }
-
-    const result = await joinChallengeFromGuild({ guildId, discordId });
-    if (result.kind === "no-challenge") {
-      return ephemeral("Ce serveur n’a pas encore de défi. Un·e admin du serveur peut le créer avec `/challenger creer`.");
-    }
-    if (result.kind === "already") return ephemeral(`Tu participes déjà à « ${result.challenge.name} ». Tout se passe sur ${appUrl()}/home`);
-    if (result.kind === "joined") {
-      after(() => syncMemberRoles(result.userId, result.challenge.id));
+    const guild = await getGuild(guildId);
+    const result = await createChallengeFromGuild({ guildId, guildName: guild.ok ? guild.data.name : null, discordId, name: parsed.name });
+    if (result.kind === "exists") {
       return ephemeral(
-        `✅ Bienvenue dans « ${result.challenge.name} » ! Un·e organisateur·ice te placera dans une équipe. Ton tableau de bord : ${appUrl()}/home`,
+        `Ce serveur a déjà un défi : « ${result.challenge.name} ». Pour y participer, demande une invitation aux organisateur·ices ; pour le piloter, ouvre ${appUrl()}/admin/challenge.`,
       );
     }
     return ephemeral(
-      `✅ Tu es inscrit·e à « ${result.challenge.name} ». Connecte-toi une fois sur ${appUrl()}/login pour activer ton compte ; un·e organisateur·ice te placera ensuite dans une équipe.`,
+      result.pendingLogin
+        ? `✅ Défi « ${result.challenge.name} » créé pour ce serveur. Connecte-toi avec Discord sur ${appUrl()}/login : tu en deviendras l’organisateur·ice et tu finiras la configuration (équipes, salons, joueurs).`
+        : `✅ Défi « ${result.challenge.name} » créé ! Termine la configuration ici : ${appUrl()}/admin/challenge`,
     );
   } catch (e) {
     return ephemeral(`❌ ${userMessage(e)}`);
@@ -155,8 +148,8 @@ export async function POST(request: Request) {
     if (isAutocomplete) return choices([]);
     if (interaction.data?.name === "help") return ephemeralEmbed(HELP_TITLE, helpText(null));
     if (resolved.kind === "no-challenge") return ephemeral("Ce serveur n’a pas encore de défi : un·e admin du serveur peut le créer avec `/challenger creer`.");
-    if (resolved.kind === "not-member") return ephemeral("Tu n’es pas inscrit·e à ce défi : tape `/challenger rejoindre`, ou demande une invitation aux organisateur·ices.");
-    return ephemeral(`Tu n’es pas encore inscrit·e : tape \`/challenger rejoindre\` ici, puis connecte-toi sur ${appUrl()}`);
+    if (resolved.kind === "not-member") return ephemeral("Tu n’es pas inscrit·e à ce défi : demande une invitation aux organisateur·ices, elle s’appliquera à ta prochaine connexion.");
+    return ephemeral(`Tu n’es pas encore inscrit·e : demande une invitation aux organisateur·ices du défi, puis connecte-toi sur ${appUrl()}`);
   }
   const { user, challenge, role, team } = resolved.actor;
   if (!isAutocomplete) after(() => tickOnActivity(challenge.id));

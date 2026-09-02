@@ -23,6 +23,13 @@ describe("aide et messages d'accueil", () => {
     expect(lectures.lines[0]).toContain("#librairie");
   });
 
+  it("dit que l'on entre dans un défi sur invitation, sans commande pour rejoindre", () => {
+    const text = helpText(null);
+    expect(text).toContain("/challenger creer");
+    expect(text).not.toContain("/challenger rejoindre");
+    expect(text).toContain("invitation");
+  });
+
   it("garde les sections d'aide non vides", () => {
     const sections = helpSections({ library: "#librairie", adventure: "#aventure" });
     expect(sections.length).toBeGreaterThan(0);

@@ -47,7 +47,7 @@ export function Landing({ examples }: { examples: LandingExample[] }) {
             </Link>
           </div>
           <p className="hint">
-            Déjà un défi sur ton serveur ? Tape <code>/challenger rejoindre</code> sur Discord, ou{" "}
+            Déjà un défi sur ton serveur ? Demande une invitation aux organisateur·ices, puis{" "}
             <Link href="/login" className="underline">
               connecte-toi
             </Link>
@@ -120,7 +120,7 @@ export function Landing({ examples }: { examples: LandingExample[] }) {
                 <strong>Crée les équipes</strong> : une couleur, un·e capitaine, un·e adjoint·e.
               </li>
               <li>
-                <strong>Invite les joueurs</strong> — ou laisse-les rejoindre seuls depuis Discord.
+                <strong>Invite les joueurs</strong> — leur invitation s’applique dès leur prochaine connexion Discord.
               </li>
             </ol>
           </div>
@@ -131,7 +131,7 @@ export function Landing({ examples }: { examples: LandingExample[] }) {
                 <strong>Connecte-toi avec Discord</strong> : rien d’autre à installer.
               </li>
               <li>
-                <strong>Rejoins le défi</strong> avec <code>/challenger rejoindre</code>, ou grâce à une invitation.
+                <strong>Rejoins le défi</strong> grâce à l’invitation de l’organisateur·ice — rien d’autre à faire.
               </li>
               <li>
                 <strong>Lis, déclare</strong> : <code>/ajouter-un-livre</code> dans la librairie de l’équipe, ou ici.
