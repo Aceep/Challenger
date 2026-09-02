@@ -47,7 +47,7 @@ function firstRun({ guildName, appUrl }: WelcomeInput) {
     `Suis le lien de ma réponse : tu y règles les dates, les équipes et les salons. Le bouton « Configurer le serveur Discord » crée les rôles et les salons en un clic.`,
     "",
     "**3. Fais venir tes lecteur·ices**",
-    "Elles et ils tapent `/challenger rejoindre` sur le serveur ; tu les répartis ensuite en équipes.",
+    "Invite-les depuis le site, dans « Joueurs » : l’invitation s’applique à leur prochaine connexion Discord, et tu les répartis ensuite en équipes.",
     "",
     PROPAGATION,
     "",
@@ -60,7 +60,7 @@ function alreadyRunning({ appUrl, existing }: WelcomeInput & { existing: { name:
   return lines([
     `Salut ! Je suis **Kyle**, l’intendant du défi lecture. Ce serveur joue déjà « ${existing.name} » : rien à créer.`,
     "",
-    "• Pour y participer : tape `/challenger rejoindre` dans un salon du serveur.",
+    "• Pour y participer : demande une invitation aux organisateur·ices, elle s’applique à ta prochaine connexion.",
     `• Pour le piloter (dates, équipes, salons) : ${appUrl}/admin/challenge`,
     "",
     PROPAGATION,
