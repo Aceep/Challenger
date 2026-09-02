@@ -19,6 +19,8 @@ export type DiscordEmbed = {
   fields?: { name: string; value: string; inline?: boolean }[];
   footer?: { text: string };
   thumbnail?: { url: string };
+  /** Grande image sous l'embed — `attachment://fichier.png` pour une pièce jointe. */
+  image?: { url: string };
   url?: string;
 };
 
@@ -76,7 +78,7 @@ export function guideCard(team: GuideTeam): DiscordEmbed {
       "• **/ajouter-un-livre** — la même chose en une ligne",
       "• **/modifier-un-livre** — corriger ou supprimer (1 h après l’ajout, puis le·la capitaine)",
       "• **/quete** — les quêtes ouvertes de l’équipe",
-      "• **/bingo** — la grille en cours, case par case",
+      "• **/bingo** — la grille en cours en image, et `/bingo case:D1` pour une case",
       "• **/score** — le classement",
       "• **/help** — toutes les règles",
       "",

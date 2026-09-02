@@ -17,10 +17,12 @@
     "db:unlock": "tsx --env-file=.env.local scripts/db-unlock.mts",
     "discord:register": "tsx --env-file=.env.local scripts/discord-register.mts",
     "db:check": "tsx --env-file=.env.local scripts/db-check.mts",
+    "bingo:preview": "tsx scripts/bingo-preview.mts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",
+    "@napi-rs/canvas": "1.0.8",
     "@neondatabase/serverless": "^1.1.0",
     "@prisma/adapter-neon": "^7.10.0",
     "@prisma/client": "^7.10.0",
