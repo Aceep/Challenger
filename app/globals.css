@@ -1756,6 +1756,13 @@
   .form-grid .wide {
     grid-column: 1 / -1;
   }
+  /* Two of the three columns — a long field beside a short one. It has to be a
+     class: an inline `grid-column` would survive the media query below and, the
+     grid being down to a single column, would conjure an implicit second one
+     the form then overflows into. */
+  .form-grid .span-2 {
+    grid-column: span 2;
+  }
 
   .mini-grid {
     display: grid;
@@ -2009,7 +2016,8 @@
   .form-grid {
     grid-template-columns: 1fr;
   }
-  .form-grid .wide {
+  .form-grid .wide,
+  .form-grid .span-2 {
     grid-column: auto;
   }
 }
