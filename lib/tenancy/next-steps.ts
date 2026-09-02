@@ -47,7 +47,7 @@ export function nextSteps(challenge: NextStepsChallenge, counts: NextStepsCounts
       label: "Inviter les joueurs",
       done: counts.players > 0,
       href: "/admin/players",
-      hint: "ou laisse-les taper /challenger rejoindre sur ton serveur Discord",
+      hint: "leur invitation s’applique à leur prochaine connexion Discord",
     },
   ];
 }

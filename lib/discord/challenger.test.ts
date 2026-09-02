@@ -24,11 +24,13 @@ describe("permission « Gérer le serveur »", () => {
 });
 
 describe("commande /challenger", () => {
-  it("est une commande de serveur, avec ses deux sous-commandes", () => {
+  it("est une commande de serveur, avec la seule sous-commande « creer »", () => {
     expect(CHALLENGER_COMMAND.name).toBe("challenger");
     expect(CHALLENGER_COMMAND.dm_permission).toBe(false);
-    expect(CHALLENGER_COMMAND.options?.map((o) => o.name)).toEqual(["creer", "rejoindre"]);
+    // On ne rejoint plus un défi soi-même : l'invitation est le seul chemin d'entrée.
+    expect(CHALLENGER_COMMAND.options?.map((o) => o.name)).toEqual(["creer"]);
     for (const o of CHALLENGER_COMMAND.options ?? []) expect(o.type, o.name).toBe(1);
+    expect(JSON.stringify(CHALLENGER_COMMAND)).not.toContain("rejoindre");
   });
 
   it("demande un nom pour la création", () => {
@@ -54,8 +56,11 @@ describe("lecture d'une interaction /challenger", () => {
     expect(parseChallengerInteraction([{ name: "creer", type: 1, options: [{ name: "nom", type: 3, value: "   " }] }])).toEqual({ sub: "creer", name: "" });
   });
 
-  it("lit l'adhésion", () => {
-    expect(parseChallengerInteraction([{ name: "rejoindre", type: 1 }])).toEqual({ sub: "rejoindre" });
+  // Tant que les commandes globales ne sont pas ré-enregistrées, Discord
+  // continue d'afficher « rejoindre » : elle doit se lire comme une
+  // sous-commande inconnue, que la route explique au lieu de planter.
+  it("rend null sur l'ancienne sous-commande « rejoindre »", () => {
+    expect(parseChallengerInteraction([{ name: "rejoindre", type: 1 }])).toBeNull();
   });
 
   it("rend null sur une charge utile inattendue", () => {

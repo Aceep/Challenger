@@ -1,15 +1,17 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { upsertChallenge } from "@/lib/services/admin";
-import { challengeForGuild, ensureMember, roleIn } from "@/lib/services/membership";
+import { challengeForGuild } from "@/lib/services/membership";
 import { CHALLENGE_DEFAULTS, defaultDatesFor, guildChallengeName } from "@/lib/tenancy/new-challenge";
 
 /**
- * The two writes behind `/challenger` — creating a server's challenge and
- * joining it. Both may be asked by a Discord id nobody has ever seen: no `User`
- * row is ever forged here (the Auth.js adapter creates it at the first OAuth),
- * an `Invite` carries the intention until that first connection consumes it
- * (`consumePendingInvites`).
+ * The write behind `/challenger creer` — opening a server's challenge. It may be
+ * asked by a Discord id nobody has ever seen: no `User` row is ever forged here
+ * (the Auth.js adapter creates it at the first OAuth), an `Invite` carries the
+ * intention until that first connection consumes it (`consumePendingInvites`).
+ *
+ * Joining is not a write of this module: a player only ever comes in through an
+ * organiser's `Invite` (Admin › Joueurs).
  */
 
 type Challenge = NonNullable<Awaited<ReturnType<typeof challengeForGuild>>>;
@@ -57,32 +59,4 @@ export async function createChallengeFromGuild({
     return created;
   });
   return { kind: "created", challenge, pendingLogin: true };
-}
-
-export type JoinFromGuild =
-  | { kind: "no-challenge" }
-  | { kind: "joined"; challenge: Challenge; userId: string }
-  | { kind: "already"; challenge: Challenge }
-  /** No account yet: a PLAYER invitation takes effect at the first connection. */
-  | { kind: "invited"; challenge: Challenge };
-
-/** Joins the challenge played on a Discord server, as a plain player. */
-export async function joinChallengeFromGuild({ guildId, discordId }: { guildId: string; discordId: string }): Promise<JoinFromGuild> {
-  const challenge = await challengeForGuild(guildId);
-  if (!challenge) return { kind: "no-challenge" };
-
-  const user = await prisma.user.findUnique({ where: { discordId }, select: { id: true } });
-  if (user) {
-    if (await roleIn(user.id, challenge.id)) return { kind: "already", challenge };
-    await ensureMember(prisma, challenge.id, user.id, "PLAYER");
-    return { kind: "joined", challenge, userId: user.id };
-  }
-
-  // `update: {}` on purpose: an ORGANIZER invitation must never be downgraded.
-  await prisma.invite.upsert({
-    where: { challengeId_discordId: { challengeId: challenge.id, discordId } },
-    create: { challengeId: challenge.id, discordId, role: "PLAYER" },
-    update: {},
-  });
-  return { kind: "invited", challenge };
 }
