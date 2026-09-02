@@ -22,7 +22,7 @@ export function helpSections(channels: { library: string; adventure: string }): 
       title: "🗺️ Quêtes et 🎯 bingo",
       lines: [
         "**/quete** — les quêtes ouvertes de ton équipe et leur avancement.",
-        "**/bingo** — la grille en cours de ton équipe, case par case : validées, en attente ½, libres.",
+        "**/bingo** — la grille en cours de ton équipe, en image : validées, en attente ½, libres. `/bingo case:D1` détaille une case.",
         "Un **roman** valide seul une quête et/ou une case. Un **graphique** vaut ½ quête + ½ case : il en faut deux (d'un ou deux membres de l'équipe).",
         "Une lecture valide au plus **une** quête et **une** case. Une case ou quête « en attente » (½) ne rapporte rien tant qu'elle n'est pas complétée.",
         "Antériorité : la lecture doit avoir commencé après la parution de la grille (ou : roman lu à moins de 50 %). Déclaratif, sur la confiance.",
