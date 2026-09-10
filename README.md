@@ -116,7 +116,7 @@ Les deux listes sont tenues disjointes, sans quoi `/challenger` apparaîtrait en
 | Tests | **Vitest** — les tests unitaires vivent à côté du code (`lib/**/*.test.ts`) |
 | Hébergement | **Vercel** (région `iad1`) |
 
-Quelques partis pris structurants, détaillés dans [`CLAUDE.md`](./CLAUDE.md) :
+Quelques partis pris structurants, détaillés dans [`AGENTS.md`](./AGENTS.md) :
 
 - **L'autorisation vit dans `lib/dal.ts`**, appelée dans chaque page, Server Action et Route Handler — jamais dans un layout ni dans le proxy, qui ne fait qu'une redirection optimiste.
 - La **logique de jeu pure** (points, lignes de bingo, résolution des votes, effets d'histoire) est dans `lib/scoring/*` et `lib/story/*`, sans entrées-sorties, et testée unitairement.
@@ -216,6 +216,6 @@ Il est déclenché de trois façons : les crons Vercel de [`vercel.json`](./verc
 
 ## Pour aller plus loin
 
-- [`CLAUDE.md`](./CLAUDE.md) — conventions, architecture, et les pièges de Next.js 16 comme de Prisma 7.
+- [`AGENTS.md`](./AGENTS.md) — conventions, architecture, et les pièges de Next.js 16 comme de Prisma 7.
 - [`docs/REDESIGN.md`](./docs/REDESIGN.md) — les partis pris d'interface.
 - La page **Aide & règles** du site, et `lib/discord/help.ts` dont elle est tirée, pour le détail des règles.

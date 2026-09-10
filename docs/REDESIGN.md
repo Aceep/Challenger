@@ -1,8 +1,8 @@
 # Refonte Aceep&Kyle — brief d'implémentation
 
-Ce document est le cahier des charges complet de la refonte du front (joueur + admin) et du mode démo public. Il est destiné à être exécuté tel quel par un agent (Claude Opus 5) ou un·e dev, sans autre contexte que le repo. La maquette validée est `design/prototype.html` (ouvrir dans un navigateur : trois vues, thème clair/sombre) — **c'est la référence visuelle, à reproduire fidèlement**.
+Ce document est le cahier des charges complet de la refonte du front (joueur + admin) et du mode démo public. Il est destiné à être exécuté tel quel par un agent ou un·e dev, sans autre contexte que le repo. La maquette validée est `design/prototype.html` (ouvrir dans un navigateur : trois vues, thème clair/sombre) — **c'est la référence visuelle, à reproduire fidèlement**.
 
-Règles de travail : lire `CLAUDE.md` (Node 22 via nvm, Next 16, Prisma 7, autorisation dans `lib/dal.ts`, logique métier dans `lib/services/*`, copie française). Ne pas toucher aux services, au schéma ni à l'endpoint Discord : cette refonte est **purement front + routage + données de démo**. Aucun `dsi:*`.
+Règles de travail : lire `AGENTS.md` (Node 22 via nvm, Next 16, Prisma 7, autorisation dans `lib/dal.ts`, logique métier dans `lib/services/*`, copie française). Ne pas toucher aux services, au schéma ni à l'endpoint Discord : cette refonte est **purement front + routage + données de démo**. Aucun `dsi:*`.
 
 ## 1. Objectifs
 
@@ -106,7 +106,7 @@ Exporter des constantes typées comme les retours des services. Contenu (reprend
 
 ## 6. Schéma (seul changement de données)
 
-`Challenge.color String @default("#2E4A7D")` — migration non interactive (`prisma migrate diff` + `migrate deploy`, cf. CLAUDE.md), champ dans `challengeSchema` (`lib/services/admin.ts`) et le formulaire admin.
+`Challenge.color String @default("#2E4A7D")` — migration non interactive (`prisma migrate diff` + `migrate deploy`, cf. AGENTS.md), champ dans `challengeSchema` (`lib/services/admin.ts`) et le formulaire admin.
 
 ## 7. Ordre de travail (chaque étape doit passer `npm run typecheck && npm run lint && npm test && npm run build`)
 
