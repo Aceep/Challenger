@@ -19,9 +19,6 @@ export const FAQ_TAG_NAMES = [
 export const FAQ_CHANNEL_NAME = "faq";
 export const FAQ_ROLE_NAME = "Organisateurs";
 
-/** Manage Channels + Manage Roles + the usual message permissions. */
-export const FAQ_BOT_PERMISSIONS = "268453904";
-
 /** Reads the Json column back into typed tag ids (null when never configured). */
 export function parseFaqTags(raw: unknown): FaqTags | null {
   if (!raw || typeof raw !== "object") return null;
@@ -54,11 +51,6 @@ export function threadUrl(guildId: string | null | undefined, threadId: string |
 
 export function channelUrl(guildId: string | null | undefined, channelId: string | null | undefined) {
   return guildId && channelId ? `https://discord.com/channels/${guildId}/${channelId}` : null;
-}
-
-/** Invitation link to re-add the bot with the permissions the FAQ needs. */
-export function botInviteUrl(appId: string | null | undefined) {
-  return appId ? `https://discord.com/oauth2/authorize?client_id=${appId}&scope=bot%20applications.commands&permissions=${FAQ_BOT_PERMISSIONS}` : null;
 }
 
 /** A first answer from the organisation moves Ouverte → Répondue; Résolue is final. */

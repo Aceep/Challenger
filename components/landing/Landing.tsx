@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { InstallButton } from "@/components/landing/InstallButton";
 import { Card, Kyle, KyleEmpty, Pill } from "@/components/ui";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
@@ -11,8 +12,14 @@ export type LandingExample = {
   status: "ACTIVE" | "FINISHED" | "DRAFT";
 };
 
-/** Public landing page — no session, no Discord call. */
-export function Landing({ examples }: { examples: LandingExample[] }) {
+/**
+ * Public landing page — no session, no Discord call.
+ *
+ * `installUrl` is the OAuth link that adds Kyle to a server, computed by the
+ * page from `AUTH_DISCORD_ID`; null when the app id is missing, and the hero
+ * then leads with « Créer mon défi ».
+ */
+export function Landing({ examples, installUrl }: { examples: LandingExample[]; installUrl: string | null }) {
   return (
     <main className="landing">
       <header className="flex flex-wrap items-center justify-between gap-3">
@@ -39,7 +46,8 @@ export function Landing({ examples }: { examples: LandingExample[] }) {
             une histoire dont votre équipe est le héros se décide au vote.
           </p>
           <div className="actions">
-            <Link href="/new" className="btn">
+            <InstallButton url={installUrl} />
+            <Link href="/new" className={installUrl ? "btn ghost" : "btn"}>
               Créer mon défi
             </Link>
             <Link href="/demo?tour=player&step=0" className="btn ghost">
@@ -47,7 +55,11 @@ export function Landing({ examples }: { examples: LandingExample[] }) {
             </Link>
           </div>
           <p className="hint">
-            Déjà un défi sur ton serveur ? Demande une invitation aux organisateur·ices, puis{" "}
+            Rien à installer&nbsp;: Kyle rejoint ton serveur Discord, puis <code>/challenger creer</code> ouvre le défi — c’est détaillé dans le{" "}
+            <Link href="/guide" className="underline">
+              guide de l’organisateur·ice
+            </Link>
+            . Déjà un défi sur ton serveur ? Demande une invitation aux organisateur·ices, puis{" "}
             <Link href="/login" className="underline">
               connecte-toi
             </Link>
@@ -111,16 +123,16 @@ export function Landing({ examples }: { examples: LandingExample[] }) {
             <h3>Côté organisateur·ice</h3>
             <ol>
               <li>
-                <strong>Crée le défi</strong> : ici, ou avec <code>/challenger creer</code> depuis ton serveur Discord.
+                <strong>Ajoute Kyle</strong> à ton serveur Discord : un clic, aucune installation.
               </li>
               <li>
-                <strong>Invite le bot</strong> et configure le serveur en un clic : rôles, catégorie, salons de chaque équipe.
+                <strong>Tape <code>/challenger creer</code></strong> dans un salon : le défi est ouvert, Kyle te renvoie sur le site.
               </li>
               <li>
-                <strong>Crée les équipes</strong> : une couleur, un·e capitaine, un·e adjoint·e.
+                <strong>Crée les équipes</strong>, puis les salons en un clic : rôles, catégories, <em>#aventure</em> et <em>#librairie</em>.
               </li>
               <li>
-                <strong>Invite les joueurs</strong> — leur invitation s’applique dès leur prochaine connexion Discord.
+                <strong>Invite tes lecteur·ices</strong> — leur invitation s’applique dès leur prochaine connexion.
               </li>
             </ol>
           </div>
@@ -128,10 +140,10 @@ export function Landing({ examples }: { examples: LandingExample[] }) {
             <h3>Côté joueur·euse</h3>
             <ol>
               <li>
-                <strong>Connecte-toi avec Discord</strong> : rien d’autre à installer.
+                <strong>Reçois l’invitation</strong> de l’organisateur·ice : on ne rejoint pas un défi soi-même.
               </li>
               <li>
-                <strong>Rejoins le défi</strong> grâce à l’invitation de l’organisateur·ice — rien d’autre à faire.
+                <strong>Connecte-toi avec Discord</strong> : ton édition et ton équipe sont déjà là, rien à installer.
               </li>
               <li>
                 <strong>Lis, déclare</strong> : <code>/ajouter-un-livre</code> dans la librairie de l’équipe, ou ici.
@@ -142,6 +154,13 @@ export function Landing({ examples }: { examples: LandingExample[] }) {
             </ol>
           </div>
         </div>
+        <p className="mt-4 text-[length:var(--fs-sm)] text-[color:var(--muted)]">
+          Le détail, étape par étape, est dans le{" "}
+          <Link href="/guide" className="underline">
+            guide de l’organisateur·ice
+          </Link>
+          .
+        </p>
       </section>
 
       <section className="landing-section">
@@ -156,6 +175,9 @@ export function Landing({ examples }: { examples: LandingExample[] }) {
       </section>
 
       <footer className="flex flex-wrap items-center justify-center gap-4 text-[13px] text-[color:var(--muted)]">
+        <Link href="/guide" className="underline">
+          Guide
+        </Link>
         <Link href="/new" className="underline">
           Créer mon défi
         </Link>

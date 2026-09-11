@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  botInviteUrl,
   compareSnowflakes,
   mapDiscordMessages,
   nextStatus,
@@ -38,11 +37,11 @@ describe("contenu publié dans le forum", () => {
     expect(replyContent({ name: "Alycia", isAdmin: true, mentionUserId: "d-lea", body: "Oui !" })).toBe("✅ **Alycia** · organisation → <@d-lea>\n\nOui !");
     expect(replyContent({ name: "Léa", isAdmin: false, body: "Merci" })).toBe("💬 **Léa**\n\nMerci");
   });
-  it("construit les liens Discord et le lien d'invitation du bot", () => {
+  // Le lien d'invitation du bot n'est plus ici : un seul jeu de permissions,
+  // dans `lib/discord/permissions.ts`, testé là-bas.
+  it("construit les liens Discord", () => {
     expect(threadUrl("g-1", "th-1")).toBe("https://discord.com/channels/g-1/th-1");
     expect(threadUrl(null, "th-1")).toBeNull();
-    expect(botInviteUrl("app-1")).toContain("permissions=268453904");
-    expect(botInviteUrl(null)).toBeNull();
   });
 });
 

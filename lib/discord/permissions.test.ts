@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   BOT_ALLOW,
-  BOT_INVITE_PERMISSIONS,
+  BOT_PERMISSIONS,
   MEMBER_ALLOW,
   P,
   botInviteUrl,
@@ -23,9 +23,22 @@ describe("permissions Discord", () => {
   it("additionne les bits sans déborder sur 32 bits", () => {
     expect(P.USE_APP_COMMANDS).toBe(2147483648);
     expect(sum(P.VIEW, P.SEND)).toBe("3072");
-    expect(BOT_INVITE_PERMISSIONS).toBe("268528656");
     expect(MEMBER_ALLOW).toBe("2147601472");
     expect(BOT_ALLOW).toBe("93184");
+  });
+
+  it("demande un seul jeu de permissions, fils du forum compris", () => {
+    // Ancien lien d'invitation (268528656) + ancien jeu FAQ (268453904, qui en
+    // était un sous-ensemble) + les deux bits de fil, sans lesquels Kyle ne peut
+    // ni ouvrir un sujet ni y répondre.
+    expect(BOT_PERMISSIONS).toBe("309506173968");
+    const bits = BigInt(BOT_PERMISSIONS);
+    expect(bits & BigInt("268528656")).toBe(BigInt("268528656"));
+    expect(bits & BigInt("268453904")).toBe(BigInt("268453904"));
+    expect(bits & BigInt(P.CREATE_PUBLIC_THREADS)).not.toBe(BigInt(0));
+    expect(bits & BigInt(P.SEND_IN_THREADS)).not.toBe(BigInt(0));
+    // Jamais « Administrateur » : on demande le nécessaire, pas les pleins pouvoirs.
+    expect(bits & BigInt(P.ADMINISTRATOR)).toBe(BigInt(0));
   });
 
   it("construit le lien d'invitation du bot", () => {
@@ -33,7 +46,7 @@ describe("permissions Discord", () => {
     expect(url.origin + url.pathname).toBe("https://discord.com/oauth2/authorize");
     expect(url.searchParams.get("client_id")).toBe("app-1");
     expect(url.searchParams.get("scope")).toBe("bot applications.commands");
-    expect(url.searchParams.get("permissions")).toBe(BOT_INVITE_PERMISSIONS);
+    expect(url.searchParams.get("permissions")).toBe(BOT_PERMISSIONS);
     expect(url.searchParams.get("guild_id")).toBeNull();
 
     const pinned = new URL(botInviteUrl("app-1", "guild-9"));

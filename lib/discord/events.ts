@@ -1,4 +1,5 @@
 import "server-only";
+import { APP_URL as appUrl } from "@/lib/app-url";
 import { prisma } from "@/lib/db";
 import { readingCard, readingChannel } from "@/lib/discord/cards";
 import { editMessage, postMessage, type MessageButton } from "@/lib/discord/rest";
@@ -7,7 +8,6 @@ import { once } from "@/lib/services/bot-events";
 import { getLeaderboard } from "@/lib/services/leaderboard";
 import { getTeamChapterStatus, type ResolutionSummary } from "@/lib/services/story";
 
-const appUrl = () => process.env.AUTH_URL ?? "https://challenger-aceepkyle.vercel.app";
 const COLOR = { story: 0x6366f1, quest: 0xd97706, rank: 0x16a34a, effect: 0xdc2626 };
 
 async function channelsFor(teamId: string) {

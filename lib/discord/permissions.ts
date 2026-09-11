@@ -22,6 +22,8 @@ export const P = {
   HISTORY: 2 ** 16, // 65536 — READ_MESSAGE_HISTORY
   MANAGE_ROLES: 2 ** 28, // 268435456
   USE_APP_COMMANDS: 2 ** 31, // 2147483648
+  CREATE_PUBLIC_THREADS: 2 ** 35, // 34359738368 (open a FAQ forum thread)
+  SEND_IN_THREADS: 2 ** 38, // 274877906944 (answer *inside* a forum thread)
 } as const;
 
 /** Sum of permission bits, as the decimal string Discord expects. */
@@ -30,11 +32,15 @@ export function sum(...bits: number[]): string {
 }
 
 /**
- * Permissions requested by the invite link: manage channels and roles (to
- * create the categories, salons and team roles), plus what the bot needs to
- * talk in them.
+ * The one set of permissions the bot is ever asked for — the public install
+ * button, the admin card and the FAQ card all point at the same link, so a
+ * server can never end up with half of what Kyle needs.
+ *
+ * Manage channels and roles (categories, salons and team roles), what the bot
+ * needs to talk in them, and the two thread bits the FAQ forum requires: Kyle
+ * opens a thread per question and answers *inside* it.
  */
-export const BOT_INVITE_PERMISSIONS = sum(
+export const BOT_PERMISSIONS = sum(
   P.MANAGE_CHANNELS,
   P.MANAGE_ROLES,
   P.VIEW,
@@ -42,6 +48,8 @@ export const BOT_INVITE_PERMISSIONS = sum(
   P.MANAGE_MESSAGES,
   P.EMBED,
   P.HISTORY,
+  P.CREATE_PUBLIC_THREADS,
+  P.SEND_IN_THREADS,
 );
 
 /** OAuth2 URL an organiser follows to add the bot to their (empty) server. */
@@ -49,7 +57,7 @@ export function botInviteUrl(appId: string, guildId?: string | null): string {
   const q = new URLSearchParams({
     client_id: appId,
     scope: "bot applications.commands",
-    permissions: BOT_INVITE_PERMISSIONS,
+    permissions: BOT_PERMISSIONS,
   });
   if (guildId) {
     q.set("guild_id", guildId);

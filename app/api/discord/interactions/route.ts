@@ -1,5 +1,6 @@
 import { InteractionResponseType, InteractionType, verifyKey } from "discord-interactions";
 import { after, NextResponse } from "next/server";
+import { APP_URL as appUrl } from "@/lib/app-url";
 import { cancelBookPending, chooseBookOption, openBookModal, saveBookPending, submitBookModal, type FlowCtx, type InteractionReply } from "@/lib/discord/book-flow";
 import { bingoCard, bingoCellCard } from "@/lib/discord/bingo";
 import { GRID_IMAGE_FILENAME, renderGridPng } from "@/lib/bingo/grid-image";
@@ -87,8 +88,6 @@ type Interaction = {
   member?: { user: { id: string; username: string }; permissions?: string };
   user?: { id: string; username: string };
 };
-
-const appUrl = () => process.env.AUTH_URL ?? "https://challenger-aceepkyle.vercel.app";
 
 /**
  * On ne rejoint plus un défi soi-même : l'organisation invite, et l'invitation

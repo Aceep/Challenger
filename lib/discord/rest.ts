@@ -140,11 +140,13 @@ export async function registerGlobalCommands(appId: string, commands: unknown[])
 }
 
 /**
- * The guild itself — its name when a server creates its challenge, and its
- * `owner_id` when the install welcome has to reach the owner too.
+ * The guild itself — its name when a server creates its challenge, its
+ * `owner_id` when the install welcome has to reach the owner too, and its
+ * `system_channel_id` (« Salon système », where Discord posts its join
+ * messages) when the welcome DM bounced and has to land in a salon instead.
  */
 export function getGuild(guildId: string) {
-  return request<{ id: string; name: string; owner_id?: string }>(`/guilds/${guildId}`);
+  return request<{ id: string; name: string; owner_id?: string; system_channel_id?: string | null }>(`/guilds/${guildId}`);
 }
 
 /**
@@ -161,8 +163,8 @@ export function createDmChannel(userId: string) {
 // ---------------------------------------------------------------------------
 
 export type GuildRole = { id: string; name: string; color?: number; managed?: boolean; position?: number };
-/** `type` 0 = text channel, 4 = category. */
-export type GuildChannel = { id: string; name?: string; type: number; parent_id?: string | null };
+/** `type` 0 = text channel, 4 = category. `position` orders the sidebar — the first text salon is the lowest. */
+export type GuildChannel = { id: string; name?: string; type: number; parent_id?: string | null; position?: number };
 
 export function getGuildRoles(guildId: string) {
   return request<GuildRole[]>(`/guilds/${guildId}/roles`);
