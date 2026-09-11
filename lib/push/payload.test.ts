@@ -115,6 +115,11 @@ describe("the question payloads", () => {
     expect(payload).toMatchObject({ category: "ORGANIZER", url: "/faq/q3", tag: "question:q3" });
     expect(payload.body).toContain(`«${NNBSP}Une question${NNBSP}»`);
   });
+
+  it("names a nameless account rather than leaving a hole in the sentence", () => {
+    expect(questionAskedPayload({ questionId: "q4", title: "Une question", authorName: null }).body).toMatch(/^Quelqu’un demande/);
+    expect(playerRepliedPayload({ questionId: "q4", title: "Une question", authorName: "  " }).body).toMatch(/^Quelqu’un a répondu/);
+  });
 });
 
 describe("testPayload", () => {

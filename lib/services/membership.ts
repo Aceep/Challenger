@@ -165,6 +165,16 @@ export async function consumePendingInvites(userId: string, discordId: string): 
   return joined;
 }
 
+/**
+ * Organisers of this edition, and only them: a super-admin who never joined it
+ * organises every challenge on paper, but has no reason to get its alerts on
+ * their phone. `ChallengeMember` is the membership, so it is also the audience.
+ */
+export async function organizerIds(challengeId: string): Promise<string[]> {
+  const members = await prisma.challengeMember.findMany({ where: { challengeId, role: "ORGANIZER" }, select: { userId: true } });
+  return members.map((m) => m.userId);
+}
+
 /** Organisers of the challenge who linked a Discord account (role pings, setup). */
 export async function organizersWithDiscord(challengeId: string) {
   const members = await prisma.challengeMember.findMany({

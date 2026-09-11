@@ -5,6 +5,30 @@ import { round1 } from "@/lib/scoring/reading";
 import { roleIn } from "@/lib/services/membership";
 import { num } from "@/lib/services/points";
 
+type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+type Db = typeof prisma | Tx;
+
+/**
+ * Everyone who follows a team's story: its own members, plus the members of
+ * every team it is allied with.
+ *
+ * This is one list on purpose. An alliance lets the allied players vote on the
+ * chapter (`eligibleVoterIds` in `lib/services/story.ts`), so they are exactly
+ * the people a notification about that chapter concerns — « qui peut voter » and
+ * « qui est prévenu » can never drift apart if they read the same query.
+ *
+ * Takes the transaction client when there is one: `castBallot` checks the voter
+ * list inside its own transaction and must see the alliances it sees.
+ */
+export async function teamAudienceIds(teamId: string, db: Db = prisma): Promise<string[]> {
+  const allies = await db.alliance.findMany({ where: { OR: [{ teamAId: teamId }, { teamBId: teamId }] } });
+  const teamIds = [teamId, ...allies.map((a) => (a.teamAId === teamId ? a.teamBId : a.teamAId))];
+  const members = await db.teamMember.findMany({ where: { teamId: { in: teamIds } }, select: { userId: true } });
+  // `TeamMember` is keyed (userId, challengeId) and allies play the same
+  // edition, so this only ever guards against a future alliance shape.
+  return [...new Set(members.map((m) => m.userId))];
+}
+
 export async function getTeamStats(teamId: string) {
   const team = await prisma.team.findUniqueOrThrow({
     where: { id: teamId },

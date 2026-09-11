@@ -127,12 +127,21 @@ export function tiePendingPayload(input: { voteId: string; teamName: string; cho
   };
 }
 
+/**
+ * An account may have no name at all (a Discord profile the bot never saw
+ * named). The fallback is spelled here rather than in the service: this file is
+ * the one place the French of a notification is written.
+ */
+function who(name: string | null | undefined): string {
+  return name?.trim() || "Quelqu’un";
+}
+
 /** Someone asked the organisation a question. */
-export function questionAskedPayload(input: { questionId: string; title: string; authorName: string }): PushPayload {
+export function questionAskedPayload(input: { questionId: string; title: string; authorName: string | null }): PushPayload {
   return {
     category: "ORGANIZER",
     title: "Nouvelle question",
-    body: `${input.authorName} demande${NBSP}: ${excerpt(input.title)}`,
+    body: `${who(input.authorName)} demande${NBSP}: ${excerpt(input.title)}`,
     url: `/faq/${input.questionId}`,
     tag: questionTag(input.questionId),
     ttl: DEFAULT_TTL,
@@ -152,11 +161,11 @@ export function questionAnsweredPayload(input: { questionId: string; title: stri
 }
 
 /** A player added something to a question thread. */
-export function playerRepliedPayload(input: { questionId: string; title: string; authorName: string }): PushPayload {
+export function playerRepliedPayload(input: { questionId: string; title: string; authorName: string | null }): PushPayload {
   return {
     category: "ORGANIZER",
     title: "Nouvelle réponse de joueur·euse",
-    body: `${input.authorName} a répondu sur ${quote(excerpt(input.title, 60))}.`,
+    body: `${who(input.authorName)} a répondu sur ${quote(excerpt(input.title, 60))}.`,
     url: `/faq/${input.questionId}`,
     tag: questionTag(input.questionId),
     ttl: DEFAULT_TTL,
