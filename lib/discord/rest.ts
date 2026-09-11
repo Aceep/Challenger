@@ -140,6 +140,18 @@ export async function registerGlobalCommands(appId: string, commands: unknown[])
 }
 
 /**
+ * Rewrites the message an interaction already answered with — the way a
+ * deferred response (type 5) is finally filled in, and the way a long job
+ * reports its progress in place instead of stacking messages.
+ *
+ * The interaction token is valid for 15 minutes and needs no bot token of its
+ * own; `appId` is the application the interaction names.
+ */
+export function editOriginalResponse(appId: string, token: string, m: OutgoingMessage) {
+  return request<unknown>(`/webhooks/${appId}/${token}/messages/@original`, "PATCH", toPayload(m));
+}
+
+/**
  * The guild itself — its name when a server creates its challenge, its
  * `owner_id` when the install welcome has to reach the owner too, and its
  * `system_channel_id` (« Salon système », where Discord posts its join
@@ -197,6 +209,19 @@ export function createChannel(
   });
 }
 
+/**
+ * Renames (or recolours) a role the bootstrap owns: an organiser who renames a
+ * team on the site expects the Discord role to follow.
+ */
+export function modifyRole(guildId: string, roleId: string, role: { name?: string; color?: number }) {
+  return request<GuildRole>(`/guilds/${guildId}/roles/${roleId}`, "PATCH", { name: role.name?.slice(0, 100), color: role.color });
+}
+
+/** Same, for a channel or a category. */
+export function modifyChannel(channelId: string, channel: { name?: string; topic?: string }) {
+  return request<GuildChannel>(`/channels/${channelId}`, "PATCH", { name: channel.name?.slice(0, 100), topic: channel.topic?.slice(0, 1024) });
+}
+
 export function getGuildMember(guildId: string, userId: string) {
   return request<{ user?: { id: string }; roles?: string[] }>(`/guilds/${guildId}/members/${userId}`);
 }
@@ -225,10 +250,16 @@ const FORUM_CHANNEL = 15;
 export type ForumTag = { id: string; name: string };
 
 /** Creates a forum channel with its available tags. Needs « Gérer les salons ». */
-export async function createForumChannel(guildId: string, name: string, tags: { name: string; emoji?: string }[]) {
+export async function createForumChannel(
+  guildId: string,
+  name: string,
+  tags: { name: string; emoji?: string }[],
+  options: { parentId?: string | null } = {},
+) {
   const r = await request<{ id: string; available_tags?: ForumTag[] }>(`/guilds/${guildId}/channels`, "POST", {
     type: FORUM_CHANNEL,
     name,
+    parent_id: options.parentId ?? undefined,
     available_tags: tags.map((t) => ({ name: t.name, moderated: false, emoji_name: t.emoji ?? null })),
   });
   return r.ok && r.data.id ? { id: r.data.id, tags: r.data.available_tags ?? [] } : null;

@@ -14,14 +14,17 @@ export default async function AdminChallengePage({ searchParams }: PageProps<"/a
   const params = await searchParams;
   // Only the editions this organiser runs — every edition for a super-admin.
   const challenges = await listOrganizedChallenges(user.id);
-  const [teams, players] = await Promise.all([
+  const [teams, players, pendingInvites] = await Promise.all([
     prisma.team.findMany({
       where: { challengeId: current.id },
       select: { discordRoleId: true, discordChannelId: true, discordLibraryChannelId: true },
     }),
     prisma.challengeMember.count({ where: { challengeId: current.id, role: "PLAYER" } }),
+    // Someone invited but not yet connected counts as invited: the gesture is done.
+    prisma.invite.count({ where: { challengeId: current.id, usedAt: null } }),
   ]);
   const appId = process.env.AUTH_DISCORD_ID;
+  const discord = discordSetupState(current, teams);
 
   return (
     <ChallengeView
@@ -45,11 +48,8 @@ export default async function AdminChallengePage({ searchParams }: PageProps<"/a
         period: `${dateFmt.format(c.startAt)} → ${dateFmt.format(c.endAt)}`,
         status: c.status,
       }))}
-      steps={nextSteps(current, { teams: teams.length, players })}
-      discord={{
-        ...discordSetupState(current, teams),
-        inviteUrl: appId ? botInviteUrl(appId, current.discordGuildId) : null,
-      }}
+      steps={nextSteps(current, { teams: teams.length, teamsReady: discord.teamsReady, players, pendingInvites })}
+      discord={{ ...discord, inviteUrl: appId ? botInviteUrl(appId, current.discordGuildId) : null }}
       params={params}
       saveChallengeAction={saveChallengeAction}
       setupDiscordAction={setupDiscordAction}

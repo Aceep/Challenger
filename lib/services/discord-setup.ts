@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { GLOBAL_COMMANDS } from "@/lib/discord/challenger";
 import { SLASH_COMMANDS } from "@/lib/discord/commands";
 import { welcomeMessage } from "@/lib/discord/help";
-import { channelSlug, generalOverwrites, hexToInt, teamOverwrites } from "@/lib/discord/permissions";
+import { announcementsOverwrites, channelSlug, hexToInt, teamOverwrites } from "@/lib/discord/permissions";
 import { publishTeamGuide } from "@/lib/services/team-guide";
 import {
   addMemberRole,
@@ -12,6 +12,8 @@ import {
   getGuildChannels,
   getGuildMember,
   getGuildRoles,
+  modifyChannel,
+  modifyRole,
   pinMessage,
   postMessage,
   registerGlobalCommands,
@@ -23,19 +25,26 @@ import {
 } from "@/lib/discord/rest";
 import { once } from "@/lib/services/bot-events";
 import { organizersWithDiscord } from "@/lib/services/membership";
+import { setupFaq } from "@/lib/services/questions";
 import { GameError } from "@/lib/errors";
 
 /**
- * One-click Discord server bootstrap (organiser side).
+ * The Discord server plan of one edition, created and kept up to date.
  *
- * A bot cannot create a usable server on its own: the organiser creates an
- * empty one, pastes its id, invites the bot with the generated link, then runs
- * this. Everything here is **resumable** — each created id is persisted right
- * away, and a second run only fills what is missing (« 0 créé, n déjà en place »).
+ * Run whole by `/challenger creer` (through `bootstrapGuildChallenge`), and
+ * again by the « Configurer » button of Admin › Défi and by every team the
+ * organiser adds or renames on the site. Everything here is **resumable** —
+ * each created id is persisted right away, and a second run only fills what is
+ * missing (« 0 créé, n déjà en place »).
+ *
+ * The edition owns a **category of its own**, named after it, holding
+ * `#annonces-défi` and the `#faq` forum; each team owns a category holding
+ * `#aventure` and `#librairie`. Nothing outside is ever adopted — an older
+ * edition that answered in `#général` keeps it, but no new one is given it.
  */
 
 const ADMIN_ROLE_NAME = "Organisateurs";
-const GENERAL_NAME = "général";
+const ANNOUNCEMENTS_NAME = "annonces-défi";
 const ADVENTURE_NAME = "aventure";
 const LIBRARY_NAME = "librairie";
 
@@ -45,6 +54,8 @@ const PACE = 350;
 export type SetupSummary = {
   /** Human labels of what was created (« rôle Organisateurs », « #librairie · Les Hérissons »…). */
   created: string[];
+  /** Renamed or recoloured to follow the site (« rôle Les Hérissons »). */
+  updated: string[];
   /** Already in place, or intentionally left alone. */
   skipped: string[];
   errors: string[];
@@ -55,8 +66,28 @@ export type SetupSummary = {
 const bySlug = (channels: GuildChannel[], type: number, name: string, parentId?: string | null) =>
   channels.find((c) => c.type === type && channelSlug(c.name ?? "") === channelSlug(name) && (parentId === undefined || (c.parent_id ?? null) === parentId));
 
+/**
+ * Renames a channel or a category the site has renamed — an organiser who
+ * renames a team expects Discord to follow. Compared on the slug, since Discord
+ * lowercases and dashes a text channel name on its own: only a real rename
+ * sends a PATCH, never a round trip of its own formatting.
+ *
+ * Returns true when the rename went through, so the caller counts it as updated.
+ */
+async function rename(channel: GuildChannel | undefined, name: string, out: SetupSummary): Promise<boolean> {
+  if (!channel || channelSlug(channel.name ?? "") === channelSlug(name)) return false;
+  const r = await modifyChannel(channel.id, { name });
+  await sleep(PACE);
+  if (!r.ok) {
+    out.errors.push(`renommage de « ${channel.name} » : ${r.error}`);
+    return false;
+  }
+  channel.name = name;
+  return true;
+}
+
 export async function setupGuild(challengeId: string): Promise<SetupSummary> {
-  const out: SetupSummary = { created: [], skipped: [], errors: [], rolesAssigned: 0, welcomed: 0 };
+  const out: SetupSummary = { created: [], updated: [], skipped: [], errors: [], rolesAssigned: 0, welcomed: 0 };
 
   const botId = process.env.AUTH_DISCORD_ID;
   if (!process.env.DISCORD_BOT_TOKEN || !botId) throw new GameError("Le bot n'est pas configuré : AUTH_DISCORD_ID et DISCORD_BOT_TOKEN sont requis.");
@@ -111,33 +142,77 @@ export async function setupGuild(challengeId: string): Promise<SetupSummary> {
     out.skipped.push(`rôle ${ADMIN_ROLE_NAME}`);
   }
 
-  // --- 3. #général (read-only for players).
+  // --- 3. The category of the edition, named after it: everything the challenge
+  // owns on this server lives under it, and a new season gets a new one.
+  let categoryId = challenge.discordCategoryId;
+  if (!channelExists(categoryId)) {
+    const existing = bySlug(channels, 4, challenge.name, null);
+    if (existing) {
+      categoryId = existing.id;
+      out.skipped.push(`catégorie ${challenge.name}`);
+    } else {
+      const c = await createChannel(guildId, { name: challenge.name, type: 4 });
+      await sleep(PACE);
+      if (!c.ok) {
+        out.errors.push(`catégorie ${challenge.name} : ${c.error}`);
+        categoryId = null;
+      } else {
+        categoryId = c.data.id;
+        channels.push(c.data);
+        out.created.push(`catégorie ${challenge.name}`);
+      }
+    }
+    if (categoryId) await prisma.challenge.update({ where: { id: challengeId }, data: { discordCategoryId: categoryId } });
+  } else if (await rename(channels.find((c) => c.id === categoryId), challenge.name, out)) {
+    out.updated.push(`catégorie ${challenge.name}`);
+  } else {
+    out.skipped.push(`catégorie ${challenge.name}`);
+  }
+
+  // --- 3 bis. #annonces-défi, read-only for the players.
+  // Only ever created when the edition has no announcements salon: an edition
+  // that started before the category existed keeps the `#général` it adopted.
   let generalId = challenge.discordGeneralChannelId;
   if (!channelExists(generalId)) {
-    const existing = bySlug(channels, 0, GENERAL_NAME);
+    const existing = bySlug(channels, 0, ANNOUNCEMENTS_NAME, categoryId);
     if (existing) {
       generalId = existing.id;
-      out.skipped.push(`#${GENERAL_NAME}`);
+      out.skipped.push(`#${ANNOUNCEMENTS_NAME}`);
     } else {
       const c = await createChannel(guildId, {
-        name: GENERAL_NAME,
+        name: ANNOUNCEMENTS_NAME,
         type: 0,
+        parentId: categoryId,
         topic: "Annonces du défi lecture · classement du dimanche 20 h",
-        permissionOverwrites: generalOverwrites({ guildId, adminRoleId, botId }),
+        permissionOverwrites: announcementsOverwrites({ guildId, adminRoleId, botId }),
       });
       await sleep(PACE);
       if (!c.ok) {
-        out.errors.push(`#${GENERAL_NAME} : ${c.error}`);
+        out.errors.push(`#${ANNOUNCEMENTS_NAME} : ${c.error}`);
         generalId = null;
       } else {
         generalId = c.data.id;
         channels.push(c.data);
-        out.created.push(`#${GENERAL_NAME}`);
+        out.created.push(`#${ANNOUNCEMENTS_NAME}`);
       }
     }
     if (generalId) await prisma.challenge.update({ where: { id: challengeId }, data: { discordGeneralChannelId: generalId } });
   } else {
-    out.skipped.push(`#${GENERAL_NAME}`);
+    out.skipped.push("salon d’annonces");
+  }
+
+  // --- 3 ter. The #faq forum, under the same category. `setupFaq` owns the
+  // forum, its tags and the admin role; its problems are reported, never thrown.
+  if (!challenge.discordFaqChannelId) {
+    try {
+      const faq = await setupFaq(challengeId, { parentId: categoryId });
+      if (faq.channelId) out.created.push("forum #faq");
+      for (const p of faq.problems) out.errors.push(`#faq : ${p}`);
+    } catch (e) {
+      out.errors.push(`#faq : ${e instanceof Error ? e.message : String(e)}`);
+    }
+  } else {
+    out.skipped.push("forum #faq");
   }
 
   // --- 4. Per team: role, category, #aventure, #librairie.
@@ -161,21 +236,37 @@ export async function setupGuild(challengeId: string): Promise<SetupSummary> {
         await prisma.team.update({ where: { id: team.id }, data: { discordRoleId: teamRoleId } });
         team.discordRoleId = teamRoleId;
       } else {
-        out.skipped.push(`rôle ${team.name}`);
+        // The role is there: make it say what the site says. A team renamed or
+        // recoloured in Admin › Équipes must not keep its old name on Discord.
+        const role = roles.find((r) => r.id === teamRoleId)!;
+        const color = hexToInt(team.color);
+        if (role.name !== team.name || (role.color ?? 0) !== color) {
+          const r = await modifyRole(guildId, teamRoleId!, { name: team.name, color });
+          await sleep(PACE);
+          if (!r.ok) throw new Error(`rôle : ${r.error}`);
+          role.name = team.name;
+          role.color = color;
+          out.updated.push(`rôle ${team.name}`);
+        } else {
+          out.skipped.push(`rôle ${team.name}`);
+        }
       }
 
       const overwrites = teamOverwrites({ guildId, teamRoleId: teamRoleId!, adminRoleId, botId });
 
-      // Category: rediscovered from the adventure channel's parent when possible.
+      // Category: rediscovered from the adventure channel's parent when possible
+      // — that is the only way to find it again after the team was renamed.
       const known = channels.find((c) => c.id === team.discordChannelId);
-      let categoryId = known?.parent_id ?? bySlug(channels, 4, team.name)?.id ?? null;
-      if (!categoryId) {
+      let teamCategoryId = known?.parent_id ?? bySlug(channels, 4, team.name)?.id ?? null;
+      if (!teamCategoryId) {
         const c = await createChannel(guildId, { name: team.name, type: 4, permissionOverwrites: overwrites });
         await sleep(PACE);
         if (!c.ok) throw new Error(`catégorie : ${c.error}`);
-        categoryId = c.data.id;
+        teamCategoryId = c.data.id;
         channels.push(c.data);
         out.created.push(`catégorie ${team.name}`);
+      } else if (await rename(channels.find((c) => c.id === teamCategoryId), team.name, out)) {
+        out.updated.push(`catégorie ${team.name}`);
       } else if (!known) {
         out.skipped.push(`catégorie ${team.name}`);
       }
@@ -190,12 +281,12 @@ export async function setupGuild(challengeId: string): Promise<SetupSummary> {
           out.skipped.push(`#${salon.name} · ${team.name}`);
           continue;
         }
-        const existing = bySlug(channels, 0, salon.name, categoryId);
+        const existing = bySlug(channels, 0, salon.name, teamCategoryId);
         let id = existing?.id ?? null;
         if (existing) {
           out.skipped.push(`#${salon.name} · ${team.name}`);
         } else {
-          const c = await createChannel(guildId, { name: salon.name, type: 0, parentId: categoryId, topic: salon.topic, permissionOverwrites: overwrites });
+          const c = await createChannel(guildId, { name: salon.name, type: 0, parentId: teamCategoryId, topic: salon.topic, permissionOverwrites: overwrites });
           await sleep(PACE);
           if (!c.ok) throw new Error(`#${salon.name} : ${c.error}`);
           id = c.data.id;

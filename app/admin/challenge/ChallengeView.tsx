@@ -68,6 +68,7 @@ export function ChallengeView({ challenge, editions, steps, discord, params, sav
                     </Link>
                   ) : null}
                 </span>
+                {s.detail ? <span className="hint">{s.detail}</span> : null}
                 {s.hint ? <span className="hint">{s.hint}</span> : null}
               </li>
             ))}
@@ -83,16 +84,21 @@ export function ChallengeView({ challenge, editions, steps, discord, params, sav
         <div className="flex flex-wrap items-center gap-2">
           <Eyebrow className="grow">Serveur Discord</Eyebrow>
           <Pill tone={discord.adminRoleId ? "ok" : "no"}>Organisateurs {discord.adminRoleId ? "✓" : "—"}</Pill>
-          <Pill tone={discord.generalChannelId ? "ok" : "no"}>#général {discord.generalChannelId ? "✓" : "—"}</Pill>
+          <Pill tone={discord.generalChannelId ? "ok" : "no"}>#annonces-défi {discord.generalChannelId ? "✓" : "—"}</Pill>
+          <Pill tone={discord.faqChannelId ? "ok" : "no"}>#faq {discord.faqChannelId ? "✓" : "—"}</Pill>
           <Pill tone={discord.teamsTotal > 0 && discord.teamsReady === discord.teamsTotal ? "ok" : "wait"}>
             Équipes {discord.teamsReady} / {discord.teamsTotal}
           </Pill>
         </div>
 
+        <p className="text-[13.5px]">
+          Depuis Discord, <code>/challenger creer</code> fait tout&#8239;: il ouvre un formulaire (nom, date, durée, équipes) et crée l’édition, les rôles, la
+          catégorie du défi avec <code>#annonces-défi</code> et <code>#faq</code>, puis une catégorie par équipe. Depuis le site, cela se fait en trois temps.
+        </p>
+
         <ol className="setup-steps">
           <li className={step > 1 ? "done" : ""}>
-            <strong>1. Créez un serveur Discord vide</strong>, puis collez son identifiant dans le champ « Serveur Discord (id) » du formulaire ci-dessus et
-            enregistrez — ou créez le défi depuis Discord avec <code>/challenger creer</code>&#8239;: l’identifiant est alors déjà rempli.{" "}
+            <strong>1. L’identifiant du serveur</strong> — collez-le dans le champ « Serveur Discord (id) » ci-dessus, puis enregistrez.{" "}
             {discord.guildId ? (
               <>
                 Serveur : <code>{discord.guildId}</code>
@@ -102,28 +108,42 @@ export function ChallengeView({ challenge, editions, steps, discord, params, sav
             )}
           </li>
           <li className={step > 1 ? "done" : ""}>
-            <strong>2. Invitez le bot</strong> sur ce serveur.{" "}
+            <strong>2. Invitez Kyle</strong> sur ce serveur.{" "}
             {discord.inviteUrl ? (
               <a href={discord.inviteUrl} target="_blank" rel="noreferrer" className="btn small">
-                Inviter le bot
+                Inviter Kyle
               </a>
             ) : (
               <span style={{ color: "var(--brick)" }}>AUTH_DISCORD_ID n&apos;est pas configuré côté serveur.</span>
             )}
-            <span className="hint">Laissez les trois permissions cochées : gérer les salons, gérer les rôles, envoyer des messages.</span>
+            <span className="hint">Laissez les permissions cochées : elles servent toutes à créer les rôles, les salons et le forum.</span>
           </li>
           <li className={discord.complete ? "done" : ""}>
-            <strong>3. Configurez le serveur</strong> : rôles (Organisateurs + une couleur par équipe), catégorie et salons <code>aventure</code> et{" "}
-            <code>librairie</code> privés, <code>#général</code> en lecture seule, commandes slash et message d&apos;accueil épinglé de Kyle.
+            <strong>3. Configurez le serveur</strong> : le rôle <em>Organisateurs</em>, la catégorie du défi avec <code>#annonces-défi</code> en lecture seule et
+            le forum <code>#faq</code>, puis une catégorie par équipe avec ses salons <code>aventure</code> et <code>librairie</code> privés, les commandes
+            slash et le message d&apos;accueil épinglé de Kyle.
             <form action={setupDiscordAction} className="mt-2">
               <input type="hidden" name="challengeId" value={challenge?.id ?? ""} />
               <SubmitButton className="btn" pendingLabel="Configuration…" disabled={!discord.guildId || !challenge}>
                 Configurer le serveur Discord
               </SubmitButton>
             </form>
-            <span className="hint">Relançable à volonté : rien n&apos;est dupliqué, seul ce qui manque est créé.</span>
+            <span className="hint">
+              Relançable à volonté : rien n&apos;est dupliqué, seul ce qui manque est créé — et une équipe renommée ici voit son rôle et sa catégorie suivre.
+            </span>
           </li>
         </ol>
+
+        <p className="text-[13px] text-[color:var(--muted)]">
+          <Link href="/admin/challenge?tour=admin&step=0" className="underline">
+            Revoir la visite
+          </Link>{" "}
+          · le pas à pas complet est sur la{" "}
+          <Link href="/guide" className="underline">
+            page Guide
+          </Link>
+          .
+        </p>
       </Card>
 
       <div className="two">

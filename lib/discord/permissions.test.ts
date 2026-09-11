@@ -7,7 +7,7 @@ import {
   botInviteUrl,
   channelSlug,
   discordSetupState,
-  generalOverwrites,
+  announcementsOverwrites,
   hexToInt,
   sum,
   teamDiscordReady,
@@ -70,8 +70,8 @@ describe("permissions Discord", () => {
     expect(teamOverwrites({ guildId: GUILD, teamRoleId: TEAM_ROLE })).toHaveLength(2);
   });
 
-  it("rend #général lisible par tous mais accessible en écriture aux seuls organisateurs", () => {
-    const ow = generalOverwrites({ guildId: GUILD, adminRoleId: ADMIN_ROLE, botId: BOT });
+  it("rend #annonces-défi lisible par tous mais accessible en écriture aux seuls organisateurs", () => {
+    const ow = announcementsOverwrites({ guildId: GUILD, adminRoleId: ADMIN_ROLE, botId: BOT });
     const everyone = ow.find((o) => o.id === GUILD)!;
     expect(everyone.allow).toBe(sum(P.VIEW, P.HISTORY, P.ADD_REACTIONS));
     expect(everyone.deny).toBe(sum(P.SEND));
@@ -97,11 +97,14 @@ describe("permissions Discord", () => {
     expect(teamDiscordReady(ready)).toBe(true);
     expect(teamDiscordReady(partial)).toBe(false);
 
-    expect(discordSetupState(null, [])).toMatchObject({ guildId: null, teamsReady: 0, teamsTotal: 0, complete: false });
+    expect(discordSetupState(null, [])).toMatchObject({ guildId: null, categoryId: null, faqChannelId: null, teamsReady: 0, teamsTotal: 0, complete: false });
 
-    const challenge = { discordGuildId: "g", discordAdminRoleId: "ar", discordGeneralChannelId: "gc" };
+    const challenge = { discordGuildId: "g", discordAdminRoleId: "ar", discordCategoryId: "cat", discordGeneralChannelId: "gc", discordFaqChannelId: "faq" };
     expect(discordSetupState(challenge, [ready, partial])).toMatchObject({ teamsReady: 1, teamsTotal: 2, complete: false });
     expect(discordSetupState(challenge, [ready, ready]).complete).toBe(true);
-    expect(discordSetupState({ ...challenge, discordGeneralChannelId: null }, [ready]).complete).toBe(false);
+    // Tout ce que crée le bootstrap est exigé : il en manque une pièce, ce n'est pas fini.
+    for (const missing of ["discordAdminRoleId", "discordCategoryId", "discordGeneralChannelId", "discordFaqChannelId"] as const) {
+      expect(discordSetupState({ ...challenge, [missing]: null }, [ready]).complete, missing).toBe(false);
+    }
   });
 });

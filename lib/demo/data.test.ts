@@ -104,8 +104,11 @@ describe("données de démo", () => {
     expect(DEMO_DISCORD_SETUP.inviteUrl).toContain("discord.com/oauth2/authorize");
   });
 
-  it("montre une édition entièrement configurée : pas de carte « Prochaines étapes »", () => {
-    expect(allDone(DEMO_NEXT_STEPS)).toBe(true);
+  // Les Hiboux, la seule équipe pas encore câblée sur Discord, laissent la carte
+  // « Prochaines étapes » ouverte sur une ligne — c'est précisément son rôle.
+  it("montre une édition presque configurée : la carte « Prochaines étapes » reste sur les équipes", () => {
+    expect(allDone(DEMO_NEXT_STEPS)).toBe(false);
+    expect(DEMO_NEXT_STEPS.filter((s) => !s.done).map((s) => s.id)).toEqual(["teams"]);
   });
 
   it("décrit une grille de bingo valide : une seule ligne complète et des ½ en attente", () => {

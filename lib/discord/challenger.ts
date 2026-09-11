@@ -11,7 +11,6 @@ import { P } from "@/lib/discord/permissions";
 import type { SlashCommand } from "@/lib/discord/commands";
 
 const SUB_COMMAND = 1;
-const STRING = 3;
 
 /** Either permission is enough to speak for the server. */
 const MANAGE = BigInt(P.MANAGE_GUILD) | BigInt(P.ADMINISTRATOR);
@@ -38,8 +37,9 @@ export const CHALLENGER_COMMAND: SlashCommand = {
     {
       type: SUB_COMMAND,
       name: "creer",
+      // No option: the command opens a form (nom, début, durée, équipes), which
+      // holds far more than a slash command comfortably can.
       description: "Créer le défi lecture de ce serveur (réservé à « Gérer le serveur »)",
-      options: [{ type: STRING, name: "nom", description: "Nom du défi, visible par tout le monde", required: true, max_length: 100 }],
     },
   ],
 };
@@ -54,11 +54,15 @@ export const GLOBAL_COMMANDS: SlashCommand[] = [CHALLENGER_COMMAND];
 /** What the interaction payload carries for a sub-command. */
 type IncomingOption = { name: string; type?: number; value?: string | number | boolean; options?: IncomingOption[] };
 
-export type ChallengerInteraction = { sub: "creer"; name: string };
+export type ChallengerInteraction = { sub: "creer" };
 
 /**
  * Reads `data.options` of a `/challenger` interaction; null when the sub-command
  * is not `creer`.
+ *
+ * The name of the challenge no longer travels here: `creer` answers with a
+ * modal, and everything is typed in it. An old client still sending `nom:` is
+ * read as a plain `creer` — the form simply opens with its own pre-fill.
  *
  * `rejoindre` used to sit here: joining is now the organiser's invitation only.
  * Discord keeps offering a retired sub-command until the global commands are
@@ -67,7 +71,5 @@ export type ChallengerInteraction = { sub: "creer"; name: string };
  */
 export function parseChallengerInteraction(options?: IncomingOption[] | null): ChallengerInteraction | null {
   const sub = (options ?? []).find((o) => o.name === "creer");
-  if (!sub) return null;
-  const name = sub.options?.find((o) => o.name === "nom")?.value;
-  return { sub: "creer", name: typeof name === "string" ? name.trim() : "" };
+  return sub ? { sub: "creer" } : null;
 }

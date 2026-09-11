@@ -851,14 +851,27 @@ export const DEMO_ADMIN_TEAMS: AdminTeamRow[] = DEMO_TEAMS.map((t, i) => ({
 }));
 
 /** Setup state of the Discord server shown on /demo/admin/challenge. */
-/** Role « Organisateurs » created by the guild bootstrap. */
+/** Role « Organisateurs », category of the edition and #faq forum, created by the guild bootstrap. */
 const DEMO_ADMIN_ROLE_ID = "1542450110112501761";
+const DEMO_CATEGORY_ID = "1542450110112501790";
+const DEMO_FAQ_CHANNEL_ID = "1542450110112501791";
+
+/** What the bootstrap has wired on the demo server — everything but Les Hiboux. */
+const DEMO_DISCORD_CHALLENGE = {
+  discordGuildId: DEMO_CHALLENGE_FORM.discordGuildId,
+  discordAdminRoleId: DEMO_ADMIN_ROLE_ID,
+  discordCategoryId: DEMO_CATEGORY_ID,
+  discordGeneralChannelId: DEMO_CHALLENGE_FORM.discordGeneralChannelId,
+  discordFaqChannelId: DEMO_FAQ_CHANNEL_ID,
+};
+
+const DEMO_DISCORD_STATE = discordSetupState(
+  DEMO_DISCORD_CHALLENGE,
+  DEMO_ADMIN_TEAMS.map((t) => ({ discordRoleId: t.discordRole, discordChannelId: t.adventureChannel, discordLibraryChannelId: t.libraryChannel })),
+);
 
 export const DEMO_DISCORD_SETUP = {
-  ...discordSetupState(
-    { discordGuildId: DEMO_CHALLENGE_FORM.discordGuildId, discordAdminRoleId: DEMO_ADMIN_ROLE_ID, discordGeneralChannelId: DEMO_CHALLENGE_FORM.discordGeneralChannelId },
-    DEMO_ADMIN_TEAMS.map((t) => ({ discordRoleId: t.discordRole, discordChannelId: t.adventureChannel, discordLibraryChannelId: t.libraryChannel })),
-  ),
+  ...DEMO_DISCORD_STATE,
   inviteUrl: botInviteUrl("1542446033106698260", DEMO_CHALLENGE_FORM.discordGuildId),
 };
 
@@ -870,20 +883,22 @@ export const DEMO_ADMIN_PLAYERS: PlayerRow[] = [
   { id: "demo-user-tom", name: "Tom", discordId: "552033445566777781", teamId: "demo-team-loutres", teamName: "Les Loutres", isCaptain: true, role: "PLAYER", books: 6, isMe: false },
 ];
 
-/** Everything is set up in the demo edition, so the « Prochaines étapes » card stays hidden. */
-export const DEMO_NEXT_STEPS: NextStep[] = nextSteps(
-  {
-    discordGuildId: DEMO_CHALLENGE_FORM.discordGuildId,
-    discordAdminRoleId: DEMO_ADMIN_ROLE_ID,
-    discordGeneralChannelId: DEMO_CHALLENGE_FORM.discordGeneralChannelId,
-  },
-  { teams: DEMO_ADMIN_TEAMS.length, players: DEMO_ADMIN_PLAYERS.filter((p) => p.role === "PLAYER").length },
-);
-
 export const DEMO_ADMIN_INVITES = [
   { id: "demo-invite-1", discordId: "773044556677882210", teamName: "Les Loutres", role: "PLAYER" as const },
   { id: "demo-invite-2", discordId: "910455667788995533", teamName: "Les Hiboux", role: "PLAYER" as const },
 ];
+
+/**
+ * Almost everything is set up in the demo edition: Les Hiboux, the team that
+ * exists on the site but not yet on Discord, keeps the « Prochaines étapes »
+ * card visible on one line — which is exactly what the card is for.
+ */
+export const DEMO_NEXT_STEPS: NextStep[] = nextSteps(DEMO_DISCORD_CHALLENGE, {
+  teams: DEMO_ADMIN_TEAMS.length,
+  teamsReady: DEMO_DISCORD_STATE.teamsReady,
+  players: DEMO_ADMIN_PLAYERS.filter((p) => p.role === "PLAYER").length,
+  pendingInvites: DEMO_ADMIN_INVITES.length,
+});
 
 const progressFor = (indices: { done: number[]; half: number[] }, size: number): GridProgress[] =>
   Array.from({ length: size * size }, (_, i) => (indices.done.includes(i) ? "done" : indices.half.includes(i) ? "half" : "free"));

@@ -58,14 +58,15 @@ function firstRun({ guildName, appUrl }: WelcomeInput, audience: WelcomeAudience
     "",
     "**1. Créer le défi, depuis le serveur**",
     dm
-      ? "Tape `/challenger creer nom:<nom du défi>` dans n’importe quel salon. La commande est réservée aux personnes qui ont la permission « Gérer le serveur »."
-      : "Un·e admin peut lancer le défi avec `/challenger creer nom:<nom du défi>`, dans n’importe quel salon. La commande est réservée aux personnes qui ont la permission « Gérer le serveur ».",
+      ? "Tape `/challenger creer` dans n’importe quel salon : un formulaire s’ouvre — nom du défi, date de début, durée en semaines, et les équipes, une par ligne."
+      : "Un·e admin peut lancer le défi avec `/challenger creer`, dans n’importe quel salon : un formulaire s’ouvre — nom du défi, date de début, durée en semaines, et les équipes, une par ligne.",
+    "Je m’occupe du reste : l’édition, le rôle des organisateur·ices, la catégorie du défi avec **#annonces-défi** et le forum **#faq**, et une catégorie par équipe avec ses salons **#aventure** et **#librairie**. Une minute au plus. La commande est réservée aux personnes qui ont la permission « Gérer le serveur ».",
     "",
-    "**2. Terminer sur le site**",
-    "Le lien de ma réponse mène aux réglages : dates, équipes, salons. Le bouton « Configurer le serveur Discord » crée les rôles et les salons en un clic.",
+    "**2. Régler les détails sur le site**",
+    "Le lien de ma réponse mène aux réglages : barème, bingo, quêtes, histoire. Une équipe ajoutée ou renommée là-bas, et le serveur suit tout seul.",
     "",
     "**3. Faire venir les lecteur·ices**",
-    "Les invitations se posent sur le site, dans « Joueurs » : l’invitation s’applique à la prochaine connexion Discord de la personne, et on la range ensuite dans une équipe.",
+    "Les invitations se posent sur le site, dans « Joueurs » : l’invitation s’applique à la prochaine connexion Discord de la personne. Personne ne rejoint un défi de lui-même.",
     "",
     guide(appUrl),
     PROPAGATION,

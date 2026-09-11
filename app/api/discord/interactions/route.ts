@@ -5,19 +5,21 @@ import { cancelBookPending, chooseBookOption, openBookModal, saveBookPending, su
 import { bingoCard, bingoCellCard } from "@/lib/discord/bingo";
 import { GRID_IMAGE_FILENAME, renderGridPng } from "@/lib/bingo/grid-image";
 import { readingConfirmation, type DiscordEmbed } from "@/lib/discord/cards";
-import { BOOK_MODAL_ID, NONE, modalValues, parseBookId } from "@/lib/discord/components";
+import { BOOK_MODAL_ID, NONE, modalPayload, modalValues, parseBookId } from "@/lib/discord/components";
 import { hasManageGuild, parseChallengerInteraction } from "@/lib/discord/challenger";
+import { challengeCreatingCard, challengeFailedCard, challengeReadyCard } from "@/lib/discord/challenger-cards";
 import { announceGridChange, announceRankChange, announceReading, announceResolution, syncVoteMessage } from "@/lib/discord/events";
-import { getGuild } from "@/lib/discord/rest";
+import { editOriginalResponse, getGuild } from "@/lib/discord/rest";
+import { CHALLENGE_MODAL_ID, CHALLENGE_MODAL_TITLE, challengeModalInputs, parseChallengeModal } from "@/lib/tenancy/challenge-modal";
 import { userMessage } from "@/lib/errors";
 import { fmtPoints } from "@/lib/format";
 import { HELP_TITLE, helpText } from "@/lib/discord/help";
 import { bingoCellChoices, cellChoices, editableBookChoices, questChoices } from "@/lib/services/autocomplete";
-import { createChallengeFromGuild } from "@/lib/services/challenger";
+import { bootstrapGuildChallenge, createChallengeFromGuild } from "@/lib/services/challenger";
 import { getTeamBoard } from "@/lib/services/bingo";
 import { bookPatchSchema, bookSchema, deleteBook, describeResult, logBook, updateBook } from "@/lib/services/books";
 import { getLeaderboard, withLeaderWatch } from "@/lib/services/leaderboard";
-import { resolveDiscordActor } from "@/lib/services/membership";
+import { challengeForGuild, resolveDiscordActor } from "@/lib/services/membership";
 import { listQuestsForTeam } from "@/lib/services/quests";
 import { askQuestion } from "@/lib/services/questions";
 import { castBallot, getTeamStoryView } from "@/lib/services/story";
@@ -27,6 +29,15 @@ import { tickOnActivity } from "@/lib/services/tick";
  * Discord HTTP interactions: slash commands, autocomplete and vote buttons.
  * Discord signs every request with the app's public key; anything unsigned is rejected.
  */
+
+/**
+ * `/challenger creer` answers straight away and does the work in `after()`:
+ * creating an edition, its teams, a category, four salons and a forum is far
+ * more than the three seconds Discord gives an interaction. `after()` runs for
+ * as long as the route may — twelve teams take some twenty-five seconds at the
+ * bootstrap's pace, so the minute of a Fluid function is the right ceiling.
+ */
+export const maxDuration = 60;
 
 /** One interaction response. `data` carries more than text (embeds, components) for the richer branches. */
 const reply = (type: number, data?: unknown) => NextResponse.json({ type, data });
@@ -98,38 +109,105 @@ type Interaction = {
 const joinByInvite = () =>
   `On ne rejoint plus un défi soi-même : demande une invitation aux organisateur·ices, elle s’appliquera à ta prochaine connexion sur ${appUrl()}/login. Pour ouvrir le défi de ce serveur : \`/challenger creer\`.`;
 
+/** « Gérer le serveur » — creating a challenge speaks for the whole server. */
+const MANAGE_GUILD_ONLY = "Créer le défi de ce serveur demande la permission « Gérer le serveur ».";
+
+const alreadyRunning = (name: string) =>
+  `Ce serveur a déjà un défi : « ${name} ». Pour y participer, demande une invitation aux organisateur·ices ; pour le piloter, ouvre ${appUrl()}/admin/challenge.`;
+
 /**
  * `/challenger creer` — the only command that works on a server with no
- * challenge, and for a Discord id with no account. Creating speaks for the
- * whole server, so it asks for « Gérer le serveur ». Any other sub-command
- * (a retired one Discord still offers, or a payload we do not know) gets the
- * invitation explanation rather than a raw error.
+ * challenge, and for a Discord id with no account. It answers with the form
+ * (`CHALLENGE_MODAL_ID`), pre-filled with the server's name: a modal has to be
+ * the *first* answer to the interaction, so nothing but the one `getGuild` call
+ * may happen before it. Any other sub-command (a retired one Discord still
+ * offers, or a payload we do not know) gets the invitation explanation rather
+ * than a raw error.
  */
-async function challengerCommand(interaction: Interaction, discordId: string) {
+async function challengerCommand(interaction: Interaction) {
   const guildId = interaction.guild_id;
   if (!guildId) return ephemeral("Cette commande se lance depuis un serveur Discord.");
   const parsed = parseChallengerInteraction(interaction.data?.options);
   if (!parsed) return ephemeral(joinByInvite());
 
   try {
-    if (!hasManageGuild(interaction.member?.permissions)) {
-      return ephemeral("Créer le défi de ce serveur demande la permission « Gérer le serveur ».");
-    }
+    if (!hasManageGuild(interaction.member?.permissions)) return ephemeral(MANAGE_GUILD_ONLY);
+    const existing = await challengeForGuild(guildId);
+    if (existing && existing.status !== "FINISHED") return ephemeral(alreadyRunning(existing.name));
+
     const guild = await getGuild(guildId);
-    const result = await createChallengeFromGuild({ guildId, guildName: guild.ok ? guild.data.name : null, discordId, name: parsed.name });
-    if (result.kind === "exists") {
-      return ephemeral(
-        `Ce serveur a déjà un défi : « ${result.challenge.name} ». Pour y participer, demande une invitation aux organisateur·ices ; pour le piloter, ouvre ${appUrl()}/admin/challenge.`,
-      );
-    }
-    return ephemeral(
-      result.pendingLogin
-        ? `✅ Défi « ${result.challenge.name} » créé pour ce serveur. Connecte-toi avec Discord sur ${appUrl()}/login : tu en deviendras l’organisateur·ice et tu finiras la configuration (équipes, salons, joueurs).`
-        : `✅ Défi « ${result.challenge.name} » créé ! Termine la configuration ici : ${appUrl()}/admin/challenge`,
+    return reply(
+      InteractionResponseType.MODAL,
+      modalPayload({
+        customId: CHALLENGE_MODAL_ID,
+        title: CHALLENGE_MODAL_TITLE,
+        inputs: challengeModalInputs({ guildName: guild.ok ? guild.data.name : null }),
+      }),
     );
   } catch (e) {
     return ephemeral(`❌ ${userMessage(e)}`);
   }
+}
+
+/**
+ * The form comes back: everything the edition needs was typed in it, so the
+ * whole challenge — edition, teams, roles, category, salons, forum — is built
+ * here, in `after()`, behind a deferred answer.
+ *
+ * The permission is checked **again**: a `custom_id` is only a string, and a
+ * submission can be replayed by someone who never saw the command. The tenant
+ * is *not* resolved first — this is precisely the path of a server with no
+ * challenge and of a person with no account.
+ */
+async function challengeModalSubmit(interaction: Interaction, discordId: string) {
+  const guildId = interaction.guild_id;
+  if (!guildId) return ephemeral("Ce formulaire se remplit depuis un serveur Discord.");
+  if (!hasManageGuild(interaction.member?.permissions)) return ephemeral(MANAGE_GUILD_ONLY);
+
+  // Discord closes the modal on send and refuses to reopen it: a refusal is a
+  // sentence saying what to fix, and the person retypes the command.
+  const parsed = parseChallengeModal(modalValues(interaction.data), new Date());
+  if (!parsed.ok) return ephemeral(`${parsed.error}\n\nRetape \`/challenger creer\` : le formulaire se rouvrira.`);
+
+  const { name, startAt, endAt, teams } = parsed.data;
+  const appId = interaction.application_id ?? process.env.AUTH_DISCORD_ID ?? "";
+  const token = interaction.token;
+
+  after(async () => {
+    // One message, rewritten at each step: « je prépare » then the result.
+    const show = async (embed: DiscordEmbed) => {
+      try {
+        await editOriginalResponse(appId, token, { embeds: [embed] });
+      } catch (e) {
+        console.error("[challenger] carte non mise à jour", e);
+      }
+    };
+    await show(challengeCreatingCard(name));
+
+    let created;
+    try {
+      created = await createChallengeFromGuild({ guildId, discordId, name, startAt, endAt, teams });
+    } catch (e) {
+      return show(challengeFailedCard(userMessage(e), appUrl()));
+    }
+    if (created.kind === "exists") return show(challengeFailedCard(alreadyRunning(created.challenge.name), appUrl()));
+
+    // The edition exists whatever happens next: a Discord hiccup leaves a
+    // challenge to finish from the site, never a half-written database.
+    const summary = { created: [] as string[], skipped: [] as string[], errors: [] as string[] };
+    try {
+      const done = await bootstrapGuildChallenge(created.challenge.id, discordId);
+      summary.created = done.created;
+      summary.skipped = done.skipped;
+      summary.errors = done.errors;
+    } catch (e) {
+      summary.errors.push(userMessage(e));
+    }
+
+    await show(challengeReadyCard({ name: created.challenge.name, startAt, endAt, teams, summary, appUrl: appUrl(), pendingLogin: created.pendingLogin }));
+  });
+
+  return reply(InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE, { flags: 64 });
 }
 
 export async function POST(request: Request) {
@@ -155,8 +233,13 @@ export async function POST(request: Request) {
 
   // `/challenger` answers *before* the tenant is resolved: it is precisely the
   // command of a server that has no challenge, or of someone who belongs to none.
+  // Its form comes back the same way, and must be read before anything tries to
+  // find a challenge that does not exist yet.
+  if (interaction.type === InteractionType.MODAL_SUBMIT && interaction.data?.custom_id === CHALLENGE_MODAL_ID) {
+    return challengeModalSubmit(interaction, discordUser.id);
+  }
   if (interaction.type === InteractionType.APPLICATION_COMMAND && interaction.data?.name === "challenger") {
-    return challengerCommand(interaction, discordUser.id);
+    return challengerCommand(interaction);
   }
 
   // The server decides the tenant: same bot, one challenge per Discord guild.

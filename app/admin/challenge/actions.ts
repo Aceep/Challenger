@@ -53,6 +53,7 @@ export async function setupDiscordAction(formData: FormData) {
       const s = await setupGuild(challengeId);
       const parts = [
         `${s.created.length} créé${s.created.length > 1 ? "s" : ""}`,
+        ...(s.updated.length ? [`${s.updated.length} renommé${s.updated.length > 1 ? "s" : ""}`] : []),
         `${s.skipped.length} déjà en place`,
         `${s.rolesAssigned} rôle${s.rolesAssigned > 1 ? "s" : ""} attribué${s.rolesAssigned > 1 ? "s" : ""}`,
         `${s.welcomed} message${s.welcomed > 1 ? "s" : ""} d'accueil`,

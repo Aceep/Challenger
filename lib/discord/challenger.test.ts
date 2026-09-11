@@ -33,9 +33,11 @@ describe("commande /challenger", () => {
     expect(JSON.stringify(CHALLENGER_COMMAND)).not.toContain("rejoindre");
   });
 
-  it("demande un nom pour la création", () => {
+  // Tout se saisit dans la modale : un nom d'option de plus serait une deuxième
+  // façon de dire la même chose, et une chance de plus de se contredire.
+  it("ne prend aucune option : la création passe par un formulaire", () => {
     const creer = CHALLENGER_COMMAND.options?.[0];
-    expect(creer?.options?.[0]).toMatchObject({ name: "nom", required: true, max_length: 100 });
+    expect(creer?.options ?? []).toEqual([]);
   });
 
   it("est la seule commande enregistrée globalement", () => {
@@ -44,16 +46,14 @@ describe("commande /challenger", () => {
 });
 
 describe("lecture d'une interaction /challenger", () => {
-  it("lit la création et son nom", () => {
-    expect(parseChallengerInteraction([{ name: "creer", type: 1, options: [{ name: "nom", type: 3, value: "  Défi d’automne  " }] }])).toEqual({
-      sub: "creer",
-      name: "Défi d’automne",
-    });
+  it("reconnaît la création", () => {
+    expect(parseChallengerInteraction([{ name: "creer", type: 1 }])).toEqual({ sub: "creer" });
   });
 
-  it("rend un nom vide quand l'option manque, pour laisser le repli jouer", () => {
-    expect(parseChallengerInteraction([{ name: "creer", type: 1 }])).toEqual({ sub: "creer", name: "" });
-    expect(parseChallengerInteraction([{ name: "creer", type: 1, options: [{ name: "nom", type: 3, value: "   " }] }])).toEqual({ sub: "creer", name: "" });
+  // Un client qui n'a pas encore reçu la nouvelle définition envoie toujours
+  // `nom:` : la commande ouvre quand même le formulaire, qui a son pré-remplissage.
+  it("ignore l'ancienne option « nom »", () => {
+    expect(parseChallengerInteraction([{ name: "creer", type: 1, options: [{ name: "nom", type: 3, value: "Défi d’automne" }] }])).toEqual({ sub: "creer" });
   });
 
   // Tant que les commandes globales ne sont pas ré-enregistrées, Discord

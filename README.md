@@ -78,7 +78,11 @@ Le bot n'est pas un accessoire : c'est la seconde interface du jeu. Déclarer un
 
 Le bot s'ajoute **depuis le site, sans compte** : le bouton **« Ajouter Kyle à mon serveur »** de la page d'accueil, de la page de connexion et de la page `/guide` ouvre l'autorisation Discord. Un seul jeu de permissions est demandé, partout (`BOT_PERMISSIONS`, `lib/discord/permissions.ts`) : gérer les rôles et les salons, écrire, et ouvrir un fil dans le forum — c'est le même lien qui sert à ré-inviter le bot depuis l'administration.
 
-L'organisateur crée un serveur vide, y invite le bot avec ce lien, puis lance la configuration en un clic depuis `/admin/challenge`. Le bot crée alors ce qui manque, de façon **reprenable** — un second passage ne fait que compléter : le rôle *Organisateurs*, le salon **#général**, et une catégorie par équipe avec ses salons **#aventure** (histoire, votes, annonces) et **#librairie** (lectures). Le forum **#faq**, lui, se crée à part, **depuis Admin › FAQ**. Un mot de bienvenue signé Kyle — la mascotte, un dinosaure jaune intraitable sur les demi-crédits — est épinglé dans chaque salon d'équipe.
+Le chemin le plus court part de Discord : `/challenger creer` ouvre un **formulaire** (nom, date de début, durée en semaines, équipes une par ligne avec une couleur facultative) et fait tout le reste — l'édition (créée **active**), le rôle *Organisateurs*, une **catégorie au nom du défi** contenant **#annonces-défi** (lecture seule) et le forum **#faq**, puis une catégorie par équipe avec ses salons **#aventure** (histoire, votes, annonces) et **#librairie** (lectures). La commande répond tout de suite et édite son message : « Je prépare… » puis « Tout est prêt ».
+
+Depuis le site, c'est le même travail en trois temps : coller l'identifiant du serveur, inviter Kyle, puis **Configurer le serveur Discord** depuis `/admin/challenge`. Le bot crée alors ce qui manque, de façon **reprenable** — un second passage ne fait que compléter, et une équipe **renommée** sur le site voit son rôle et sa catégorie renommés à leur tour. Une équipe créée ou modifiée dans Admin › Équipes déclenche le câblage toute seule ; la supprimer, en revanche, ne touche à rien sur Discord. Le bouton de Admin › FAQ reste là pour recréer le forum seul, si le bootstrap ne l'a pas obtenu. Un mot de bienvenue signé Kyle — la mascotte, un dinosaure jaune intraitable sur les demi-crédits — est épinglé dans chaque salon d'équipe.
+
+Les éditions antérieures gardent leurs salons : le `#général` qu'elles avaient adopté n'est plus jamais réutilisé par une nouvelle édition, qui a sa propre catégorie. Une nouvelle saison sur le même serveur suppose l'ancienne passée en *Terminé* ; une équipe de même nom y retrouve son rôle et sa catégorie.
 
 Lorsque l'application est ajoutée à un serveur, Discord émet un événement `APPLICATION_AUTHORIZED` et le bot envoie en message privé les étapes pour démarrer — à la personne qui l'a ajouté, et au propriétaire du serveur si c'est quelqu'un d'autre. **Si ce message privé ne passe pas** (beaucoup de comptes refusent les MP des membres d'un serveur), le même mot, rédigé de façon impersonnelle, est posté une seule fois dans le salon système du serveur, à défaut dans son premier salon texte.
 
@@ -90,7 +94,7 @@ Le même événement **ré-enregistre les commandes globales** quand leur défin
 
 | Commande | Ce qu'elle fait |
 | --- | --- |
-| `/challenger creer` | Crée le défi lecture de ce serveur — réservé à « Gérer le serveur » |
+| `/challenger creer` | Ouvre le formulaire du défi, puis crée l'édition, les équipes, les rôles et les salons — réservé à « Gérer le serveur » |
 
 On ne rejoint pas un défi soi-même : l'organisation invite depuis **Admin › Joueurs**, et l'invitation s'applique à la prochaine connexion de la personne.
 
