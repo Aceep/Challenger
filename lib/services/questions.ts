@@ -23,6 +23,8 @@ import {
 import { hexToInt } from "@/lib/discord/permissions";
 import { addMemberRole, createForumChannel, createForumPost, createRole, deleteChannel, GONE, listMessages, patchThread, postMessage } from "@/lib/discord/rest";
 import { organizersWithDiscord, roleIn } from "@/lib/services/membership";
+import { pushLater } from "@/lib/services/push";
+import { notifyPlayerReplied, notifyQuestionAnswered, notifyQuestionAsked } from "@/lib/services/push-events";
 import { assertWritable, type ActorRole } from "@/lib/scoring/books";
 
 /**
@@ -167,6 +169,9 @@ export async function askQuestion({ userId, challengeId, title, detail }: { user
   const challenge = await challengeOf(challengeId);
 
   const question = await prisma.question.create({ data: { challengeId: challenge.id, authorId: actor.id, title: input.title, body: input.detail } });
+  // Before the forum post, which may well fail or not be configured at all: the
+  // organisation has to hear about the question either way.
+  pushLater(() => notifyQuestionAsked(question.id, actor.id));
 
   let url: string | null = null;
   if (challenge.discordFaqChannelId) {
@@ -197,6 +202,13 @@ export async function replyToQuestion({ userId, questionId, body }: { userId: st
   await prisma.questionMessage.create({
     data: { questionId: question.id, authorId: actor.id, discordUserId: actor.discordId, discordUserName: actor.name, body: text, isAdmin },
   });
+
+  // An organiser answering their own question needs no notification about it.
+  if (isAdmin) {
+    if (question.author.id !== actor.id) pushLater(() => notifyQuestionAnswered(question.id, text));
+  } else {
+    pushLater(() => notifyPlayerReplied(question.id, actor.id));
+  }
 
   const status = nextStatus(question.status as QuestionStatus, { adminReplied: isAdmin });
   const tags = parseFaqTags(question.challenge.discordFaqTags);
@@ -311,6 +323,13 @@ export async function syncQuestions(challengeId: string, { force = false }: { fo
         skipDuplicates: true,
       });
       imported += created.count;
+      // `skipDuplicates` is what keeps this from ringing twice: a message already
+      // imported by an earlier sync writes no row, so `count` stays at zero and
+      // the answer is announced exactly once.
+      if (created.count > 0) {
+        const answer = messages.filter((m) => m.isAdmin && m.authorId !== q.authorId).at(-1);
+        if (answer) pushLater(() => notifyQuestionAnswered(q.id, answer.body));
+      }
     }
     const status = nextStatus(q.status as QuestionStatus, { adminReplied: messages.some((m) => m.isAdmin) });
     if (lastMessageId || status !== q.status) {

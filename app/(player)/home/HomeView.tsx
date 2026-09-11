@@ -2,7 +2,8 @@ import Link from "next/link";
 import { Button, Card, KyleEmpty, PageTitle, ScoreCard, Stat } from "@/components/ui";
 import { Flash } from "@/components/Flash";
 import { InstallCard } from "@/components/pwa/InstallCard";
-import { BooksIcon, FlagIcon, LogoutIcon, PlusIcon, QuestIcon, SearchIcon, TargetIcon, VoteIcon } from "@/components/ui/icons";
+import { SignOutForm } from "@/components/pwa/SignOutForm";
+import { BooksIcon, FlagIcon, PlusIcon, QuestIcon, SearchIcon, TargetIcon, VoteIcon } from "@/components/ui/icons";
 import { fmtPoints } from "@/lib/format";
 import { dayLabel, type WeekAction } from "@/lib/home/week";
 
@@ -86,16 +87,7 @@ export function HomeView({ userName, team, challengeName, challengeOver, score, 
       <PageTitle
         className="page-head"
         kicker={challengeName ? <p className="eyebrow">{challengeName}</p> : undefined}
-        action={
-          signOutAction ? (
-            <form action={signOutAction}>
-              <button className="btn sm ghost">
-                <LogoutIcon />
-                Déconnexion
-              </button>
-            </form>
-          ) : undefined
-        }
+        action={signOutAction ? <SignOutForm action={signOutAction} /> : undefined}
       >
         Salut <span className="accent">{userName}</span>
       </PageTitle>

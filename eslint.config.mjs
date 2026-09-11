@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Shipped verbatim, not bundled: `public/sw.js` is a service worker with its
+    // own globals (`self`, `clients`), which the app's rules know nothing about.
+    "public/**",
   ]),
 ]);
 

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card, Kyle, PageTitle, SectionHeading } from "@/components/ui";
 import { Flash } from "@/components/Flash";
 import { EditionSwitcher, type EditionSwitcherProps } from "@/components/EditionSwitcher";
+import { NotificationSettings, type NotificationSettingsProps } from "@/components/pwa/NotificationSettings";
 import { InstallHelp } from "@/components/pwa/InstallSteps";
 import { DiscordMock } from "@/components/tour/DiscordMock";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
@@ -13,6 +14,8 @@ export type HelpViewProps = {
   edition: Pick<EditionSwitcherProps, "current" | "options" | "action">;
   /** `?ok=` / `?error=` — the demo lands its « action simulée » flash here. */
   params?: Record<string, string | string[] | undefined>;
+  /** Push switches and devices. Absent in the demo, which has no account. */
+  push?: NotificationSettingsProps;
   demo?: boolean;
 };
 
@@ -35,7 +38,7 @@ export function Rich({ text }: { text: string }) {
 }
 
 /** Help & rules — pure view, reused by /demo. */
-export function HelpView({ sections, edition, params, demo }: HelpViewProps) {
+export function HelpView({ sections, edition, params, push, demo }: HelpViewProps) {
   const home = demo ? "/demo" : "/home";
 
   return (
@@ -103,6 +106,17 @@ export function HelpView({ sections, edition, params, demo }: HelpViewProps) {
           <InstallHelp />
           <p className="meta-xs">
             Challenger s’ajoute à l’écran d’accueil comme une application : plein écran, sans barre d’adresse, et l’URL n’est plus à retrouver.
+          </p>
+        </section>
+      )}
+
+      {push && (
+        <section className="section" id="notifications">
+          <SectionHeading>Notifications</SectionHeading>
+          <NotificationSettings {...push} />
+          <p className="meta-xs">
+            Les notifications arrivent sur les appareils que tu actives, un par un. Ce que tu reçois se règle ici pour tous tes appareils à la
+            fois.
           </p>
         </section>
       )}
