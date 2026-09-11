@@ -8,6 +8,9 @@ import { activeGridForTeam, completePositions } from "@/lib/services/bingo";
 import { awardPoints } from "@/lib/services/points";
 import { getTeamScore } from "@/lib/services/leaderboard";
 import { roleIn } from "@/lib/services/membership";
+import { notifyAwaitingTarget, notifyTiePending, notifyTieStage, notifyVoteOpened, notifyVoteResolved } from "@/lib/services/push-events";
+import { pushLater } from "@/lib/services/push";
+import { teamAudienceIds } from "@/lib/services/team";
 import { describeEffect, needsTargetTeam, parseEffects, effectsSchema, type Effect } from "@/lib/story/effects";
 import { canBreakTie, resolveVote, tieCascadeStage, unmetConditions, type TieStage } from "@/lib/story/vote";
 
@@ -168,11 +171,13 @@ export async function alliedTeamIds(teamId: string): Promise<string[]> {
   return rows.map((a) => (a.teamAId === teamId ? a.teamBId : a.teamAId));
 }
 
-async function eligibleVoterIds(tx: Tx, teamId: string): Promise<string[]> {
-  const allies = await tx.alliance.findMany({ where: { OR: [{ teamAId: teamId }, { teamBId: teamId }] } });
-  const teamIds = [teamId, ...allies.map((a) => (a.teamAId === teamId ? a.teamBId : a.teamAId))];
-  const members = await tx.teamMember.findMany({ where: { teamId: { in: teamIds } }, select: { userId: true } });
-  return members.map((m) => m.userId);
+/**
+ * Who may vote on this team's chapter: its members and its allies'. The same
+ * list is the one notified about the chapter, so both read `teamAudienceIds`
+ * (`lib/services/team.ts`) and can never disagree.
+ */
+function eligibleVoterIds(tx: Tx, teamId: string): Promise<string[]> {
+  return teamAudienceIds(teamId, tx);
 }
 
 // ---------------------------------------------------------------------------
@@ -217,7 +222,11 @@ async function openVoteIfReady(teamId: string, nodeId: string, challengeId: stri
   const arrival = await prisma.storyVisit.findFirst({ where: { teamId, nodeId }, orderBy: { arrivedAt: "desc" } });
   const settled = await prisma.vote.findFirst({ where: { teamId, nodeId, status: "RESOLVED", createdAt: { gte: arrival?.arrivedAt ?? new Date(0) } } });
   if (settled) return null;
-  return prisma.vote.create({ data: { teamId, nodeId, deadline: new Date(Date.now() + (node.voteHours ?? voteHours) * 3600_000) } });
+  const vote = await prisma.vote.create({ data: { teamId, nodeId, deadline: new Date(Date.now() + (node.voteHours ?? voteHours) * 3600_000) } });
+  // The single place a vote is born, whatever opened it: `/story`, `/histoire`
+  // or the tick. Only ever reached once — the guards above see the row next time.
+  pushLater(() => notifyVoteOpened(vote.id));
+  return vote;
 }
 
 export async function getTeamStoryView(teamId: string, userId: string) {
@@ -321,6 +330,7 @@ export async function castBallot(voteId: string, userId: string, choiceId: strin
 }
 
 export type ResolutionSummary = {
+  voteId: string;
   teamId: string;
   teamName: string;
   choiceLabel: string;
@@ -352,7 +362,11 @@ export async function tryResolveVote(voteId: string, now = new Date()): Promise<
     now,
   });
   if (result.status === "tie") {
-    if (vote.tieStage === "NONE") await prisma.vote.update({ where: { id: voteId }, data: { tieStage: "CAPTAIN", tieSince: now } });
+    if (vote.tieStage === "NONE") {
+      await prisma.vote.update({ where: { id: voteId }, data: { tieStage: "CAPTAIN", tieSince: now } });
+      // `NONE → CAPTAIN` happens once per vote: the guard above sees the stage next time.
+      pushLater(() => notifyTieStage(voteId, "CAPTAIN"));
+    }
     return null;
   }
   if (result.status !== "resolved") return null;
@@ -379,7 +393,8 @@ async function settleChoice(vote: { id: string; teamId: string; team: { name: st
   const effects = parseEffects(choice.effects);
   if (needsTargetTeam(effects)) {
     await prisma.vote.update({ where: { id: voteId }, data: { status: "AWAITING_TARGET", resultChoiceId: choice.id } });
-    return { teamId: vote.teamId, teamName: vote.team.name, choiceLabel: choice.label, nextTitle: null, effects: [], awaitingTarget: true, how, affectedTeamIds: [] };
+    pushLater(() => notifyAwaitingTarget(voteId));
+    return { voteId, teamId: vote.teamId, teamName: vote.team.name, choiceLabel: choice.label, nextTitle: null, effects: [], awaitingTarget: true, how, affectedTeamIds: [] };
   }
   return applyResolution(voteId, choice.id, null, how);
 }
@@ -400,6 +415,8 @@ export async function breakTie(voteId: string, userId: string, choiceId: string)
   if (role === "member") {
     if (vote.pendingChoiceId) throw new GameError("Un choix attend déjà la confirmation de l'organisation");
     await prisma.vote.update({ where: { id: voteId }, data: { pendingChoiceId: choiceId, pendingById: userId } });
+    // The guard above makes this a one-shot: a second proposal is refused.
+    pushLater(() => notifyTiePending(voteId));
     return null;
   }
   const choice = vote.node.choices.find((c) => c.id === choiceId)!;
@@ -433,8 +450,13 @@ export async function chooseTargetTeam(voteId: string, userId: string, targetTea
   return applyResolution(voteId, vote.resultChoiceId, targetTeamId, "majority");
 }
 
+/**
+ * The one door every resolution goes through — `castBallot`, `breakTie`,
+ * `confirmTieBreak`, `chooseTargetTeam` and `resolveExpiredVotes` all end up
+ * here — which is why a single hook covers them all.
+ */
 async function applyResolution(voteId: string, choiceId: string, targetTeamId: string | null, how: ResolutionSummary["how"]): Promise<ResolutionSummary> {
-  return prisma.$transaction(async (tx) => {
+  const summary = await prisma.$transaction(async (tx) => {
     const vote = await tx.vote.findUniqueOrThrow({ where: { id: voteId }, include: { team: { include: { challenge: { include: { story: true } } } } } });
     const choice = await tx.storyChoice.findUniqueOrThrow({ where: { id: choiceId }, include: { target: true } });
     const chosen = targetTeamId ? await tx.team.findUniqueOrThrow({ where: { id: targetTeamId } }) : null;
@@ -502,8 +524,12 @@ async function applyResolution(voteId: string, choiceId: string, targetTeamId: s
       await tx.teamStoryState.update({ where: { teamId: vote.teamId }, data: { currentNodeId: choice.targetNodeId } });
       await tx.storyVisit.create({ data: { teamId: vote.teamId, nodeId: choice.targetNodeId, choiceLabel: choice.label } });
     }
-    return { teamId: vote.teamId, teamName: vote.team.name, choiceLabel: choice.label, nextTitle: choice.target?.title ?? null, effects: summaries, awaitingTarget: false, how, affectedTeamIds: [...affected] };
+    return { voteId, teamId: vote.teamId, teamName: vote.team.name, choiceLabel: choice.label, nextTitle: choice.target?.title ?? null, effects: summaries, awaitingTarget: false, how, affectedTeamIds: [...affected] };
   });
+  // Outside the transaction on purpose: the notification reads the points, the
+  // modifiers and the new chapter back, so they have to be committed first.
+  pushLater(() => notifyVoteResolved(summary));
+  return summary;
 }
 
 /** Cron / resolve-on-read: settle every expired vote and open the next ones. */
@@ -548,6 +574,8 @@ export async function advanceTieStages(now = new Date()) {
   for (const v of await tiedVotes(now)) {
     if (v.stage !== v.recorded) {
       await prisma.vote.update({ where: { id: v.id }, data: { tieStage: v.stage } });
+      // The recorded stage is what makes this idempotent: one push per stage.
+      pushLater(() => notifyTieStage(v.id, v.stage));
       moved.push(v);
     }
   }

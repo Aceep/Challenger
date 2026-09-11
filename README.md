@@ -55,6 +55,17 @@ Un rôle n'existe qu'**à l'intérieur** d'une édition — `ORGANIZER` ou `PLAY
 
 Au premier passage, un **tour guidé** mené par Kyle se superpose aux écrans plutôt que d'imposer une page d'onboarding.
 
+### Sur le téléphone
+
+Le site s'**installe sur l'écran d'accueil** : il s'ouvre alors en plein écran, sans barre d'adresse ni onglets, comme une application.
+
+- **Android** (Chrome) : la carte « Installer l'app » en haut de l'accueil propose le bouton **« Installer »** ; sinon, menu ⋮ › *Ajouter à l'écran d'accueil*.
+- **iPhone** (Safari) : bouton **Partager** › **Sur l'écran d'accueil** › *Ajouter*. Les mêmes étapes sont rappelées dans **Aide & règles › Installer l'app**.
+
+Une fois l'app installée, **Aide & règles › Notifications** permet d'activer les **notifications push** sur cet appareil, puis de choisir ce que l'on veut recevoir : *Histoire* (un vote s'ouvre ou se résout dans mon équipe), *Mes questions* (l'organisation a répondu), *Organisation* (réservée aux organisateur·ices de l'édition). Tout est activé par défaut, l'abonnement vaut pour **un appareil à la fois**, et se déconnecter le retire. Sur iPhone, l'autorisation n'existe *qu'*une fois l'app ajoutée à l'écran d'accueil — d'où l'ordre : installer, puis activer.
+
+Il n'y a pas de mode hors-ligne : le *service worker* ne sert qu'à afficher la notification et à ouvrir la bonne page.
+
 **Espace organisateur** (`/admin`, réservé aux `ORGANIZER` de l'édition, mise en page desktop avec rail latéral) : tableau de bord et to-do, réglages de l'édition et configuration Discord (`/admin/challenge`), équipes, joueurs et invitations, modération des lectures, éditeur de grilles de bingo, de quêtes, d'histoire, et administration de la FAQ.
 
 ---
@@ -165,8 +176,31 @@ npx vercel env pull .env.local
 | `CRON_SECRET` | Secret protégeant `GET /api/cron/tick` ; la route échoue en 401 tant qu'il n'est pas configuré. |
 | `DISCORD_GUILD_ID` | Serveur Discord visé par le seed et par l'enregistrement des commandes. Outillage local uniquement. |
 | `ADMIN_DISCORD_ID` | Identifiant Discord du premier organisateur, semé comme invitation. Requis par le seed uniquement. |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | Clé publique VAPID des notifications push. Seule variable à atteindre le navigateur — d'où le préfixe. |
+| `VAPID_PRIVATE_KEY` | Clé privée signant chaque envoi. |
+| `VAPID_SUBJECT` | Adresse de contact que les services de push peuvent utiliser : une URL `mailto:` ou `https:`. |
 
-Aucune de ces variables n'atteint le navigateur : il n'y a pas un seul `NEXT_PUBLIC_*` dans le dépôt.
+Hormis la clé publique VAPID, aucune de ces variables n'atteint le navigateur.
+
+### Notifications push
+
+La paire de clés **VAPID** se génère une fois pour toutes :
+
+```bash
+npx web-push generate-vapid-keys
+```
+
+Reportez la clé publique dans `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, la privée dans `VAPID_PRIVATE_KEY`, et choisissez un `VAPID_SUBJECT`. Sur Vercel, les trois sont à poser dans **tous les environnements** (production, preview, développement) : la clé publique est compilée dans le *bundle*, un déploiement de preview sans elle n'affiche aucun bouton d'activation. Puis `npx vercel env pull .env.local`.
+
+Sans ces clés, rien ne casse : le build passe, l'application tourne, et les envois deviennent des *no-op*.
+
+> Les tests en local demandent **HTTPS** (un déploiement de preview Vercel est le plus simple ; sinon `next dev --experimental-https`) : hors `localhost`, un *service worker* ne s'enregistre pas en clair.
+
+Les icônes de l'application installée (`public/icons/*`, `app/apple-icon.png`) sont dérivées de `app/icon.png` et versionnées ; après avoir changé le logo :
+
+```bash
+npm run pwa:icons
+```
 
 ### Travailler sans Discord
 
@@ -208,7 +242,7 @@ npx vitest run lib/scoring/reading.test.ts
 
 ## Tâches planifiées
 
-Tout ce qui dépend de l'heure — ouverture et fermeture de la fenêtre du dimanche, classement de 20 h (avec rattrapage s'il a été manqué), expiration des votes, cascade d'égalité, rappels aux équipes dormantes — est regroupé dans `runTick` (`lib/services/tick.ts`), idempotent : chaque annonce n'est postée qu'une fois.
+Tout ce qui dépend de l'heure — ouverture et fermeture de la fenêtre du dimanche, classement de 20 h (avec rattrapage s'il a été manqué), expiration des votes, cascade d'égalité, rappels aux équipes dormantes, ménage des abonnements push devenus muets — est regroupé dans `runTick` (`lib/services/tick.ts`), idempotent : chaque annonce n'est postée qu'une fois.
 
 Il est déclenché de trois façons : les crons Vercel de [`vercel.json`](./vercel.json), un workflow GitHub Actions horaire ([`.github/workflows/tick.yml`](./.github/workflows/tick.yml)) — le plan Vercel Hobby ne permet que des crons quotidiens et imprécis, alors que le tick veut la minute près — et l'activité des joueurs elle-même, de façon limitée.
 

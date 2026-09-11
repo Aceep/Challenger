@@ -29,6 +29,10 @@ model User {
   onboardedAt   DateTime?
   createdAt     DateTime  @default(now())
 
+  /// Push categories this person turned *off*. Empty = everything is received,
+  /// so a new category is live for everybody without a data migration.
+  pushMuted PushCategory[] @default([])
+
   accounts          Account[]
   sessions          Session[]
   memberships       ChallengeMember[]
@@ -42,6 +46,7 @@ model User {
   questions         Question[]
   questionMessages  QuestionMessage[]
   pendingReadings   PendingReading[]
+  pushSubscriptions PushSubscription[]
 }
 
 model Account {
@@ -672,4 +677,40 @@ model QuestionMessage {
 model BotEvent {
   key       String   @id
   createdAt DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Web push notifications
+// ---------------------------------------------------------------------------
+
+/// What a push notification is about. One switch per category in Aide.
+enum PushCategory {
+  /// Vote opened, vote resolved, tie cascade — the team's shared story.
+  STORY
+  /// The organisation answered one of my questions.
+  QUESTIONS
+  /// Organiser-only: new question, player reply, choice awaiting confirmation.
+  ORGANIZER
+}
+
+/// One browser (or installed app) that accepted notifications, as the Push API
+/// describes it. The endpoint is the identity: the same person on two phones has
+/// two rows, and a reinstall issues a brand new endpoint.
+model PushSubscription {
+  id        String  @id @default(cuid())
+  userId    String
+  endpoint  String  @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  /// Consecutive send failures; the tick drops a subscription that keeps failing.
+  failures  Int     @default(0)
+
+  createdAt  DateTime @default(now())
+  /// Refreshed once per tab session by the bootstrap: proof the device is still there.
+  lastSeenAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
