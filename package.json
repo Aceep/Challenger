@@ -18,6 +18,7 @@
     "discord:register": "tsx --env-file=.env.local scripts/discord-register.mts",
     "db:check": "tsx --env-file=.env.local scripts/db-check.mts",
     "bingo:preview": "tsx scripts/bingo-preview.mts",
+    "pwa:icons": "tsx scripts/pwa-icons.mts",
     "postinstall": "prisma generate"
   },
   "dependencies": {

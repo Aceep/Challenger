@@ -23,12 +23,19 @@ export const metadata: Metadata = {
   title: "Challenger",
   description:
     "Challenger, par Aceep&Kyle : lance le défi lecture de ta communauté Discord. Chaque page lue rapporte des points ; bingo, quêtes et histoire font le reste.",
+  // Installed on an iPhone, the app runs without Safari's chrome; `default`
+  // keeps the status bar opaque, so nothing hides under it.
+  appleWebApp: { capable: true, title: "Challenger", statusBarStyle: "default" },
+  // The `<link rel="manifest">` comes from app/manifest.ts — never declared twice.
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   themeColor: "#FFD84A",
+  // Lets the layout reach the screen edges, which is what makes the six
+  // `env(safe-area-inset-*)` rules of globals.css do anything at all.
+  viewportFit: "cover",
 };
 
 /** Applies the stored theme before first paint (Auto / Clair / Sombre, cf. ThemeToggle). */

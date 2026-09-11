@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card, Kyle, PageTitle, SectionHeading } from "@/components/ui";
 import { Flash } from "@/components/Flash";
 import { EditionSwitcher, type EditionSwitcherProps } from "@/components/EditionSwitcher";
+import { InstallHelp } from "@/components/pwa/InstallSteps";
 import { DiscordMock } from "@/components/tour/DiscordMock";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import type { HelpSection } from "@/lib/discord/help";
@@ -95,6 +96,16 @@ export function HelpView({ sections, edition, params, demo }: HelpViewProps) {
         <ThemeToggle />
         <p className="meta-xs">«&#8239;Auto&#8239;» suit le réglage de ton téléphone : clair «&#8239;Papier&#8239;» le jour, sombre «&#8239;Encre&#8239;» la nuit.</p>
       </section>
+
+      {!demo && (
+        <section className="section" id="install">
+          <SectionHeading>Installer l’app</SectionHeading>
+          <InstallHelp />
+          <p className="meta-xs">
+            Challenger s’ajoute à l’écran d’accueil comme une application : plein écran, sans barre d’adresse, et l’URL n’est plus à retrouver.
+          </p>
+        </section>
+      )}
     </main>
   );
 }

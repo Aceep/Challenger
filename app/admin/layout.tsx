@@ -1,5 +1,6 @@
 import { switchChallengeAction } from "@/app/(player)/help/actions";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { PwaBootstrap } from "@/components/pwa/PwaBootstrap";
 import { requireOrganizer } from "@/lib/dal";
 import { listSwitchableChallenges } from "@/lib/services/membership";
 import { openQuestionsCount } from "@/lib/services/questions";
@@ -17,6 +18,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
       openQuestions={openQuestions}
     >
       {children}
+      <PwaBootstrap />
     </AdminShell>
   );
 }

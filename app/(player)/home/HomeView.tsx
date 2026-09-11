@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Button, Card, KyleEmpty, PageTitle, ScoreCard, Stat } from "@/components/ui";
 import { Flash } from "@/components/Flash";
+import { InstallCard } from "@/components/pwa/InstallCard";
 import { BooksIcon, FlagIcon, LogoutIcon, PlusIcon, QuestIcon, SearchIcon, TargetIcon, VoteIcon } from "@/components/ui/icons";
 import { fmtPoints } from "@/lib/format";
 import { dayLabel, type WeekAction } from "@/lib/home/week";
@@ -98,6 +99,8 @@ export function HomeView({ userName, team, challengeName, challengeOver, score, 
       >
         Salut <span className="accent">{userName}</span>
       </PageTitle>
+
+      {!demo && <InstallCard />}
 
       {challengeName === null ? (
         <>

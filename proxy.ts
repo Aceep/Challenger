@@ -24,6 +24,12 @@ export default function proxy(req: NextRequest) {
   return NextResponse.next();
 }
 
+/**
+ * The browser fetches the manifest, the service worker and the icons *without*
+ * cookies, so anything the proxy guards would answer them a redirect to /login
+ * and the install would fail even for a signed-in player. They carry nothing
+ * private and are exempted here.
+ */
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.png|.*\\.(?:png|svg|jpg|ico)$).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.png|manifest.webmanifest|sw.js|icons/|.*\\.(?:png|svg|jpg|ico)$).*)"],
 };
