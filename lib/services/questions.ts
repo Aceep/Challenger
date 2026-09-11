@@ -356,8 +356,12 @@ export type FaqSetupResult = {
  * Creates the "faq" forum and the "Organisateurs" role, then gives that role to
  * every admin with a linked Discord account. Idempotent: whatever already exists
  * is kept. Permission failures are reported, never thrown.
+ *
+ * `parentId` files the forum under the edition's category — the guild bootstrap
+ * passes it, the « Configurer » button of Admin › FAQ leaves it out and the
+ * forum lands at the root, where it has always been.
  */
-export async function setupFaq(challengeId: string): Promise<FaqSetupResult> {
+export async function setupFaq(challengeId: string, { parentId }: { parentId?: string | null } = {}): Promise<FaqSetupResult> {
   const challenge = await challengeOf(challengeId);
   if (!challenge.discordGuildId) throw new GameError("Renseigne d'abord l'identifiant du serveur Discord dans « Défi ».");
   const guildId = challenge.discordGuildId;
@@ -366,7 +370,7 @@ export async function setupFaq(challengeId: string): Promise<FaqSetupResult> {
   let channelId = challenge.discordFaqChannelId;
   let tags = parseFaqTags(challenge.discordFaqTags);
   if (!channelId) {
-    const forum = await createForumChannel(guildId, FAQ_CHANNEL_NAME, FAQ_TAG_NAMES.map((t) => ({ name: t.name, emoji: t.emoji })));
+    const forum = await createForumChannel(guildId, FAQ_CHANNEL_NAME, FAQ_TAG_NAMES.map((t) => ({ name: t.name, emoji: t.emoji })), { parentId });
     if (!forum) {
       problems.push("le salon forum « faq » n'a pas pu être créé — le bot a-t-il la permission « Gérer les salons » ?");
     } else {

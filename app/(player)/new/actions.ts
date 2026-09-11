@@ -29,6 +29,7 @@ export async function createChallengeAction(_prev: ActionState, formData: FormDa
   }
   revalidatePath("/", "layout");
   revalidatePath("/admin", "layout");
-  // Outside the try/catch: `redirect` works by throwing.
-  redirect(`/admin/challenge?new=1&ok=${encodeURIComponent("Défi créé ! Voici les prochaines étapes.")}`);
+  // Outside the try/catch: `redirect` works by throwing. The admin visit starts
+  // on arrival: this is someone's first minute in the organisation desk.
+  redirect(`/admin/challenge?new=1&tour=admin&step=0&ok=${encodeURIComponent("Défi créé ! Voici les prochaines étapes.")}`);
 }

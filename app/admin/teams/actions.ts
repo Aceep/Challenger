@@ -3,9 +3,11 @@
 import { withFlash } from "@/lib/actions";
 import { GameError, userMessage } from "@/lib/errors";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { requireOrganizer } from "@/lib/dal";
 import { parseForm, type ActionState } from "@/lib/forms";
 import { createTeam, deleteTeam, setCaptain, teamSchema, updateTeam } from "@/lib/services/admin";
+import { setupGuild } from "@/lib/services/discord-setup";
 import { setDeputy } from "@/lib/services/team";
 import { publishTeamGuide } from "@/lib/services/team-guide";
 
@@ -13,6 +15,24 @@ const REVALIDATE = ["/admin", "/home"];
 function refresh() {
   revalidatePath("/admin", "layout");
   revalidatePath("/home", "layout");
+}
+
+/**
+ * A team created or renamed on the site must exist — and be correctly named —
+ * on Discord, without anyone having to remember to press « Configurer ». Only
+ * once the server is actually wired (`discordAdminRoleId`), and in `after()`:
+ * the bootstrap talks to Discord for a good second, and only creates or renames
+ * what does not match, so it is safe to fire on every write.
+ */
+function wireDiscord(challenge: { id: string; discordAdminRoleId: string | null }) {
+  if (!challenge.discordAdminRoleId) return;
+  after(async () => {
+    try {
+      await setupGuild(challenge.id);
+    } catch (e) {
+      console.error("[discord] câblage des équipes", e);
+    }
+  });
 }
 
 export async function createTeamAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -24,8 +44,9 @@ export async function createTeamAction(_prev: ActionState, formData: FormData): 
   } catch (e) {
     return { error: userMessage(e) };
   }
+  wireDiscord(challenge);
   refresh();
-  return { success: "Équipe créée." };
+  return { success: challenge.discordAdminRoleId ? "Équipe créée — son rôle et ses salons Discord arrivent." : "Équipe créée." };
 }
 
 export async function updateTeamAction(formData: FormData) {
@@ -36,7 +57,8 @@ export async function updateTeamAction(formData: FormData) {
     if (!id) return;
     if ("error" in parsed) throw new GameError(parsed.error);
     await updateTeam(challenge.id, id, parsed.data);
-    return "Équipe enregistrée.";
+    wireDiscord(challenge);
+    return challenge.discordAdminRoleId ? "Équipe enregistrée — son rôle et sa catégorie Discord suivent." : "Équipe enregistrée.";
   }, REVALIDATE);
 }
 
@@ -45,7 +67,9 @@ export async function deleteTeamAction(formData: FormData) {
   const id = String(formData.get("teamId") ?? "");
   await withFlash("/admin/teams", async () => {
     if (id) await deleteTeam(challenge.id, id);
-    return "Équipe supprimée.";
+    // Deliberately nothing on Discord: a salon may hold a conversation worth
+    // keeping, and deleting one is the kind of gesture nobody can undo.
+    return challenge.discordAdminRoleId ? "Équipe supprimée — son rôle et ses salons Discord restent, à supprimer à la main." : "Équipe supprimée.";
   }, REVALIDATE);
 }
 

@@ -65,9 +65,12 @@ export function ChallengeForm({
         <input name="discordGuildId" defaultValue={c?.discordGuildId ?? ""} />
       </label>
       <label className="field">
-        Salon général (id)
+        Salon d’annonces (id)
         <input name="discordGeneralChannelId" defaultValue={c?.discordGeneralChannelId ?? ""} />
-        <span className="hint">Bot + admins seulement : classement du dimanche, fenêtre de vérification, changements de leader.</span>
+        <span className="hint">
+          Rempli tout seul par la configuration (<code>#annonces-défi</code>) : classement du dimanche, fenêtre de vérification, changements de leader. Tout le
+          monde le lit, seuls le bot et l’organisation y écrivent.
+        </span>
       </label>
       <label className="field">
         Statut

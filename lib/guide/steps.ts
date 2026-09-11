@@ -53,22 +53,23 @@ export const ORGANIZER_STEPS: GuideStep[] = [
     id: "creer-le-defi",
     title: "Créer le défi, depuis Discord",
     lines: [
-      "Dans n’importe quel salon, tape **/challenger creer** et donne un nom au défi : « Le défi de l’hiver », « Lectures d’été »…",
-      "Kyle crée l’édition en **brouillon** et te répond avec le lien du site. Un serveur ne peut pas avoir deux défis en cours : pour rejouer une saison, passe d’abord l’ancienne en *Terminé*.",
-      "La commande est réservée aux personnes qui ont « Gérer le serveur » : c’est un geste qui engage tout le serveur.",
-      "Tu peux aussi partir du site, sans Discord, avec **Créer mon défi** : tu colleras l’identifiant du serveur plus tard.",
+      "Dans n’importe quel salon, tape **/challenger creer**. Un formulaire s’ouvre : le nom du défi, sa date de début au format JJ/MM/AAAA, sa durée en semaines, et les équipes — **une par ligne**, avec une couleur facultative après une virgule : *Les Renards, #d97706*.",
+      "De deux à douze équipes. Celles qui n’ont pas de couleur en reçoivent une, prise dans une palette lisible sur les deux thèmes de Discord.",
+      "Kyle répond « Je prépare… », puis, moins d’une minute plus tard, **« Tout est prêt »** : l’édition, le rôle *Organisateurs* qu’il te donne, la **catégorie du défi** contenant **#annonces-défi** et le forum **#faq**, et une catégorie par équipe avec ses salons **#aventure** et **#librairie**.",
+      "La commande est réservée aux personnes qui ont « Gérer le serveur » : c’est un geste qui engage tout le serveur. Un serveur n’accueille qu’un défi en cours à la fois.",
+      "Si **/challenger** n’apparaît pas encore dans Discord, attends quelques minutes : c’est le délai de propagation des commandes. Tu peux aussi partir du site, sans Discord, avec **Créer mon défi** : tu colleras l’identifiant du serveur plus tard.",
     ],
-    commands: ["/challenger creer nom:Le défi de l’hiver"],
+    commands: ["/challenger creer"],
   },
   {
     id: "equipes-et-salons",
-    title: "Créer les équipes, puis les salons",
+    title: "Les équipes, sur le site",
     lines: [
-      "Sur le site, **Se connecter avec Discord** te mène à l’espace organisation. Dans **Défi**, règle les dates, la couleur de l’édition et l’identifiant du serveur.",
-      "Dans **Équipes**, crée une équipe par groupe de lecteur·ices, avec sa couleur. Le·la capitaine et l’adjoint·e se désignent une fois que les personnes sont arrivées.",
-      "Reviens dans **Défi** et lance **Configurer le serveur Discord**. Kyle crée ce qui manque, et seulement ce qui manque : le rôle *Organisateurs*, le salon **#général**, et une catégorie par équipe avec ses salons **#aventure** et **#librairie**.",
-      "Le forum **#faq**, lui, se crée à part, depuis **FAQ** dans l’espace organisation : c’est là que les questions posées sur le site et sur Discord se rejoignent.",
-      "Le bouton est reprenable : relance-le après avoir ajouté une équipe, il complète sans rien dupliquer.",
+      "Sur le site, **Se connecter avec Discord** te mène à l’espace organisation : tes équipes y sont déjà, telles que tu les as écrites dans le formulaire.",
+      "Dans **Équipes**, désigne le·la capitaine et l’adjoint·e une fois les personnes arrivées : ils tranchent les égalités de vote et corrigent les lectures de leur équipe.",
+      "**Ajoute ou renomme une équipe ici, et le serveur suit.** Kyle crée le rôle, la catégorie et les deux salons qui manquent, et renomme ceux qui ont changé de nom.",
+      "Supprimer une équipe, en revanche, ne détruit rien sur Discord : ses salons restent, avec ce qui s’y est dit ; à toi de les ranger si tu le souhaites.",
+      "Dans **Défi**, le bouton **Configurer le serveur Discord** rattrape tout ce qui manquerait : il ne crée que ce qui n’existe pas, et se relance autant de fois que tu veux. C’est aussi lui qui fait tout le travail si tu es parti·e du site plutôt que de Discord, une fois l’identifiant du serveur collé et Kyle invité.",
     ],
   },
   {
@@ -109,17 +110,20 @@ export const ORGANIZER_STEPS: GuideStep[] = [
     lines: [
       "C’est la **fenêtre de vérification** : les joueur·euses ne peuvent plus ajouter, modifier ni supprimer une lecture. L’organisation, elle, garde la main.",
       "Les capitaines relisent les lectures de leur équipe pendant ce temps-là.",
-      "Le **classement** est publié à 20 h dans le salon général, et le délai d’une heure de correction des lectures est mis en pause pendant toute la fenêtre.",
+      "Le **classement** est publié à 20 h dans **#annonces-défi**, et le délai d’une heure de correction des lectures est mis en pause pendant toute la fenêtre.",
     ],
   },
   {
     id: "apres-le-defi",
     title: "Après le défi, la saison suivante",
     lines: [
-      "À la fin, passe l’édition en **Terminé** dans **Défi** : elle reste consultable, et son classement est figé.",
-      "Une nouvelle saison est une **nouvelle édition** : recrée-la, sur le même serveur, avec de nouvelles équipes si tu veux. Les anciennes ne disparaissent pas.",
+      "À la fin, passe l’édition en **Terminé** dans **Défi** : elle reste consultable, son classement est figé, et le serveur redevient libre.",
+      "**C’est l’ordre qui compte :** tant que l’ancienne édition n’est pas *Terminé*, un nouveau **/challenger creer** sur le même serveur répondra qu’un défi y tourne déjà.",
+      "La nouvelle saison a **sa propre catégorie**, à son nom, avec ses **#annonces-défi** et son **#faq** ; les anciennes restent en place, avec tout ce qui s’y est dit.",
+      "Une équipe qui reprend le **même nom** retrouve son rôle et sa catégorie : rien n’est recréé en double, et les lecteur·ices gardent leurs salons.",
       "Le sélecteur d’édition, en haut de l’écran, permet de passer de l’une à l’autre — on peut jouer une édition et en organiser une autre.",
     ],
+    commands: ["/challenger creer"],
   },
 ];
 
@@ -140,8 +144,8 @@ export const PLAYER_STEPS: GuideStep[] = [
     title: "Tes salons sur Discord",
     lines: [
       "Ton équipe a deux salons, visibles d’elle seule : **#librairie** pour déclarer tes lectures, **#aventure** pour l’histoire, les votes et les annonces.",
-      "Le salon **#général** réunit tout le monde : classement du dimanche, annonces de l’organisation.",
-      "Le forum **#faq** accueille les questions et leurs réponses.",
+      "Le salon **#annonces-défi** réunit tout le monde : classement du dimanche, annonces de l’organisation. On y lit, on n’y écrit pas.",
+      "Le forum **#faq** accueille les questions et leurs réponses. Les trois vivent dans la catégorie au nom du défi.",
     ],
   },
   {

@@ -107,6 +107,8 @@ model Challenge {
   bingoLineBonus          Int             @default(25)
   bingoFullBonus          Int             @default(100)
   discordGuildId          String?
+  /// Category the bootstrap creates for this edition (named after it); parent of #annonces-défi and #faq
+  discordCategoryId       String?
   discordGeneralChannelId String?
   /// Forum channel ("faq") where every question becomes a thread
   discordFaqChannelId     String?

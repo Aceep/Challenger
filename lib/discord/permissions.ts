@@ -98,8 +98,8 @@ export function teamOverwrites({
   return out;
 }
 
-/** `#général`: everyone reads and reacts, only the organisers (and the bot) write. */
-export function generalOverwrites({ guildId, adminRoleId, botId }: { guildId: string; adminRoleId?: string | null; botId?: string | null }): Overwrite[] {
+/** `#annonces-défi`: everyone reads and reacts, only the organisers (and the bot) write. */
+export function announcementsOverwrites({ guildId, adminRoleId, botId }: { guildId: string; adminRoleId?: string | null; botId?: string | null }): Overwrite[] {
   const out: Overwrite[] = [{ id: guildId, type: 0, allow: sum(P.VIEW, P.HISTORY, P.ADD_REACTIONS), deny: sum(P.SEND) }];
   if (adminRoleId) out.push({ id: adminRoleId, type: 0, allow: sum(P.SEND, P.EMBED, P.ATTACH), deny: NONE });
   if (botId) out.push({ id: botId, type: 1, allow: BOT_ALLOW, deny: NONE });
@@ -139,24 +139,36 @@ export function teamDiscordReady(t: TeamDiscordState): boolean {
 export type DiscordSetupState = {
   guildId: string | null;
   adminRoleId: string | null;
+  /** Category of the edition, parent of the announcements salon and of the FAQ forum. */
+  categoryId: string | null;
+  /** `#annonces-défi` (an older edition may still point at its `#général`). */
   generalChannelId: string | null;
+  faqChannelId: string | null;
   teamsReady: number;
   teamsTotal: number;
   /** Everything the bootstrap creates is in place. */
   complete: boolean;
 };
 
-export function discordSetupState(
-  challenge: { discordGuildId: string | null; discordAdminRoleId: string | null; discordGeneralChannelId: string | null } | null,
-  teams: TeamDiscordState[],
-): DiscordSetupState {
+export type DiscordSetupChallenge = {
+  discordGuildId: string | null;
+  discordAdminRoleId: string | null;
+  discordCategoryId: string | null;
+  discordGeneralChannelId: string | null;
+  discordFaqChannelId: string | null;
+};
+
+export function discordSetupState(challenge: DiscordSetupChallenge | null, teams: TeamDiscordState[]): DiscordSetupState {
   const teamsReady = teams.filter(teamDiscordReady).length;
   const state = {
     guildId: challenge?.discordGuildId ?? null,
     adminRoleId: challenge?.discordAdminRoleId ?? null,
+    categoryId: challenge?.discordCategoryId ?? null,
     generalChannelId: challenge?.discordGeneralChannelId ?? null,
+    faqChannelId: challenge?.discordFaqChannelId ?? null,
     teamsReady,
     teamsTotal: teams.length,
   };
-  return { ...state, complete: !!state.guildId && !!state.adminRoleId && !!state.generalChannelId && teams.length > 0 && teamsReady === teams.length };
+  const server = !!state.guildId && !!state.adminRoleId && !!state.categoryId && !!state.generalChannelId && !!state.faqChannelId;
+  return { ...state, complete: server && teams.length > 0 && teamsReady === teams.length };
 }

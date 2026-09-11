@@ -43,7 +43,9 @@ describe("message d'installation", () => {
     expect(d).not.toContain("rejoindre");
     expect(d).toContain("invitation");
     expect(d).toContain("Gérer le serveur");
-    expect(d).toContain("Configurer le serveur Discord");
+    // La commande fait tout : le formulaire, puis les salons — plus de bouton à cliquer.
+    expect(d).toContain("formulaire");
+    expect(d).toContain("#annonces-défi");
     expect(d).toContain(APP);
     // Les trois étapes, dans l'ordre.
     expect(d.indexOf("**1.")).toBeGreaterThan(-1);

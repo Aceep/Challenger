@@ -1,6 +1,8 @@
 import { switchChallengeAction } from "@/app/(player)/help/actions";
+import { markOnboardedAction } from "@/app/(player)/home/actions";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { PwaBootstrap } from "@/components/pwa/PwaBootstrap";
+import { KyleGuide } from "@/components/tour/KyleGuide";
 import { requireOrganizer } from "@/lib/dal";
 import { listSwitchableChallenges } from "@/lib/services/membership";
 import { openQuestionsCount } from "@/lib/services/questions";
@@ -19,6 +21,9 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
     >
       {children}
       <PwaBootstrap />
+      {/* No auto-start here: the organiser's visit opens on demand, from
+          « Revoir la visite » or from the `?tour=admin` a fresh edition lands on. */}
+      <KyleGuide base="" onFinish={markOnboardedAction} />
     </AdminShell>
   );
 }
