@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { GLOBAL_COMMANDS } from "./challenger";
-import { SLASH_COMMANDS, type SlashCommand, type SlashOption } from "./commands";
+import { commandsFingerprint, SLASH_COMMANDS, type SlashCommand, type SlashOption } from "./commands";
 
 const SUB_COMMAND = 1;
 
@@ -70,6 +70,18 @@ describe("commandes slash", () => {
     const bingo = SLASH_COMMANDS.find((c) => c.name === "bingo");
     expect(bingo).toBeDefined();
     expect(GLOBAL_COMMANDS.map((c) => c.name)).not.toContain("bingo");
+  });
+
+  it("empreinte les listes : stable, mais différente dès qu'une définition change", () => {
+    expect(commandsFingerprint(GLOBAL_COMMANDS)).toBe(commandsFingerprint(GLOBAL_COMMANDS));
+    expect(commandsFingerprint(GLOBAL_COMMANDS)).not.toBe(commandsFingerprint(SLASH_COMMANDS));
+    expect(commandsFingerprint(GLOBAL_COMMANDS)).toMatch(/^[0-9a-z]+$/);
+    expect(commandsFingerprint([])).not.toBe(commandsFingerprint(GLOBAL_COMMANDS));
+
+    const changed: SlashCommand[] = GLOBAL_COMMANDS.map((c) => ({ ...c, description: `${c.description} !` }));
+    expect(commandsFingerprint(changed)).not.toBe(commandsFingerprint(GLOBAL_COMMANDS));
+    // Une copie profonde, elle, garde la même empreinte : c'est la définition qui compte.
+    expect(commandsFingerprint(JSON.parse(JSON.stringify(GLOBAL_COMMANDS)))).toBe(commandsFingerprint(GLOBAL_COMMANDS));
   });
 
   it("garde la case de /bingo facultative et autocomplétée — /bingo nu doit rester la grille", () => {

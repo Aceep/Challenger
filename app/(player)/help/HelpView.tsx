@@ -6,6 +6,7 @@ import { NotificationSettings, type NotificationSettingsProps } from "@/componen
 import { InstallHelp } from "@/components/pwa/InstallSteps";
 import { DiscordMock } from "@/components/tour/DiscordMock";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { DECORATION, Rich } from "@/components/ui/Rich";
 import type { HelpSection } from "@/lib/discord/help";
 
 export type HelpViewProps = {
@@ -20,22 +21,10 @@ export type HelpViewProps = {
 };
 
 /**
- * The help copy is shared with the Discord bot, where the emoji in the section
- * titles carry the tone. On screen the typography does that job, so they are
- * dropped here rather than in `lib/discord/help` — the wording is untouched.
+ * Both moved to `components/ui/Rich.tsx`, where the guided tour and the public
+ * guide reach them too. Re-exported so the existing importers keep working.
  */
-const DECORATION = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]\s?/gu;
-
-/** Renders "**bold**" segments from the shared help lines (also used by the guided tour). */
-export function Rich({ text }: { text: string }) {
-  return (
-    <>
-      {text.split(/(\*\*[^*]+\*\*)/).map((part, i) =>
-        part.startsWith("**") ? <strong key={i}>{part.slice(2, -2)}</strong> : <span key={i}>{part.replace(/\*([^*]+)\*/g, "$1")}</span>,
-      )}
-    </>
-  );
-}
+export { DECORATION, Rich };
 
 /** Help & rules — pure view, reused by /demo. */
 export function HelpView({ sections, edition, params, push, demo }: HelpViewProps) {
@@ -54,9 +43,15 @@ export function HelpView({ sections, edition, params, push, demo }: HelpViewProp
         </p>
       </div>
 
-      <Link href={`${home}?tour=player&step=0`} className="btn ghost sm self-start">
-        Revoir la visite guidée
-      </Link>
+      <div className="flex flex-wrap gap-2">
+        <Link href={`${home}?tour=player&step=0`} className="btn ghost sm">
+          Revoir la visite guidée
+        </Link>
+        {/* Le guide public : comment on entre dans un défi, et comment on en ouvre un. */}
+        <Link href="/guide" className="btn ghost sm">
+          Le guide pas à pas
+        </Link>
+      </div>
 
       <Card tier="flat" className="help-card" data-tour="help-discord">
         <h3>Sur Discord</h3>

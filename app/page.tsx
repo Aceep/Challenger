@@ -1,10 +1,14 @@
 import { Landing, type LandingExample } from "@/components/landing/Landing";
+import { botInviteUrl } from "@/lib/discord/permissions";
 import { DEMO_ARCHIVE, DEMO_CHALLENGE } from "@/lib/demo/data";
 
 /**
  * Public landing — fully static (no session, no database): signed-in visitors are
  * redirected to /home by proxy.ts. The two cards are made-up communities, there
  * to show what an edition looks like.
+ *
+ * `AUTH_DISCORD_ID` is read at render, so on a static page it is baked in at
+ * build time — never an `after()` here, there is no request to hang it on.
  */
 const EXAMPLES: LandingExample[] = [
   {
@@ -26,5 +30,6 @@ const EXAMPLES: LandingExample[] = [
 ];
 
 export default function RootPage() {
-  return <Landing examples={EXAMPLES} />;
+  const appId = process.env.AUTH_DISCORD_ID;
+  return <Landing examples={EXAMPLES} installUrl={appId ? botInviteUrl(appId) : null} />;
 }

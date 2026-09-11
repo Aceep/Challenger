@@ -99,3 +99,19 @@ export const SLASH_COMMANDS: SlashCommand[] = [
   { name: "histoire", description: "Voir le chapitre en cours de ton équipe" },
   { name: "help", description: "Les commandes et les règles du défi" },
 ];
+
+/**
+ * A short, stable hash of a command list (djb2 over its JSON), used as the
+ * idempotency key of an automatic registration: the global commands are pushed
+ * again the first time the app lands on a server *after* the list changed, and
+ * never on every install. Pure — the same list always gives the same string.
+ */
+export function commandsFingerprint(commands: SlashCommand[]): string {
+  const json = JSON.stringify(commands);
+  let h = 5381;
+  for (let i = 0; i < json.length; i++) {
+    // djb2 : h * 33 ^ c, ramené en 32 bits non signés à chaque tour.
+    h = ((h * 33) ^ json.charCodeAt(i)) >>> 0;
+  }
+  return h.toString(36);
+}

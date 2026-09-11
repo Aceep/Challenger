@@ -76,9 +76,13 @@ Le bot n'est pas un accessoire : c'est la seconde interface du jeu. Déclarer un
 
 ### Mettre en place un serveur
 
-L'organisateur crée un serveur vide, y invite le bot avec le lien fourni, puis lance la configuration en un clic depuis `/admin/challenge`. Le bot crée alors ce qui manque, de façon **reprenable** — un second passage ne fait que compléter : le rôle *Organisateurs*, le salon **#général**, une catégorie par équipe avec ses salons **#aventure** (histoire, votes, annonces) et **#librairie** (lectures), et le forum **#faq**. Un mot de bienvenue signé Kyle — la mascotte, un dinosaure jaune intraitable sur les demi-crédits — est épinglé dans chaque salon d'équipe.
+Le bot s'ajoute **depuis le site, sans compte** : le bouton **« Ajouter Kyle à mon serveur »** de la page d'accueil, de la page de connexion et de la page `/guide` ouvre l'autorisation Discord. Un seul jeu de permissions est demandé, partout (`BOT_PERMISSIONS`, `lib/discord/permissions.ts`) : gérer les rôles et les salons, écrire, et ouvrir un fil dans le forum — c'est le même lien qui sert à ré-inviter le bot depuis l'administration.
 
-Lorsque l'application est ajoutée à un serveur, Discord émet un événement `APPLICATION_AUTHORIZED` et le bot envoie en message privé les trois étapes pour démarrer.
+L'organisateur crée un serveur vide, y invite le bot avec ce lien, puis lance la configuration en un clic depuis `/admin/challenge`. Le bot crée alors ce qui manque, de façon **reprenable** — un second passage ne fait que compléter : le rôle *Organisateurs*, le salon **#général**, et une catégorie par équipe avec ses salons **#aventure** (histoire, votes, annonces) et **#librairie** (lectures). Le forum **#faq**, lui, se crée à part, **depuis Admin › FAQ**. Un mot de bienvenue signé Kyle — la mascotte, un dinosaure jaune intraitable sur les demi-crédits — est épinglé dans chaque salon d'équipe.
+
+Lorsque l'application est ajoutée à un serveur, Discord émet un événement `APPLICATION_AUTHORIZED` et le bot envoie en message privé les étapes pour démarrer — à la personne qui l'a ajouté, et au propriétaire du serveur si c'est quelqu'un d'autre. **Si ce message privé ne passe pas** (beaucoup de comptes refusent les MP des membres d'un serveur), le même mot, rédigé de façon impersonnelle, est posté une seule fois dans le salon système du serveur, à défaut dans son premier salon texte.
+
+Le même événement **ré-enregistre les commandes globales** quand leur définition a changé : la clé d'idempotence est l'empreinte de la liste (`commandsFingerprint`), donc une installation sur une liste inchangée ne fait rien. `npm run discord:register -- --global` reste disponible, mais n'est plus indispensable.
 
 ### Les commandes
 
@@ -87,7 +91,8 @@ Lorsque l'application est ajoutée à un serveur, Discord émet un événement `
 | Commande | Ce qu'elle fait |
 | --- | --- |
 | `/challenger creer` | Crée le défi lecture de ce serveur — réservé à « Gérer le serveur » |
-| `/challenger rejoindre` | Rejoint le défi lecture de ce serveur |
+
+On ne rejoint pas un défi soi-même : l'organisation invite depuis **Admin › Joueurs**, et l'invitation s'applique à la prochaine connexion de la personne.
 
 Les autres sont enregistrées **par serveur**, au moment de la configuration :
 
@@ -110,6 +115,18 @@ Les deux listes sont tenues disjointes, sans quoi `/challenger` apparaîtrait en
 - **Les votes de l'histoire** : le chapitre est posté dans le salon *aventure*, un bouton par choix, un décompte nominatif, les choix verrouillés grisés, et le message réédité à chaque vote.
 - **Un pont FAQ bidirectionnel** : une question ouvre un fil dans le forum #faq ; les réponses écrites sur Discord remontent sur la page FAQ du site, et l'état de la question (Ouverte / Répondue / Résolue) se reflète dans les tags du forum.
 - **Des annonces automatiques** : ouverture et fermeture de la fenêtre du dimanche, classement hebdomadaire de 20 h, résolution d'un vote, étapes de la cascade d'égalité, rappel aux équipes dont l'histoire s'endort.
+
+---
+
+## Guide de l'organisateur·ice
+
+Le pas à pas public vit sur **[`/guide`](https://challenger-aceepkyle.vercel.app/guide)** : page statique, sans compte ni base, avec le bouton d'installation en tête et en pied. Le même lien est rappelé depuis la page d'accueil, la page de connexion, **Aide & règles**, `/help` sur Discord et le mot d'accueil du bot.
+
+**Côté organisateur·ice** — ce qu'il te faut · ajouter Kyle à son serveur · `/challenger creer` · créer les équipes, puis les salons en un clic · inviter ses lecteur·ices depuis **Admin › Joueurs** · régler bingo, quêtes et histoire · pendant le défi · le dimanche de 19 h à 21 h · après le défi, la saison suivante.
+
+**Côté joueur·euse** — l'invitation · ses salons · déclarer une lecture · bingo, quêtes et histoire · le dimanche · poser une question.
+
+Le texte est une **donnée pure** (`lib/guide/steps.ts`), testée : ancres uniques, aucun emoji sur les pages web, et chaque commande citée listée avec son étape. Les captures d'écran se rangent dans `public/guide/<id>.png` et n'apparaissent que pour les étapes qui en déclarent une.
 
 ---
 

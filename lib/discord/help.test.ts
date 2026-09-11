@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EMBED_LIMIT, helpSections, helpText, welcomeMessage } from "./help";
+import { APP_URL, EMBED_LIMIT, helpSections, helpText, welcomeMessage } from "./help";
 
 const TEAM = { name: "Les Hérissons", discordChannelId: "111", discordLibraryChannelId: "222" };
 
@@ -28,6 +28,12 @@ describe("aide et messages d'accueil", () => {
     expect(text).toContain("/challenger creer");
     expect(text).not.toContain("/challenger rejoindre");
     expect(text).toContain("invitation");
+  });
+
+  it("renvoie vers le guide pas à pas, sur Discord comme sur le site", () => {
+    expect(helpText(null)).toContain(`${APP_URL()}/guide`);
+    const entrer = helpSections({ library: "#librairie", adventure: "#aventure" }).find((s) => s.title.includes("Entrer dans un défi"))!;
+    expect(entrer.lines.join(" ")).toContain("Guide");
   });
 
   it("garde les sections d'aide non vides", () => {

@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth, signIn } from "@/auth";
+import { InstallButton } from "@/components/landing/InstallButton";
 import { Kyle } from "@/components/ui/Kyle";
+import { botInviteUrl } from "@/lib/discord/permissions";
 
 const ERRORS: Record<string, string> = {
   OAuthAccountNotLinked: "Ce compte est déjà lié à un autre utilisateur.",
@@ -14,6 +16,8 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
 
   const errorKey = Array.isArray(error) ? error[0] : error;
   const target = Array.isArray(callbackUrl) ? callbackUrl[0] : callbackUrl;
+  const appId = process.env.AUTH_DISCORD_ID;
+  const installUrl = appId ? botInviteUrl(appId) : null;
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-lg flex-col items-center justify-center gap-7 p-6 text-center">
@@ -36,8 +40,17 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
           Se connecter avec Discord
         </button>
       </form>
+      <div className="flex flex-col items-center gap-3">
+        <p className="text-[13px] text-[color:var(--muted)]">
+          Pas encore de défi&nbsp;? Ajoute Kyle à ton serveur Discord, puis tape <code>/challenger creer</code>.
+        </p>
+        <InstallButton url={installUrl} className="btn ghost sm" />
+      </div>
       <p className="text-[13px] text-[color:var(--muted)]">
-        Pas encore de défi ? Crée le tien après connexion. ·{" "}
+        <Link href="/guide" className="underline">
+          Guide de l’organisateur·ice
+        </Link>{" "}
+        ·{" "}
         <Link href="/demo" className="underline">
           Voir la démo
         </Link>{" "}

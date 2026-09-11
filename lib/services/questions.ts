@@ -3,7 +3,6 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { GameError } from "@/lib/errors";
 import {
-  botInviteUrl,
   channelUrl,
   FAQ_CHANNEL_NAME,
   FAQ_ROLE_NAME,
@@ -20,7 +19,7 @@ import {
   type FaqTags,
   type QuestionStatus,
 } from "@/lib/discord/faq";
-import { hexToInt } from "@/lib/discord/permissions";
+import { botInviteUrl, hexToInt } from "@/lib/discord/permissions";
 import { addMemberRole, createForumChannel, createForumPost, createRole, deleteChannel, GONE, listMessages, patchThread, postMessage } from "@/lib/discord/rest";
 import { organizersWithDiscord, roleIn } from "@/lib/services/membership";
 import { pushLater } from "@/lib/services/push";
@@ -406,6 +405,7 @@ export async function setupFaq(challengeId: string): Promise<FaqSetupResult> {
 export async function getFaqSetup(challengeId: string) {
   const challenge = await challengeOf(challengeId);
   const admins = (await organizersWithDiscord(challengeId)).length;
+  const appId = botAppId();
   return {
     guildId: challenge.discordGuildId,
     channelId: challenge.discordFaqChannelId,
@@ -414,7 +414,9 @@ export async function getFaqSetup(challengeId: string) {
     channelUrl: channelUrl(challenge.discordGuildId, challenge.discordFaqChannelId),
     adminsWithDiscord: admins,
     lastSyncAt: challenge.faqSyncedAt,
-    inviteUrl: botInviteUrl(botAppId()),
+    // Same link, same permissions as everywhere else (`lib/discord/permissions.ts`),
+    // pinned to this server so the person does not have to pick it again.
+    inviteUrl: appId ? botInviteUrl(appId, challenge.discordGuildId) : null,
   };
 }
 

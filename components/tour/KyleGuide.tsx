@@ -3,7 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { Rich } from "@/app/(player)/help/HelpView";
+import { Rich } from "@/components/ui/Rich";
 import { Kyle } from "@/components/ui/Kyle";
 import { STEP_PARAM, TOUR_PARAM, TOURS, clampStep, isTourId, resolvePath, skipKey, tourHref, type TourStep } from "@/lib/tour/steps";
 

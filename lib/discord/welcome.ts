@@ -1,9 +1,14 @@
 /**
- * The DM Kyle sends when the app is added to a Discord server.
+ * The welcome Kyle writes when the app is added to a Discord server.
  *
  * Pure module (no I/O, no `server-only`): the copy lives here so it is
  * unit-tested. `fr()` hardens the French typography — write plain spaces.
  * The delivery is in `lib/services/discord-install.ts`.
+ *
+ * Two audiences for the same three steps: a **DM** to the person who added the
+ * app (and to the server owner), and, when that DM bounces — a great many
+ * people refuse DMs from server members — an impersonal **salon** variant,
+ * which addresses whoever reads it rather than the installer.
  */
 import { fr } from "@/lib/discord/cards";
 import type { OutgoingMessage } from "@/lib/discord/rest";
@@ -21,6 +26,12 @@ export const WELCOME_COLOR = 0xffd84a;
  */
 export const WELCOME_GUILD_KEY = (guildId: string, userId: string) => `welcome-install:${guildId}:${userId}`;
 
+/** The salon fallback is posted at most once per server, whoever installed the app. */
+export const WELCOME_CHANNEL_KEY = (guildId: string) => `welcome-install-channel:${guildId}`;
+
+/** Who the message talks to: the installer in private, or the whole server. */
+export type WelcomeAudience = "dm" | "channel";
+
 export type WelcomeInput = {
   /** Name of the server the app was just added to. */
   guildName: string;
@@ -33,22 +44,30 @@ export type WelcomeInput = {
 /** Discord takes up to an hour to propagate a global command after an install. */
 const PROPAGATION = "*Si `/challenger` n’apparaît pas tout de suite, c’est normal : Discord met jusqu’à une heure à propager ses commandes après une installation.*";
 
+const guide = (appUrl: string) => `📘 Le pas à pas, captures comprises : ${appUrl}/guide`;
+
 const lines = (l: string[]) => fr(l.join("\n")).slice(0, EMBED_LIMIT);
 
 /** « Ce serveur n’a pas encore de défi » — the three steps to open one. */
-function firstRun({ guildName, appUrl }: WelcomeInput) {
+function firstRun({ guildName, appUrl }: WelcomeInput, audience: WelcomeAudience) {
+  const dm = audience === "dm";
   return lines([
-    `Salut ! Je suis **Kyle**, l’intendant du défi lecture. « ${guildName} » n’a pas encore de défi — voici comment le lancer, en trois étapes.`,
+    dm
+      ? `Salut ! Je suis **Kyle**, l’intendant du défi lecture. « ${guildName} » n’a pas encore de défi — voici comment le lancer, en trois étapes.`
+      : `Bonjour ! Je suis **Kyle**, l’intendant du défi lecture, et on vient de m’ajouter à « ${guildName} ». Ce serveur n’a pas encore de défi : voici comment en ouvrir un, en trois étapes.`,
     "",
-    "**1. Crée le défi, depuis le serveur**",
-    "Tape `/challenger creer nom:<nom du défi>` dans n’importe quel salon. La commande est réservée aux personnes qui ont la permission « Gérer le serveur ».",
+    "**1. Créer le défi, depuis le serveur**",
+    dm
+      ? "Tape `/challenger creer nom:<nom du défi>` dans n’importe quel salon. La commande est réservée aux personnes qui ont la permission « Gérer le serveur »."
+      : "Un·e admin peut lancer le défi avec `/challenger creer nom:<nom du défi>`, dans n’importe quel salon. La commande est réservée aux personnes qui ont la permission « Gérer le serveur ».",
     "",
-    "**2. Termine sur le site**",
-    `Suis le lien de ma réponse : tu y règles les dates, les équipes et les salons. Le bouton « Configurer le serveur Discord » crée les rôles et les salons en un clic.`,
+    "**2. Terminer sur le site**",
+    "Le lien de ma réponse mène aux réglages : dates, équipes, salons. Le bouton « Configurer le serveur Discord » crée les rôles et les salons en un clic.",
     "",
-    "**3. Fais venir tes lecteur·ices**",
-    "Invite-les depuis le site, dans « Joueurs » : l’invitation s’applique à leur prochaine connexion Discord, et tu les répartis ensuite en équipes.",
+    "**3. Faire venir les lecteur·ices**",
+    "Les invitations se posent sur le site, dans « Joueurs » : l’invitation s’applique à la prochaine connexion Discord de la personne, et on la range ensuite dans une équipe.",
     "",
+    guide(appUrl),
     PROPAGATION,
     "",
     `🌐 ${appUrl}`,
@@ -56,24 +75,28 @@ function firstRun({ guildName, appUrl }: WelcomeInput) {
 }
 
 /** The server already plays an edition: nothing to create, just where to go. */
-function alreadyRunning({ appUrl, existing }: WelcomeInput & { existing: { name: string } }) {
+function alreadyRunning({ appUrl, existing }: WelcomeInput & { existing: { name: string } }, audience: WelcomeAudience) {
+  const dm = audience === "dm";
   return lines([
-    `Salut ! Je suis **Kyle**, l’intendant du défi lecture. Ce serveur joue déjà « ${existing.name} » : rien à créer.`,
+    dm
+      ? `Salut ! Je suis **Kyle**, l’intendant du défi lecture. Ce serveur joue déjà « ${existing.name} » : rien à créer.`
+      : `Bonjour ! Je suis **Kyle**, l’intendant du défi lecture. Ce serveur joue déjà « ${existing.name} » : rien à créer.`,
     "",
-    "• Pour y participer : demande une invitation aux organisateur·ices, elle s’applique à ta prochaine connexion.",
+    `• Pour y participer : ${dm ? "demande" : "demandez"} une invitation aux organisateur·ices, elle s’applique à la prochaine connexion.`,
     `• Pour le piloter (dates, équipes, salons) : ${appUrl}/admin/challenge`,
     "",
+    guide(appUrl),
     PROPAGATION,
   ]);
 }
 
-/** The welcome DM, as a ready-to-post message. */
-export function installWelcomeMessage(input: WelcomeInput): OutgoingMessage {
+/** The welcome message, as a ready-to-post message (DM by default). */
+export function installWelcomeMessage(input: WelcomeInput, audience: WelcomeAudience = "dm"): OutgoingMessage {
   return {
     embeds: [
       {
         title: fr(`👋 Kyle est arrivé sur « ${input.guildName} »`).slice(0, 256),
-        description: input.existing ? alreadyRunning({ ...input, existing: input.existing }) : firstRun(input),
+        description: input.existing ? alreadyRunning({ ...input, existing: input.existing }, audience) : firstRun(input, audience),
         color: WELCOME_COLOR,
       },
     ],

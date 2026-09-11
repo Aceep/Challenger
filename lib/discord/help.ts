@@ -1,6 +1,8 @@
 /** Rules + commands summary, shared by the Discord `/help` command and the web /help page. */
+import { APP_URL } from "@/lib/app-url";
 
-export const APP_URL = () => process.env.AUTH_URL ?? "https://challenger-aceepkyle.vercel.app";
+/** Re-exported for the modules that already import it from here (cards, bingo, install). */
+export { APP_URL };
 
 export type HelpSection = { title: string; lines: string[] };
 
@@ -50,6 +52,7 @@ export function helpSections(channels: { library: string; adventure: string }): 
       lines: [
         "On ne rejoint pas un défi soi-même : les organisateur·ices invitent, et l’invitation s’applique à ta prochaine connexion.",
         "**/challenger creer** (admins du serveur) — ouvrir le défi lecture de ce serveur.",
+        "Lancer le défi de ta propre communauté : ajoute Kyle à ton serveur, puis **/challenger creer**. Le pas à pas est sur la page **Guide** du site.",
       ],
     },
     {
@@ -76,7 +79,7 @@ export function helpText(team: { discordChannelId: string | null; discordLibrary
     library: library ? `<#${library}>` : "le salon *librairie* de ton équipe",
     adventure: adventure ? `<#${adventure}>` : "le salon *aventure* de ton équipe",
   });
-  return `${sections.map((s) => `**${s.title}**\n${s.lines.map((l) => `• ${l}`).join("\n")}`).join("\n\n")}\n\n🌐 Tout est aussi sur le site : ${APP_URL()} (aide : ${APP_URL()}/help)`;
+  return `${sections.map((s) => `**${s.title}**\n${s.lines.map((l) => `• ${l}`).join("\n")}`).join("\n\n")}\n\n🌐 Tout est aussi sur le site : ${APP_URL()} (aide : ${APP_URL()}/help · guide : ${APP_URL()}/guide)`;
 }
 
 export type TeamChannels = { name: string; discordChannelId: string | null; discordLibraryChannelId: string | null };
