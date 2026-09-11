@@ -123,7 +123,7 @@ const ADMIN: TourStep[] = [
     path: "/admin/players",
     target: "players-invites",
     title: "4. Inviter les joueurs",
-    body: "Personne ne rejoint un défi de lui-même : c’est toi qui invites. Une invitation = un identifiant Discord + une équipe. À la connexion suivante, l’invitation est consommée et le rôle Discord attribué automatiquement.",
+    body: "Personne ne rejoint un défi de lui-même : c’est toi qui invites. **Tape le pseudo**, choisis la personne dans la liste du serveur, son équipe et son rôle — l’identifiant Discord n’est plus qu’un repli. Kyle lui écrit en privé ; l’invitation s’applique à sa prochaine connexion, et tout de suite si elle a déjà un compte. Depuis Discord : **/inviter**.",
   },
 ];
 

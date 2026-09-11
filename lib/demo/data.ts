@@ -658,6 +658,9 @@ export const DEMO_WEEK_ACTIONS: WeekAction[] = [
 
 export const DEMO_HOME: Omit<HomeViewProps, "demo"> = {
   userName: DEMO_PLAYER.name,
+  // Léa joue déjà : l'accueil vide (et son bouton d'installation) ne se voit pas
+  // dans la démo, mais la prop est renseignée pour rester fidèle à l'app.
+  installUrl: botInviteUrl("1542446033106698260"),
   team: { name: DEMO_TEAM.name, color: DEMO_TEAM.color },
   challengeName: DEMO_CHALLENGE.name,
   challengeOver: false,
@@ -884,8 +887,16 @@ export const DEMO_ADMIN_PLAYERS: PlayerRow[] = [
 ];
 
 export const DEMO_ADMIN_INVITES = [
-  { id: "demo-invite-1", discordId: "773044556677882210", teamName: "Les Loutres", role: "PLAYER" as const },
-  { id: "demo-invite-2", discordId: "910455667788995533", teamName: "Les Hiboux", role: "PLAYER" as const },
+  { id: "demo-invite-1", discordId: "773044556677882210", teamName: "Les Loutres", role: "PLAYER" as const, notified: true },
+  // Messages privés fermés : l'invitation reste valable, mais personne n'a prévenu la personne.
+  { id: "demo-invite-2", discordId: "910455667788995533", teamName: "Les Hiboux", role: "PLAYER" as const, notified: false },
+];
+
+/** Ce que la recherche de membres du serveur renvoie dans la démo (« nou » → Nour). */
+export const DEMO_MEMBER_HITS = [
+  { id: "773044556677882210", label: "Nour", sub: "Nour la Loutre" },
+  { id: "910455667788995533", label: "Camille", sub: "Camille · Hiboux" },
+  { id: "402911870034211187", label: "Noé" },
 ];
 
 /**

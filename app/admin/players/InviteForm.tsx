@@ -2,23 +2,31 @@
 
 import { useActionState } from "react";
 import type { ActionState } from "@/lib/forms";
+import { ManualIdField, MemberPicker, type MemberHit } from "./MemberPicker";
 
+/**
+ * Inviting from the site. When the edition is wired to a Discord server, one
+ * searches the member by pseudonym (`MemberPicker`); otherwise the identifier
+ * is the only handle we have, and the plain field is shown alone.
+ */
 export function InviteForm({
   teams,
   action,
+  canSearch,
+  searchMembersAction,
 }: {
   teams: { id: string; name: string }[];
   action: (prev: ActionState, formData: FormData) => Promise<ActionState>;
+  /** The edition knows its Discord server: the member search can answer. */
+  canSearch?: boolean;
+  searchMembersAction?: (query: string) => Promise<MemberHit[]>;
 }) {
   const [state, formAction, pending] = useActionState(action, null);
+  const searchable = !!canSearch && !!searchMembersAction;
   return (
     <form action={formAction} className="card flex flex-col gap-3">
       <p className="eyebrow">Inviter</p>
-      <label className="field">
-        Identifiant Discord
-        <input name="discordId" required inputMode="numeric" placeholder="ex. 402911870034211187" />
-        <span className="hint">Le joueur se connecte ensuite avec Discord ; l&apos;invitation fixe son équipe et son rôle.</span>
-      </label>
+      {searchable ? <MemberPicker search={searchMembersAction} /> : <ManualIdField />}
       <label className="field">
         Équipe
         <select name="teamId" defaultValue="">
@@ -43,7 +51,8 @@ export function InviteForm({
         {pending ? "…" : "Créer l'invitation"}
       </button>
       <p className="text-xs text-[color:var(--muted)]">
-        Pour trouver un identifiant : Discord → Paramètres → Avancés → Mode développeur, puis clic droit sur le membre → « Copier l&apos;identifiant ».
+        Kyle écrit à la personne en message privé. L&apos;invitation s&apos;applique à sa prochaine connexion — tout de suite si elle a déjà un compte. Depuis
+        Discord, la même chose tient en une commande : <code>/inviter</code>.
       </p>
     </form>
   );

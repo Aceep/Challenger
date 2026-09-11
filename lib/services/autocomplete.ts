@@ -67,6 +67,19 @@ export async function bingoCellChoices(teamId: string, q = ""): Promise<Choice[]
 }
 
 /**
+ * The teams of one edition, for the *equipe* option of `/inviter`. The value is
+ * the team id, so a hand-typed name is simply refused rather than seating
+ * someone in a team that does not exist — and never a team of another edition.
+ */
+export async function teamChoices(challengeId: string, q = ""): Promise<Choice[]> {
+  const teams = await prisma.team.findMany({ where: { challengeId }, orderBy: { name: "asc" }, select: { id: true, name: true } });
+  return teams
+    .map((t) => ({ name: t.name.slice(0, 100), value: t.id }))
+    .filter((c) => matches(c.name, q))
+    .slice(0, 25);
+}
+
+/**
  * Readings the actor may edit **in this edition**: own recent ones, plus the
  * whole team's for the captain. Without a team the readings attached to none are
  * the only ones proposed — those of another edition never are.

@@ -5,6 +5,8 @@
  * Pure data, client-safe.
  */
 
+import { INVITE_COMMAND } from "@/lib/discord/invite-command";
+
 const STRING = 3;
 const INTEGER = 4;
 const BOOLEAN = 5;
@@ -97,7 +99,13 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     options: [{ type: STRING, name: "case", description: "Détail d'une case précise (ex. D1) : thème complet, état, lectures posées", required: false, autocomplete: true }],
   },
   { name: "histoire", description: "Voir le chapitre en cours de ton équipe" },
+  // Inviter sans identifiant : le sélecteur de membre de Discord remplace les
+  // 18 chiffres. Le droit d'inviter est celui du défi (ORGANIZER), vérifié par
+  // la route — surtout pas une permission du serveur.
+  INVITE_COMMAND,
   { name: "help", description: "Les commandes et les règles du défi" },
+  // Le même texte, sous son nom français : on tape ce qui vient.
+  { name: "aide", description: "Les commandes et les règles du défi (identique à /help)" },
 ];
 
 /**

@@ -46,6 +46,8 @@ describe("message d'installation", () => {
     // La commande fait tout : le formulaire, puis les salons — plus de bouton à cliquer.
     expect(d).toContain("formulaire");
     expect(d).toContain("#annonces-défi");
+    // Étape 3 : on invite depuis Discord, sans copier d'identifiant.
+    expect(d).toContain("/inviter");
     expect(d).toContain(APP);
     // Les trois étapes, dans l'ordre.
     expect(d.indexOf("**1.")).toBeGreaterThan(-1);

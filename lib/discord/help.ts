@@ -51,6 +51,7 @@ export function helpSections(channels: { library: string; adventure: string }): 
       title: "🚪 Entrer dans un défi",
       lines: [
         "On ne rejoint pas un défi soi-même : les organisateur·ices invitent, et l’invitation s’applique à ta prochaine connexion.",
+        "**/inviter** membre1 · … · membre5 · equipe · role — réservé aux organisateur·ices du défi : jusqu’à cinq personnes prises dans la liste du serveur, sans identifiant à copier, et chacune reçoit un message privé. Depuis le site : **Joueurs**.",
         "**/challenger creer** (admins du serveur) — ouvre un formulaire : nom du défi, date de début, durée en semaines, équipes une par ligne. Je crée ensuite l’édition, les rôles, la catégorie du défi avec **#annonces-défi** et le forum **#faq**, et les salons de chaque équipe.",
         "Lancer le défi de ta propre communauté : ajoute Kyle à ton serveur, puis **/challenger creer**. Le pas à pas est sur la page **Guide** du site.",
       ],

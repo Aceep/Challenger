@@ -5,10 +5,13 @@ import { userMessage } from "@/lib/errors";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { requireOrganizer } from "@/lib/dal";
+import { searchGuildMembers } from "@/lib/discord/rest";
 import { syncMemberRoles } from "@/lib/services/discord-setup";
 import { parseForm, type ActionState } from "@/lib/forms";
-import { assignUserToTeam, createInvite, deleteInvite, inviteSchema } from "@/lib/services/admin";
+import { assignUserToTeam, deleteInvite, inviteSchema } from "@/lib/services/admin";
+import { inviteMembers, notifyAndSync } from "@/lib/services/invites";
 import { setMemberRole } from "@/lib/services/membership";
+import type { MemberHit } from "./MemberPicker";
 
 const REVALIDATE = ["/admin", "/home", "/team", "/leaderboard"];
 function refresh() {
@@ -21,12 +24,33 @@ export async function createInviteAction(_prev: ActionState, formData: FormData)
   const parsed = parseForm(inviteSchema, formData);
   if ("error" in parsed) return { error: parsed.error };
   try {
-    await createInvite(challenge.id, parsed.data);
+    // Même service que `/inviter` sur Discord : une invitation, un MP, et
+    // l'adhésion tout de suite pour qui a déjà un compte.
+    const result = await inviteMembers(challenge.id, { discordIds: [parsed.data.discordId], teamId: parsed.data.teamId ?? null, role: parsed.data.role });
+    after(() => notifyAndSync(result));
   } catch (e) {
     return { error: userMessage(e) };
   }
   refresh();
-  return { success: "Invitation enregistrée." };
+  return { success: "Invitation enregistrée — Kyle prévient la personne en message privé." };
+}
+
+/**
+ * Le sélecteur de membre du formulaire d'invitation : Discord cherche dans les
+ * membres du serveur de l'édition (aucun intent privilégié pour cette route) et
+ * l'on renvoie de quoi afficher une liste — jamais l'objet Discord brut.
+ * Sans serveur relié, la réponse est vide et le formulaire retombe sur la
+ * saisie d'un identifiant.
+ */
+export async function searchMembersAction(query: string): Promise<MemberHit[]> {
+  const { challenge } = await requireOrganizer();
+  const q = query.trim();
+  if (!challenge.discordGuildId || q.length < 2) return [];
+  const found = await searchGuildMembers(challenge.discordGuildId, q);
+  if (!found.ok) return [];
+  return found.data
+    .filter((m) => m.user && !m.user.bot)
+    .map((m) => ({ id: m.user!.id, label: m.user!.global_name || m.user!.username || m.user!.id, sub: m.nick ?? undefined }));
 }
 
 export async function deleteInviteAction(formData: FormData) {

@@ -226,6 +226,22 @@ export function getGuildMember(guildId: string, userId: string) {
   return request<{ user?: { id: string }; roles?: string[] }>(`/guilds/${guildId}/members/${userId}`);
 }
 
+/** One member of a guild, as the search returns them. `nick` is their server nickname. */
+export type GuildMember = { user?: { id: string; username?: string; global_name?: string | null; bot?: boolean }; nick?: string | null };
+
+/**
+ * Members whose pseudonym starts with `query` — what the « Inviter » form of
+ * Admin › Joueurs searches, so that nobody has to copy an 18-digit id.
+ *
+ * Unlike *List Guild Members*, this route needs **no privileged intent**: it
+ * answers with the bot token alone. It matches on the beginning of the
+ * username, the nickname or the display name.
+ */
+export function searchGuildMembers(guildId: string, query: string, limit = 10) {
+  const q = new URLSearchParams({ query: query.slice(0, 100), limit: String(Math.min(Math.max(limit, 1), 25)) });
+  return request<GuildMember[]>(`/guilds/${guildId}/members/search?${q}`);
+}
+
 export function addMemberRole(guildId: string, userId: string, roleId: string) {
   return request<unknown>(`/guilds/${guildId}/members/${userId}/roles/${roleId}`, "PUT");
 }

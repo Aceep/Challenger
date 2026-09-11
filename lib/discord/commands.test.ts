@@ -19,7 +19,8 @@ function checkOptions(where: string, options: SlashOption[] = []) {
   let optional = false;
   for (const o of options) {
     const path = `${where}/${o.name}`;
-    expect(o.name, path).toMatch(/^[a-z-]{1,32}$/);
+    // Discord accepte le chiffre dans un nom d'option — `membre1`…`membre5`.
+    expect(o.name, path).toMatch(/^[a-z0-9-]{1,32}$/);
     expect(names.has(o.name), `${path} en double`).toBe(false);
     names.add(o.name);
     expect(o.description.length, path).toBeGreaterThan(0);
@@ -59,6 +60,15 @@ describe("commandes slash", () => {
     expect(names).toContain("ajouter-un-livre");
     expect(names).toContain("modifier-un-livre");
     expect(names).toContain("help");
+  });
+
+  it("déclare /inviter et l'alias /aide par serveur", () => {
+    const names = SLASH_COMMANDS.map((c) => c.name);
+    expect(names).toContain("inviter");
+    expect(names).toContain("aide");
+    // Le droit d'inviter est celui du défi : la commande reste visible de tous.
+    expect(SLASH_COMMANDS.find((c) => c.name === "inviter")?.default_member_permissions).toBeUndefined();
+    expect(GLOBAL_COMMANDS.map((c) => c.name)).not.toContain("inviter");
   });
 
   it("garde /challenger hors du jeu par serveur, pour ne pas le déclarer deux fois", () => {

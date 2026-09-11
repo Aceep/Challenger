@@ -113,11 +113,21 @@ export async function ensureMember(db: Db, challengeId: string, userId: string, 
   });
 }
 
+/**
+ * Marks the Discord roles of a membership as « to align again »: the person
+ * changed team, changed role, or has just joined. `syncMemberRoles` stamps it
+ * back on success, and `runTick` picks up whatever is left — someone who was
+ * not on the server yet gets their roles the day they arrive.
+ */
+export function markRoleSyncStale(db: Db, challengeId: string, userId: string) {
+  return db.challengeMember.updateMany({ where: { challengeId, userId }, data: { discordRoleSyncedAt: null } });
+}
+
 export function setMemberRole(challengeId: string, userId: string, role: ChallengeRole) {
   return prisma.challengeMember.upsert({
     where: { challengeId_userId: { challengeId, userId } },
     create: { challengeId, userId, role },
-    update: { role },
+    update: { role, discordRoleSyncedAt: null },
   });
 }
 
@@ -148,6 +158,9 @@ export async function consumePendingInvites(userId: string, discordId: string): 
         if (!fresh || fresh.usedAt) return;
         await tx.invite.update({ where: { id: invite.id }, data: { usedAt: new Date() } });
         await ensureMember(tx, invite.challengeId, userId, invite.role);
+        // Nouvelle venue : ses rôles Discord sont à poser (tout de suite si
+        // elle est déjà sur le serveur, au prochain tick sinon).
+        await markRoleSyncStale(tx, invite.challengeId, userId);
         // An invitation may only seat someone in a team of its own challenge.
         if (invite.team && invite.team.challengeId === invite.challengeId) {
           await tx.teamMember.upsert({

@@ -26,6 +26,12 @@ export type HomeViewProps = {
     vote: { chapter: string; deadline: Date; voted: boolean; tie: boolean } | null;
     pendingCells: { label: string; missing: string }[];
   };
+  /**
+   * « Ajouter Kyle à mon serveur » — shown only to someone who belongs to no
+   * edition yet, where it is the shortest way to one. Null when the Discord
+   * application id is not configured: a dead button would be worse.
+   */
+  installUrl?: string | null;
   /** `?ok=` / `?error=` — where switching edition lands its confirmation. */
   params?: Record<string, string | string[] | undefined>;
   demo?: boolean;
@@ -76,7 +82,7 @@ function ActionLine({ action, now }: { action: WeekAction; now: Date }) {
 }
 
 /** Player home screen — pure view, reused by /demo. */
-export function HomeView({ userName, team, challengeName, challengeOver, score, rank, stats, week, params, demo, signOutAction }: HomeViewProps) {
+export function HomeView({ userName, team, challengeName, challengeOver, score, rank, stats, week, installUrl, params, demo, signOutAction }: HomeViewProps) {
   const p = (path: string) => (demo ? `/demo${path}` : path);
   const now = new Date();
   const readings = stats.romans + stats.graphiques;
@@ -96,17 +102,31 @@ export function HomeView({ userName, team, challengeName, challengeOver, score, 
 
       {challengeName === null ? (
         <>
+          {/* Deux chemins, dans l'ordre réel : Kyle sur le serveur puis la
+              commande, ou le site pour qui préfère un formulaire. */}
           <KyleEmpty
             action={
-              <Button href="/new" size="lg">
-                Crée ton défi
-              </Button>
+              installUrl ? (
+                <a href={installUrl} target="_blank" rel="noreferrer" className="btn lg">
+                  Ajouter Kyle à mon serveur
+                </a>
+              ) : (
+                <Button href={p("/new")} size="lg">
+                  Crée ton défi
+                </Button>
+              )
             }
           >
             Tu n’as pas encore de défi.
           </KyleEmpty>
+          {installUrl && (
+            <p className="meta">
+              Ajoute Kyle à ton serveur Discord, puis tape <code>/challenger creer</code> : il crée l’édition, les rôles et les salons. Ou{" "}
+              <Link href={p("/new")}>crée ton défi depuis le site</Link>.
+            </p>
+          )}
           <p className="meta">
-            ou rejoins un défi : demande une invitation aux organisateur·ices du défi, elle s’applique à ta prochaine connexion.
+            Tu attends une invitation ? Elle s’applique dès qu’un·e organisateur·ice t’invite — reviens ici, rien d’autre à faire.
           </p>
         </>
       ) : (

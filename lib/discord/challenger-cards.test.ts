@@ -52,6 +52,8 @@ describe("carte « tout est prêt »", () => {
     expect(c.description).toContain(`${APP}/admin/challenge?tour=admin&step=0`);
     expect(c.description).toContain(`${APP}/guide`);
     expect(c.description).toMatch(/Joueurs/);
+    // Depuis Discord, l'invitation tient en une commande.
+    expect(c.description).toContain("/inviter");
   });
 
   it("passe par la connexion quand la personne n'a pas encore de compte", () => {

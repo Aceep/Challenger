@@ -66,7 +66,10 @@ function firstRun({ guildName, appUrl }: WelcomeInput, audience: WelcomeAudience
     "Le lien de ma réponse mène aux réglages : barème, bingo, quêtes, histoire. Une équipe ajoutée ou renommée là-bas, et le serveur suit tout seul.",
     "",
     "**3. Faire venir les lecteur·ices**",
-    "Les invitations se posent sur le site, dans « Joueurs » : l’invitation s’applique à la prochaine connexion Discord de la personne. Personne ne rejoint un défi de lui-même.",
+    dm
+      ? "`/inviter membre1:@quelqu’un` — jusqu’à cinq personnes à la fois, choisies dans la liste du serveur, avec leur équipe : aucun identifiant à copier. J’écris à chacune en privé."
+      : "`/inviter membre1:@quelqu’un` invite jusqu’à cinq personnes à la fois, choisies dans la liste du serveur, avec leur équipe. Kyle écrit à chacune en privé.",
+    "La commande est réservée aux organisateur·ices du défi. Le site fait la même chose depuis « Joueurs ». Personne ne rejoint un défi de lui-même : l’invitation s’applique à la prochaine connexion de la personne, et tout de suite si elle a déjà un compte.",
     "",
     guide(appUrl),
     PROPAGATION,
