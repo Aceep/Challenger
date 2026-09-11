@@ -33,6 +33,7 @@ npm test             # vitest run — unit tests live next to code: lib/**/*.tes
 npx vitest run lib/scoring/reading.test.ts   # single test file
 npm run db:migrate   # prisma migrate dev (needs DATABASE_URL in .env)
 npm run db:seed      # tsx prisma/seed.ts
+npm run pwa:icons    # regenerates public/icons/* and app/apple-icon.png from app/icon.png
 ```
 
 `postinstall` runs `prisma generate`; generated client is in `lib/generated/prisma` (gitignored) — import from `@/lib/generated/prisma/client` and enums from `@/lib/generated/prisma/enums`.
@@ -77,4 +78,5 @@ Several challenges coexist, isolated: each has its own organisers, teams, Discor
   - `requireOrganizer(challengeId?)` → `{ user, challenge }`; redirects to `/home` unless the person is ORGANIZER of that challenge (a super-admin always passes). Defaults to the current challenge.
 - **Scores are an append-only ledger** (`PointEvent`). Never store a mutable team total; team score = sum of `amount` within the challenge window. Multipliers (`Modifier`) are resolved when the event is written (`baseAmount`, `multiplier`, `amount` all stored). Undo = negative event.
 - Pure game logic (points, bingo lines, vote resolution, story effects) goes in `lib/scoring/*` and `lib/story/*` with no I/O, and is unit-tested. Server Actions and Discord slash commands must call the same service functions (`lib/services/*`) — no duplicated business logic.
+- **Push notifications.** A subscription belongs to a device (`PushSubscription`, its `endpoint` is the identity), the preferences belong to the account (`User.pushMuted`; an empty list = everything is received). Categories `STORY | QUESTIONS | ORGANIZER` (`lib/push/categories.ts`, pure). **Notifications are sent from the services** — `lib/services/push-events.ts`, called through `pushLater` inside `story.ts` / `questions.ts` — never from a Server Action nor from the Discord handlers, so both paths notify. `notifyUsers` never throws: a push service that is down must not fail the action that triggered it; dead endpoints (404/410) are pruned as they are found, and `runTick` sweeps the stale ones. Signing out unsubscribes the device (`components/pwa/SignOutForm.tsx`). The VAPID keys (`NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`) are read lazily at send time — the build passes without them, sends become no-ops. The service worker `public/sw.js` only handles `push` and `notificationclick`, no offline mode; `proxy.ts` exempts `manifest.webmanifest`, `sw.js` and `icons/`, which the browser fetches without cookies. Icons are regenerated with `npm run pwa:icons`.
 - Mobile-first UI (Tailwind 4), French copy with proper typography (apostrophes, accents).

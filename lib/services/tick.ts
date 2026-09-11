@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { announceDormant, announceResolution, announceTieStage, announceWeekly, announceWindow } from "@/lib/discord/events";
 import { once } from "@/lib/services/bot-events";
 import { purgeExpiredPendingReadings } from "@/lib/services/pending-reading";
+import { purgeStalePushSubscriptions } from "@/lib/services/push";
 import { syncQuestions } from "@/lib/services/questions";
 import { advanceTieStages, dormantTeams, resolveExpiredVotes } from "@/lib/services/story";
 import { dueSundayKey, isVerificationWindow, parisClock, parisInstant, sundayKey } from "@/lib/time/paris";
@@ -31,6 +32,7 @@ export async function runTick(now = new Date(), onlyChallengeId?: string) {
     dormant: 0,
     synced: 0,
     pending: 0,
+    pushPurged: 0,
   };
   const { weekday, hour } = parisClock(now);
 
@@ -80,6 +82,14 @@ export async function runTick(now = new Date(), onlyChallengeId?: string) {
     out.pending = await purgeExpiredPendingReadings(now);
   } catch (e) {
     console.error("[pending] purge failed", e);
+  }
+
+  // Push subscriptions nobody answers any more: dead endpoints and devices gone
+  // silent for months (never fatal — the tick owes nothing to a push service).
+  try {
+    out.pushPurged = await purgeStalePushSubscriptions(now);
+  } catch (e) {
+    console.error("[push] purge failed", e);
   }
   return out;
 }
