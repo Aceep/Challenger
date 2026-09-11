@@ -3,6 +3,7 @@ import { DataTable } from "@/components/ui/DataTable";
 import { Flash } from "@/components/Flash";
 import type { ActionState } from "@/lib/forms";
 import { InviteForm } from "./InviteForm";
+import type { MemberHit } from "./MemberPicker";
 
 export type PlayerRow = {
   id: string;
@@ -19,11 +20,14 @@ export type PlayerRow = {
 export type PlayersViewProps = {
   players: PlayerRow[];
   teams: { id: string; name: string; color: string }[];
-  invites: { id: string; discordId: string; teamName: string | null; role: "ORGANIZER" | "PLAYER" }[];
+  invites: { id: string; discordId: string; teamName: string | null; role: "ORGANIZER" | "PLAYER"; notified: boolean }[];
   hasChallenge: boolean;
+  /** The edition is wired to a Discord server: members can be searched by pseudonym. */
+  canSearch?: boolean;
   params: Record<string, string | string[] | undefined>;
   demo?: boolean;
   createInviteAction: (prev: ActionState, formData: FormData) => Promise<ActionState>;
+  searchMembersAction?: (query: string) => Promise<MemberHit[]>;
   deleteInviteAction: (formData: FormData) => Promise<void>;
   assignTeamAction: (formData: FormData) => Promise<void>;
   setRoleAction: (formData: FormData) => Promise<void>;
@@ -37,8 +41,10 @@ export function PlayersView({
   teams,
   invites,
   hasChallenge,
+  canSearch,
   params,
   createInviteAction,
+  searchMembersAction,
   deleteInviteAction,
   assignTeamAction,
   setRoleAction,
@@ -101,13 +107,17 @@ export function PlayersView({
         </Card>
 
         <div className="flex flex-col gap-4" data-tour="players-invites">
-          {hasChallenge ? <InviteForm teams={teams} action={createInviteAction} /> : <KyleEmpty>Active un défi pour inviter des joueurs.</KyleEmpty>}
+          {hasChallenge ? (
+            <InviteForm teams={teams} action={createInviteAction} canSearch={canSearch} searchMembersAction={searchMembersAction} />
+          ) : (
+            <KyleEmpty>Active un défi pour inviter des joueurs.</KyleEmpty>
+          )}
           <Card>
             <Eyebrow>Invitations en attente ({invites.length})</Eyebrow>
             {invites.length === 0 ? (
               <p className="text-[13px] text-[color:var(--muted)]">Aucune invitation en attente.</p>
             ) : (
-              <DataTable headless head={["Discord", "Équipe", "Statut", ""]}>
+              <DataTable headless head={["Discord", "Équipe", "Statut", "Message privé", ""]}>
                 {invites.map((i) => (
                   <tr key={i.id}>
                     <td className="num">
@@ -115,6 +125,9 @@ export function PlayersView({
                     </td>
                     <td>{i.teamName ?? "sans équipe"}</td>
                     <td>{i.role === "ORGANIZER" ? <Pill tone="ok">organisateur·ice</Pill> : <Pill tone="wait">non utilisée</Pill>}</td>
+                    {/* Kyle écrit une fois, au moment de l'invitation : « non délivré »
+                        veut dire messages privés fermés, ou Discord indisponible. */}
+                    <td>{i.notified ? <Pill tone="ok">MP envoyé</Pill> : <Pill tone="no">MP non délivré</Pill>}</td>
                     <td>
                       <form action={deleteInviteAction}>
                         <input type="hidden" name="inviteId" value={i.id} />

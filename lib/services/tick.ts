@@ -1,7 +1,9 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { announceDormant, announceResolution, announceTieStage, announceWeekly, announceWindow } from "@/lib/discord/events";
+import { sleep } from "@/lib/discord/rest";
 import { once } from "@/lib/services/bot-events";
+import { syncMemberRoles } from "@/lib/services/discord-setup";
 import { purgeExpiredPendingReadings } from "@/lib/services/pending-reading";
 import { purgeStalePushSubscriptions } from "@/lib/services/push";
 import { syncQuestions } from "@/lib/services/questions";
@@ -19,6 +21,9 @@ import { dueSundayKey, isVerificationWindow, parisClock, parisInstant, sundayKey
  * done per challenge, while the story timers span every team of the platform.
  */
 
+/** Pause between two role syncs, like the guild bootstrap's. */
+const ROLE_PACE = 350;
+
 export async function runTick(now = new Date(), onlyChallengeId?: string) {
   const challenges = await prisma.challenge.findMany({
     where: { status: "ACTIVE", ...(onlyChallengeId ? { id: onlyChallengeId } : {}) },
@@ -33,6 +38,7 @@ export async function runTick(now = new Date(), onlyChallengeId?: string) {
     synced: 0,
     pending: 0,
     pushPurged: 0,
+    rolesSynced: 0,
   };
   const { weekday, hour } = parisClock(now);
 
@@ -74,6 +80,27 @@ export async function runTick(now = new Date(), onlyChallengeId?: string) {
       out.synced += (await syncQuestions(challenge.id)).imported;
     } catch (e) {
       console.error("[faq] sync failed", challenge.id, e);
+    }
+  }
+
+  // Rôles Discord encore à poser : une personne invitée avant d'être sur le
+  // serveur n'y était pas au moment de la synchro. Quelques membres par édition
+  // et par tick, au rythme des mutations Discord, jamais fatal.
+  for (const challenge of challenges) {
+    if (!challenge.discordGuildId) continue;
+    try {
+      const waiting = await prisma.challengeMember.findMany({
+        where: { challengeId: challenge.id, discordRoleSyncedAt: null },
+        orderBy: { createdAt: "asc" },
+        take: 20,
+        select: { userId: true },
+      });
+      for (const member of waiting) {
+        if (await syncMemberRoles(member.userId, challenge.id)) out.rolesSynced++;
+        await sleep(ROLE_PACE);
+      }
+    } catch (e) {
+      console.error("[discord] reprise des rôles", challenge.id, e);
     }
   }
 

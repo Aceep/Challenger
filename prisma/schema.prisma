@@ -143,6 +143,10 @@ model ChallengeMember {
   userId      String
   role        ChallengeRole @default(PLAYER)
   createdAt   DateTime      @default(now())
+  /// Last time the Discord roles of this member were aligned on this edition.
+  /// Null = to do (or to do again): someone who was not on the server yet, or
+  /// whose team/role just changed. `runTick` picks these up, a few per edition.
+  discordRoleSyncedAt DateTime?
 
   challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -215,6 +219,10 @@ model Invite {
   teamId      String?
   role        ChallengeRole @default(PLAYER)
   usedAt      DateTime?
+  /// When Kyle managed to send the invitation DM. Null = never delivered (DMs
+  /// closed, or the send failed): Admin › Joueurs says so, and a second try is
+  /// free — the DM is sent at most once.
+  notifiedAt  DateTime?
   createdAt   DateTime      @default(now())
 
   challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)

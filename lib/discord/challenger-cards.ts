@@ -89,7 +89,7 @@ export function challengeReadyCard({ name, startAt, endAt, teams, summary, appUr
     `• ${names.length} équipes — ${names.join(", ")} — chacune avec son rôle, sa catégorie, **#aventure** et **#librairie**.`,
     "",
     "**Et maintenant**",
-    "• **Invite tes lecteur·ices** depuis « Joueurs », sur le site : personne ne rejoint un défi de lui-même.",
+    "• **Invite tes lecteur·ices** avec `/inviter` (jusqu’à cinq à la fois, prises dans la liste du serveur), ou depuis « Joueurs » sur le site : personne ne rejoint un défi de lui-même.",
     pendingLogin
       ? `• **Connecte-toi avec Discord** pour devenir l’organisateur·ice du défi et régler les détails : ${challengeAdminUrl(appUrl, true)}`
       : `• **Règle les détails** — barème, bingo, quêtes, histoire : ${challengeAdminUrl(appUrl)}`,

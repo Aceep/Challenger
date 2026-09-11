@@ -96,7 +96,7 @@ Le même événement **ré-enregistre les commandes globales** quand leur défin
 | --- | --- |
 | `/challenger creer` | Ouvre le formulaire du défi, puis crée l'édition, les équipes, les rôles et les salons — réservé à « Gérer le serveur » |
 
-On ne rejoint pas un défi soi-même : l'organisation invite depuis **Admin › Joueurs**, et l'invitation s'applique à la prochaine connexion de la personne.
+On ne rejoint pas un défi soi-même : l'organisation invite, avec **/inviter** sur Discord ou depuis **Admin › Joueurs**, et l'invitation s'applique à la prochaine connexion de la personne — tout de suite si elle a déjà un compte. Kyle écrit à chaque invité·e en message privé (une seule fois : `Invite.notifiedAt`), et les rôles Discord qui n'ont pas pu être posés — la personne n'était pas encore sur le serveur — sont repris par le tick (`ChallengeMember.discordRoleSyncedAt`).
 
 Les autres sont enregistrées **par serveur**, au moment de la configuration :
 
@@ -109,7 +109,8 @@ Les autres sont enregistrées **par serveur**, au moment de la configuration :
 | `/bingo` | Dessine la grille de l'équipe : cases validées, en attente ½, libres |
 | `/histoire` | Montre le chapitre en cours de l'équipe |
 | `/question` | Pose une question à l'organisation, qui ouvre un sujet dans le forum **#faq** |
-| `/help` | Rappelle les commandes et les règles du défi |
+| `/inviter` | Invite jusqu'à cinq membres du serveur (équipe et rôle en options) — réservé aux organisateur·ices du défi |
+| `/help` (ou `/aide`) | Rappelle les commandes et les règles du défi |
 
 Les deux listes sont tenues disjointes, sans quoi `/challenger` apparaîtrait en double sur les serveurs configurés.
 
@@ -126,9 +127,9 @@ Les deux listes sont tenues disjointes, sans quoi `/challenger` apparaîtrait en
 
 Le pas à pas public vit sur **[`/guide`](https://challenger-aceepkyle.vercel.app/guide)** : page statique, sans compte ni base, avec le bouton d'installation en tête et en pied. Le même lien est rappelé depuis la page d'accueil, la page de connexion, **Aide & règles**, `/help` sur Discord et le mot d'accueil du bot.
 
-**Côté organisateur·ice** — ce qu'il te faut · ajouter Kyle à son serveur · `/challenger creer` · créer les équipes, puis les salons en un clic · inviter ses lecteur·ices depuis **Admin › Joueurs** · régler bingo, quêtes et histoire · pendant le défi · le dimanche de 19 h à 21 h · après le défi, la saison suivante.
+**Côté organisateur·ice** — ce qu'il te faut · ajouter Kyle à son serveur · `/challenger creer` · créer les équipes, puis les salons en un clic · inviter ses lecteur·ices avec `/inviter` ou depuis **Admin › Joueurs** · régler bingo, quêtes et histoire · pendant le défi · le dimanche de 19 h à 21 h · après le défi, la saison suivante.
 
-**Côté joueur·euse** — l'invitation · ses salons · déclarer une lecture · bingo, quêtes et histoire · le dimanche · poser une question.
+**Côté joueur·euse** — l'invitation reçue en message privé · ses salons · déclarer une lecture · bingo, quêtes et histoire · le dimanche · poser une question.
 
 Le texte est une **donnée pure** (`lib/guide/steps.ts`), testée : ancres uniques, aucun emoji sur les pages web, et chaque commande citée listée avec son étape. Les captures d'écran se rangent dans `public/guide/<id>.png` et n'apparaissent que pour les étapes qui en déclarent une.
 

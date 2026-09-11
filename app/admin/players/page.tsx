@@ -1,7 +1,7 @@
 import { requireOrganizer } from "@/lib/dal";
 import { listInvites, listTeamsWithMembers, listUsersWithTeams } from "@/lib/services/admin";
 import { PlayersView } from "./PlayersView";
-import { assignTeamAction, createInviteAction, deleteInviteAction, setRoleAction } from "./actions";
+import { assignTeamAction, createInviteAction, deleteInviteAction, searchMembersAction, setRoleAction } from "./actions";
 
 export default async function AdminPlayersPage({ searchParams }: PageProps<"/admin/players">) {
   const params = await searchParams;
@@ -28,10 +28,12 @@ export default async function AdminPlayersPage({ searchParams }: PageProps<"/adm
       teams={teams.map((t) => ({ id: t.id, name: t.name, color: t.color }))}
       invites={invites
         .filter((i) => !i.usedAt)
-        .map((i) => ({ id: i.id, discordId: i.discordId, teamName: i.team?.name ?? null, role: i.role }))}
+        .map((i) => ({ id: i.id, discordId: i.discordId, teamName: i.team?.name ?? null, role: i.role, notified: !!i.notifiedAt }))}
       hasChallenge
+      canSearch={!!challenge.discordGuildId}
       params={params}
       createInviteAction={createInviteAction}
+      searchMembersAction={searchMembersAction}
       deleteInviteAction={deleteInviteAction}
       assignTeamAction={assignTeamAction}
       setRoleAction={setRoleAction}

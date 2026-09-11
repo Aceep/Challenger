@@ -7,6 +7,7 @@ import { GRID_IMAGE_FILENAME, renderGridPng } from "@/lib/bingo/grid-image";
 import { readingConfirmation, type DiscordEmbed } from "@/lib/discord/cards";
 import { BOOK_MODAL_ID, NONE, modalPayload, modalValues, parseBookId } from "@/lib/discord/components";
 import { hasManageGuild, parseChallengerInteraction } from "@/lib/discord/challenger";
+import { parseInviteInteraction } from "@/lib/discord/invite-command";
 import { challengeCreatingCard, challengeFailedCard, challengeReadyCard } from "@/lib/discord/challenger-cards";
 import { announceGridChange, announceRankChange, announceReading, announceResolution, syncVoteMessage } from "@/lib/discord/events";
 import { editOriginalResponse, getGuild } from "@/lib/discord/rest";
@@ -14,7 +15,8 @@ import { CHALLENGE_MODAL_ID, CHALLENGE_MODAL_TITLE, challengeModalInputs, parseC
 import { userMessage } from "@/lib/errors";
 import { fmtPoints } from "@/lib/format";
 import { HELP_TITLE, helpText } from "@/lib/discord/help";
-import { bingoCellChoices, cellChoices, editableBookChoices, questChoices } from "@/lib/services/autocomplete";
+import { bingoCellChoices, cellChoices, editableBookChoices, questChoices, teamChoices } from "@/lib/services/autocomplete";
+import { inviteMembers, notifyAndSync } from "@/lib/services/invites";
 import { bootstrapGuildChallenge, createChallengeFromGuild } from "@/lib/services/challenger";
 import { getTeamBoard } from "@/lib/services/bingo";
 import { bookPatchSchema, bookSchema, deleteBook, describeResult, logBook, updateBook } from "@/lib/services/books";
@@ -41,8 +43,13 @@ export const maxDuration = 60;
 
 /** One interaction response. `data` carries more than text (embeds, components) for the richer branches. */
 const reply = (type: number, data?: unknown) => NextResponse.json({ type, data });
-/** Flag 64 = only the caller sees it. */
-const ephemeral = (content: string) => reply(InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE, { content, flags: 64 });
+/**
+ * Flag 64 = only the caller sees it. `extra` carries the rest of the response
+ * data when a branch needs it — `allowed_mentions` for `/inviter`, whose
+ * confirmation names people with `<@id>` without pinging them.
+ */
+const ephemeral = (content: string, extra?: Record<string, unknown>) =>
+  reply(InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE, { content, flags: 64, ...extra });
 const publicReply = (content: string) => reply(InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE, { content });
 /** Long private answers go in an embed: `content` stops at 2 000 characters, an embed description at 4 096. */
 const ephemeralEmbed = (title: string, description: string) =>
@@ -92,6 +99,8 @@ type Interaction = {
     options?: Option[];
     /** MODAL_SUBMIT payload. */
     components?: ModalRow[];
+    /** The objects behind the ids of the typed options — the only way to spot a bot. */
+    resolved?: { users?: Record<string, { id: string; bot?: boolean; username?: string }> };
   };
   /** The message the component was attached to (an ephemeral one is never fetchable). */
   message?: { id: string; flags?: number };
@@ -246,7 +255,7 @@ export async function POST(request: Request) {
   const resolved = await resolveDiscordActor(discordUser.id, interaction.guild_id ?? null);
   if (resolved.kind !== "ok") {
     if (isAutocomplete) return choices([]);
-    if (interaction.data?.name === "help") return ephemeralEmbed(HELP_TITLE, helpText(null));
+    if (interaction.data?.name === "help" || interaction.data?.name === "aide") return ephemeralEmbed(HELP_TITLE, helpText(null));
     if (resolved.kind === "no-challenge") return ephemeral("Ce serveur n’a pas encore de défi : un·e admin du serveur peut le créer avec `/challenger creer`.");
     if (resolved.kind === "not-member") return ephemeral("Tu n’es pas inscrit·e à ce défi : demande une invitation aux organisateur·ices, elle s’appliquera à ta prochaine connexion.");
     return ephemeral(`Tu n’es pas encore inscrit·e : demande une invitation aux organisateur·ices du défi, puis connecte-toi sur ${appUrl()}`);
@@ -279,6 +288,10 @@ export async function POST(request: Request) {
     if (isAutocomplete) {
       const focused = interaction.data?.options?.find((o) => o.focused);
       const q = String(focused?.value ?? "");
+      // L'équipe de `/inviter` se cherche avant tout garde d'équipe : on invite
+      // précisément des gens qui n'en ont pas, et l'organisateur·ice qui invite
+      // n'est pas toujours dans une équipe.
+      if (focused?.name === "equipe") return choices(await teamChoices(challenge.id, q));
       if (!team) return choices([]);
       if (focused?.name === "quete") return choices(await questChoices(challenge.id, team.id, q));
       // La même option `case` sert deux gestes : poser une lecture (les cases
@@ -439,6 +452,32 @@ export async function POST(request: Request) {
               : `❓ Question enregistrée — le forum n'est pas encore relié, elle est visible sur ${appUrl()}/faq`,
         );
       }
+      /**
+       * Inviter depuis Discord, sans identifiant : le sélecteur de membre de
+       * Discord donne les comptes, `data.resolved` dit lesquels sont des bots.
+       * Le droit est celui du **défi** — organisateur·ice de cette édition —,
+       * jamais « Gérer le serveur » : un·e co-organisateur·ice ne l'a pas.
+       */
+      case "inviter": {
+        if (role !== "ORGANIZER") return ephemeral("Inviter est réservé aux organisateur·ices du défi.");
+        const parsed = parseInviteInteraction(interaction.data?.options, interaction.data?.resolved);
+        if (!parsed.ok) return ephemeral(parsed.error);
+
+        const result = await inviteMembers(challenge.id, parsed.data);
+        if (!result.invited.length) return ephemeral("Aucune invitation n'a pu être enregistrée : réessaie dans un instant.");
+        // Les MP et les rôles Discord après la réponse : Discord attend trois
+        // secondes, et un MP refusé ne doit pas faire échouer l'invitation.
+        after(() => notifyAndSync(result));
+
+        const who = result.invited.map((id) => `<@${id}>`).join(", ");
+        const where = result.team ? ` (équipe ${result.team.name})` : "";
+        const as = parsed.data.role === "ORGANIZER" ? " comme organisateur·ice" : "";
+        return ephemeral(
+          `Invitation envoyée à ${who}${where}${as}. Elle s’applique à leur prochaine connexion sur ${appUrl()}/login — je viens de leur écrire.`,
+          { allowed_mentions: { parse: [] } },
+        );
+      }
+      case "aide":
       case "help":
         return ephemeralEmbed(HELP_TITLE, helpText(team));
       default:

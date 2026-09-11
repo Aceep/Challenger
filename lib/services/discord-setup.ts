@@ -381,19 +381,24 @@ export async function postWelcome(team: WelcomeTeam): Promise<boolean> {
  * Aligns one member's Discord roles on one challenge's server: their team role,
  * plus « Organisateurs » when they organise that edition. Best-effort — never
  * throws, so a login or a team change is never blocked by Discord.
- * Called from `auth.ts` (login, via `after()`) and the admin players page.
+ * Called from `auth.ts` (login, via `after()`), the admin players page, the
+ * invitations and, for the ones that could not be done yet, `runTick`.
+ *
+ * Returns true when the roles are aligned — and only then is
+ * `ChallengeMember.discordRoleSyncedAt` stamped, so that someone who was not on
+ * the server at the time is tried again later.
  */
-export async function syncMemberRoles(userId: string, challengeId: string): Promise<void> {
+export async function syncMemberRoles(userId: string, challengeId: string): Promise<boolean> {
   try {
-    if (!process.env.DISCORD_BOT_TOKEN) return;
+    if (!process.env.DISCORD_BOT_TOKEN) return false;
     const [user, challengeMember] = await Promise.all([
       prisma.user.findUnique({ where: { id: userId }, select: { discordId: true } }),
       prisma.challengeMember.findUnique({ where: { challengeId_userId: { challengeId, userId } }, select: { role: true } }),
     ]);
-    if (!user?.discordId) return;
+    if (!user?.discordId) return false;
 
     const challenge = await prisma.challenge.findUnique({ where: { id: challengeId } });
-    if (!challenge?.discordGuildId) return;
+    if (!challenge?.discordGuildId) return false;
     const guildId = challenge.discordGuildId;
 
     const membership = await prisma.teamMember.findUnique({ where: { userId_challengeId: { userId, challengeId } }, select: { teamId: true } });
@@ -403,15 +408,25 @@ export async function syncMemberRoles(userId: string, challengeId: string): Prom
     const mine = teams.find((t) => t.id === membership?.teamId);
     if (mine?.discordRoleId) want.add(mine.discordRoleId);
     if (challengeMember?.role === "ORGANIZER" && challenge.discordAdminRoleId) want.add(challenge.discordAdminRoleId);
-    if (managed.size === 0) return;
+    // Aucun rôle géré sur ce serveur : il n'y a rien à poser, et le bootstrap
+    // donnera les rôles à tout le monde le jour où il les créera.
+    if (managed.size === 0) return markRoleSynced(challengeId, userId);
 
     const member = await getGuildMember(guildId, user.discordId);
-    if (!member.ok) return; // not on the server (yet)
+    if (!member.ok) return false; // not on the server (yet): the tick will retry
     const have = new Set(member.data.roles ?? []);
 
     for (const roleId of want) if (!have.has(roleId)) await addMemberRole(guildId, user.discordId, roleId);
     for (const roleId of managed) if (!want.has(roleId) && have.has(roleId)) await removeMemberRole(guildId, user.discordId, roleId);
+    return markRoleSynced(challengeId, userId);
   } catch (e) {
     console.error("[discord] syncMemberRoles", e);
+    return false;
   }
+}
+
+/** Stamps the membership as aligned. `updateMany`: a membership just deleted is not an error. */
+async function markRoleSynced(challengeId: string, userId: string): Promise<boolean> {
+  await prisma.challengeMember.updateMany({ where: { challengeId, userId }, data: { discordRoleSyncedAt: new Date() } });
+  return true;
 }

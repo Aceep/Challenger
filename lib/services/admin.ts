@@ -2,7 +2,7 @@ import { GameError } from "@/lib/errors";
 import "server-only";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { ensureMember } from "@/lib/services/membership";
+import { ensureMember, markRoleSyncStale } from "@/lib/services/membership";
 
 /**
  * Organiser-side writes. Every function is scoped to one challenge: a team, an
@@ -123,6 +123,8 @@ export async function assignUserToTeam(challengeId: string, userId: string, team
     const left = { challengeId, ...(teamId ? { id: { not: teamId } } : {}) };
     await tx.team.updateMany({ where: { ...left, captainId: userId }, data: { captainId: null } });
     await tx.team.updateMany({ where: { ...left, deputyId: userId }, data: { deputyId: null } });
+    // Le rôle Discord d'équipe ne correspond plus : à reposer (`syncMemberRoles`).
+    await markRoleSyncStale(tx, challengeId, userId);
     if (!teamId) {
       await tx.teamMember.deleteMany({ where: { userId, challengeId } });
       return;

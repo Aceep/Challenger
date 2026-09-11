@@ -28,6 +28,8 @@ describe("aide et messages d'accueil", () => {
     expect(text).toContain("/challenger creer");
     expect(text).not.toContain("/challenger rejoindre");
     expect(text).toContain("invitation");
+    // Et l'on invite depuis Discord, sans identifiant à copier.
+    expect(text).toContain("/inviter");
   });
 
   it("renvoie vers le guide pas à pas, sur Discord comme sur le site", () => {
