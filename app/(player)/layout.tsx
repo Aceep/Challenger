@@ -2,6 +2,7 @@ import { after } from "next/server";
 import type { CSSProperties } from "react";
 import { BottomNav } from "@/components/BottomNav";
 import { EditionBar } from "@/components/EditionBar";
+import { PwaBootstrap } from "@/components/pwa/PwaBootstrap";
 import { KyleGuide } from "@/components/tour/KyleGuide";
 import { getCurrentPlayer } from "@/lib/dal";
 import { listSwitchableChallenges } from "@/lib/services/membership";
@@ -25,6 +26,7 @@ export default async function PlayerLayout({ children }: LayoutProps<"/">) {
       </div>
       <BottomNav isAdmin={role === "ORGANIZER"} edition={challenge ? { name: challenge.name, canSwitch } : undefined} />
       <KyleGuide base="" onFinish={markOnboardedAction} />
+      <PwaBootstrap />
     </div>
   );
 }

@@ -2109,6 +2109,10 @@
   gap: var(--sp-2);
   min-height: 32px;
   padding: 6px var(--sp-5);
+  /* Installed app: the first strip of the page sits under the status bar.
+     Zero in a browser and with an opaque status bar, right if we ever go
+     translucent. */
+  padding-top: calc(6px + env(safe-area-inset-top));
   background: var(--surface);
   border-bottom: 1px solid var(--line);
   border-left: 4px solid var(--edition);
